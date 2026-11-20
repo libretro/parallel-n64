@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import fetch  # noqa: E402
 
 ROMS = ["cube16", "rottri32", "shade32", "tlut16"]
-PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys", "glide64": "glide64_*.keys"}
+PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys", "glide64": "glide64-opengl.cache"}
 SEEDED = {"rice"}
 FRAMES = 40
 JOURNAL_VERSION = 1  # COMBINER_JOURNAL_VERSION

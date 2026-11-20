@@ -29,7 +29,9 @@
 
 #include <streams/file_stream.h>
 #include <encodings/crc32.h>
+#include <retro_dirent.h>
 #include "../../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
+#include "glitch64_vk_cache.h" /* g64vk_cache_remove_before */
 #include "../../../mupen64plus-core/src/plugin/plugin.h"
 #include "glide.h"
 #include "glitchmain.h"
@@ -529,11 +531,19 @@ static void shader_find_uniforms(shader_program_key *shader)
 
 /* fragment_shader compiled and linked with the vertex shader; with parallel
  * shader compiles this returns before either is done */
+/* the fragment source a program is started from: fragment_shader, or
+ * lent from where it is (cache_arena's records) with its length */
+static const char *lent_source = NULL;
+static GLint lent_source_size = 0;
+
 static void start_shader_program(shader_program_key *shader)
 {
    GLuint fragshader = glCreateShader(GL_FRAGMENT_SHADER);
 
-   glShaderSource(fragshader, 1, (const GLchar**)&fragment_shader, NULL);
+   if (lent_source)
+      glShaderSource(fragshader, 1, (const GLchar**)&lent_source, &lent_source_size);
+   else
+      glShaderSource(fragshader, 1, (const GLchar**)&fragment_shader, NULL);
    glCompileShader(fragshader);
 
    shader->program_object = glCreateProgram();
@@ -565,19 +575,41 @@ static void finish_shader_program_setup(shader_program_key *shader)
    current_shader = &shader_programs[shader->index];
 }
 
-/* What a game compiled, keyed as compile_shader looks it up and kept as
- * source: the fragment text depends on the order of the state calls, so a key
- * cannot be turned back into it. Written at the end of a session. */
+/* What the games compiled, keyed as compile_shader looks it up and kept as
+ * source: the fragment text depends on the order of the state calls, so a
+ * key cannot be turned back into it. One file every game shares (the
+ * N64's combiners are fixed function: a key the same whatever the game),
+ * each record with the games that compiled it (a bit of each: its CRCs
+ * hashed as its file of before was named); at load a game builds its
+ * own, the rest kept as they are. Written at the end of a session where
+ * something was added.
+ *
+ * Before it there was a file a game, glide64_<crcs>.keys: the same
+ * records without the games. Where the one file is not there, they are
+ * read into it once, each key once, and removed once it is written. */
 #define FRAGMENT_SHADER_SIZE (4096 * 2)
 #define SHADER_CACHE_SIZE    (4u * 1024u * 1024u)
-#define SHADER_CACHE_MAGIC   0x47324c49u
+#define SHADER_CACHE_MAGIC   0x53344c47u /* "GL4S" */
+#define SHADER_OLD_MAGIC     0x47324c49u
 #define SHADER_CACHE_FIELDS  6
-#define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
+/* the key, the source's length, the games */
+#define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 2) * sizeof(int32_t))
+#define SHADER_OLD_RECORD    ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
+#define SHADER_GAME_PREFIX   "glide64_"
+#if defined(HAVE_OPENGLES)
+#define SHADER_CACHE_NAME    "glide64-gles.cache"
+#else
+#define SHADER_CACHE_NAME    "glide64-opengl.cache"
+#endif
 
-static char   *cache_arena = NULL;
-static size_t  cache_used  = 0;
-static int     cache_dirty = 0;
-static char    cache_path[PATH_MAX_LENGTH];
+static char    *cache_arena = NULL;
+static size_t   cache_used  = 0;
+static size_t   cache_room  = 0;
+static int      cache_dirty = 0;
+static int      cache_migrating = 0;
+static uint32_t cache_game  = 0;
+static char     cache_folder[PATH_MAX_LENGTH];
+static char     cache_path[PATH_MAX_LENGTH];
 
 static uint32_t combiner_cache_version(void)
 {
@@ -595,56 +627,205 @@ static void combiner_cache_key(const shader_program_key *shader, int32_t *fields
    fields[5] = (int32_t)shader->n64_key2;
 }
 
+/* the record of @key in the arena, or NULL */
+static char *combiner_cache_find(const int32_t *key)
+{
+   size_t at = 0;
+   while (at + SHADER_CACHE_RECORD <= cache_used)
+   {
+      uint32_t len;
+      if (!memcmp(cache_arena + at, key, SHADER_CACHE_FIELDS * sizeof(int32_t)))
+         return cache_arena + at;
+      memcpy(&len, cache_arena + at + SHADER_CACHE_FIELDS * sizeof(int32_t), sizeof(len));
+      at += SHADER_CACHE_RECORD + len;
+   }
+   return NULL;
+}
+
+/* @fields (the key and the length) and @len bytes of @source with
+ * @games: added, or the games added to the record of the same key */
+static void combiner_cache_add(const int32_t *fields, const char *source, size_t len, uint32_t games)
+{
+   char *r = combiner_cache_find(fields);
+   int32_t g;
+   if (r)
+   {
+      memcpy(&g, r + (SHADER_CACHE_FIELDS + 1) * sizeof(int32_t), sizeof(g));
+      if (((uint32_t)g | games) != (uint32_t)g)
+      {
+         g = (int32_t)((uint32_t)g | games);
+         memcpy(r + (SHADER_CACHE_FIELDS + 1) * sizeof(int32_t), &g, sizeof(g));
+         cache_dirty = 1;
+      }
+      return;
+   }
+   if (cache_used + SHADER_CACHE_RECORD + len > cache_room)
+      return;
+   r = cache_arena + cache_used;
+   memcpy(r, fields, (SHADER_CACHE_FIELDS + 1) * sizeof(int32_t));
+   g = (int32_t)games;
+   memcpy(r + (SHADER_CACHE_FIELDS + 1) * sizeof(int32_t), &g, sizeof(g));
+   memcpy(r + SHADER_CACHE_RECORD, source, len);
+   cache_used  += SHADER_CACHE_RECORD + len;
+   cache_dirty  = 1;
+}
+
 static void combiner_cache_record(const shader_program_key *shader)
 {
    int32_t fields[SHADER_CACHE_FIELDS + 1];
    size_t  len = strlen(fragment_shader);
 
-   if (!cache_arena || cache_used + SHADER_CACHE_RECORD + len > SHADER_CACHE_SIZE)
+   if (!cache_arena)
       return;
    combiner_cache_key(shader, fields);
    fields[SHADER_CACHE_FIELDS] = (int32_t)len;
-   memcpy(cache_arena + cache_used, fields, SHADER_CACHE_RECORD);
-   memcpy(cache_arena + cache_used + SHADER_CACHE_RECORD, fragment_shader, len);
-   cache_used  += SHADER_CACHE_RECORD + len;
-   cache_dirty  = 1;
+   combiner_cache_add(fields, fragment_shader, len, cache_game);
+}
+
+/* a game's bit: of its CRCs */
+static uint32_t combiner_cache_game_bit(uint32_t crc0, uint32_t crc1)
+{
+   const uint32_t h = crc0 * 0x9E3779B1u ^ crc1 * 0x85EBCA77u;
+   return 1u << ((h ^ h >> 16) >> 27);
+}
+
+/* a game's file of before: the prefix, its CRCs in hex, .keys */
+static int combiner_cache_old_name(const char *name)
+{
+   const size_t p = sizeof(SHADER_GAME_PREFIX) - 1;
+   size_t i;
+   if (strlen(name) != p + 16 + 5 || strncmp(name, SHADER_GAME_PREFIX, p) || strcmp(name + p + 16, ".keys"))
+      return 0;
+   for (i = p; i < p + 16; i++)
+      if (!((name[i] >= '0' && name[i] <= '9') || (name[i] >= 'a' && name[i] <= 'f')))
+         return 0;
+   return 1;
+}
+
+/* The files of before, each game's records added with its bit, each key
+ * once; whether there were any */
+static int combiner_cache_gather(void)
+{
+   struct RDIR *d = retro_opendir(cache_folder);
+   const uint32_t version = combiner_cache_version();
+   char path[PATH_MAX_LENGTH];
+   int any = 0;
+
+   if (!d)
+      return 0;
+   while (retro_readdir(d))
+   {
+      const char *name = retro_dirent_get_name(d);
+      void *data = NULL;
+      int64_t size = 0;
+      if (!name || !combiner_cache_old_name(name))
+         continue;
+      any = 1;
+      fill_pathname_join(path, cache_folder, name, sizeof(path));
+      if (filestream_read_file(path, &data, &size) && data && size > 8
+            && ((const uint32_t*)data)[0] == SHADER_OLD_MAGIC
+            && ((const uint32_t*)data)[1] == version)
+      {
+         const char *p = (const char*)data;
+         /* room for its records with a word more each */
+         const size_t need = cache_used + (size_t)size / SHADER_OLD_RECORD * SHADER_CACHE_RECORD
+            + (size_t)size + SHADER_CACHE_SIZE;
+         size_t pos = 8;
+         uint32_t crc[2], games;
+         unsigned k;
+         /* its bit, of the CRCs its name has */
+         crc[0] = crc[1] = 0;
+         for (k = 0; k < 16; k++)
+         {
+            const char c = name[sizeof(SHADER_GAME_PREFIX) - 1 + k];
+            crc[k >> 3] = crc[k >> 3] << 4 | (uint32_t)(c <= '9' ? c - '0' : c - 'a' + 10);
+         }
+         games = combiner_cache_game_bit(crc[0], crc[1]);
+         if (need > cache_room)
+         {
+            char *more = (char*)realloc(cache_arena, need);
+            if (more)
+            {
+               cache_arena = more;
+               cache_room  = need;
+            }
+         }
+         while (pos + SHADER_OLD_RECORD <= (size_t)size)
+         {
+            int32_t fields[SHADER_CACHE_FIELDS + 1];
+            size_t len;
+            memcpy(fields, p + pos, SHADER_OLD_RECORD);
+            len = (size_t)(uint32_t)fields[SHADER_CACHE_FIELDS];
+            if (len >= FRAGMENT_SHADER_SIZE || pos + SHADER_OLD_RECORD + len > (size_t)size)
+               break;
+            combiner_cache_add(fields, p + pos + SHADER_OLD_RECORD, len, games);
+            pos += SHADER_OLD_RECORD + len;
+         }
+      }
+      free(data);
+   }
+   retro_closedir(d);
+   return any;
 }
 
 static void combiner_cache_load(void)
 {
-   void    *data = NULL;
+   RFILE   *f;
    int64_t  size = 0;
-   size_t   pos  = 8;
+   size_t   pos  = 0;
+   int      built = 0;
 
    cache_used  = 0;
    cache_dirty = 0;
-   if (!cache_arena)
-      cache_arena = (char*)malloc(SHADER_CACHE_SIZE);
-   combiner_key_path(cache_path, sizeof(cache_path), "glide64", gfx_info.HEADER);
+   cache_migrating = 0;
+   {
+      const char *system = retro_get_system_directory();
+      cache_game = combiner_cache_game_bit(*(const uint32_t*)(gfx_info.HEADER + 0x10),
+            *(const uint32_t*)(gfx_info.HEADER + 0x14));
+      fill_pathname_join(cache_folder, system ? system : "", "ParallelN64", sizeof(cache_folder));
+      fill_pathname_join(cache_folder, cache_folder, "shaders", sizeof(cache_folder));
+      path_mkdir(cache_folder);
+      fill_pathname_join(cache_path, cache_folder, SHADER_CACHE_NAME, sizeof(cache_path));
+   }
 
-   if (!cache_arena || !filestream_exists(cache_path)
-         || !filestream_read_file(cache_path, &data, &size) || !data)
+   /* read where it stays, with room for what this session adds */
+   if ((f = filestream_open(cache_path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE)))
+   {
+      uint32_t head[2];
+      size = filestream_get_size(f);
+      if (size > 8 && filestream_read(f, head, sizeof(head)) == (int64_t)sizeof(head)
+            && head[0] == SHADER_CACHE_MAGIC && head[1] == combiner_cache_version()
+            && (cache_arena = (char*)malloc((size_t)size - 8 + SHADER_CACHE_SIZE)))
+      {
+         cache_room = (size_t)size - 8 + SHADER_CACHE_SIZE;
+         if (filestream_read(f, cache_arena, size - 8) == size - 8)
+            cache_used = (size_t)size - 8;
+      }
+      filestream_close(f);
+   }
+   if (!cache_arena && (cache_arena = (char*)malloc(SHADER_CACHE_SIZE)))
+   {
+      cache_room = SHADER_CACHE_SIZE;
+      /* not there, or of other shaders: the files of before, once */
+      cache_migrating = combiner_cache_gather();
+   }
+   if (!cache_arena)
       return;
 
-   if (      size > 8
-         && ((const uint32_t*)data)[0] == SHADER_CACHE_MAGIC
-         && ((const uint32_t*)data)[1] == combiner_cache_version())
+   /* this game's, built; a record cut short cut off */
+   while (pos + SHADER_CACHE_RECORD <= cache_used)
    {
-      const char *p = (const char*)data;
+      uint32_t len, games;
 
-      while (pos + SHADER_CACHE_RECORD <= (size_t)size)
+      memcpy(&len, cache_arena + pos + SHADER_CACHE_FIELDS * sizeof(int32_t), sizeof(len));
+      memcpy(&games, cache_arena + pos + (SHADER_CACHE_FIELDS + 1) * sizeof(int32_t), sizeof(games));
+      if (len >= FRAGMENT_SHADER_SIZE || len > cache_used - pos - SHADER_CACHE_RECORD)
+         break;
+      if (games & cache_game)
       {
-         int32_t fields[SHADER_CACHE_FIELDS + 1];
+         int32_t fields[SHADER_CACHE_FIELDS];
          shader_program_key shader;
-         size_t len;
-
-         memcpy(fields, p + pos, SHADER_CACHE_RECORD);
-         len = (size_t)(uint32_t)fields[SHADER_CACHE_FIELDS];
-         if (      len >= FRAGMENT_SHADER_SIZE
-               || pos + SHADER_CACHE_RECORD + len > (size_t)size
-               || cache_used + SHADER_CACHE_RECORD + len > SHADER_CACHE_SIZE)
-            break;
-
+         memcpy(fields, cache_arena + pos, sizeof(fields));
          memset(&shader, 0, sizeof(shader));
          shader.dither_enabled      = fields[0];
          shader.three_point_filter0 = fields[1];
@@ -652,39 +833,48 @@ static void combiner_cache_load(void)
          shader.n64_key0            = (uint32_t)fields[3];
          shader.n64_key1            = (uint32_t)fields[4];
          shader.n64_key2            = (uint32_t)fields[5];
-
-         memcpy(fragment_shader, p + pos + SHADER_CACHE_RECORD, len);
-         fragment_shader[len] = '\0';
+         /* the source lent from the record, not copied */
+         lent_source      = cache_arena + pos + SHADER_CACHE_RECORD;
+         lent_source_size = (GLint)len;
          finish_shader_program_setup(&shader);
-
-         memcpy(cache_arena + cache_used, p + pos, SHADER_CACHE_RECORD + len);
-         cache_used += SHADER_CACHE_RECORD + len;
-         pos        += SHADER_CACHE_RECORD + len;
+         lent_source      = NULL;
+         built = 1;
       }
-      use_shader_program(&shader_programs[0]);
+      pos += SHADER_CACHE_RECORD + len;
    }
-   free(data);
+   if (pos != cache_used)
+   {
+      cache_used  = pos;
+      cache_dirty = 1;
+   }
+   if (built)
+      use_shader_program(&shader_programs[0]);
 }
 
 static void combiner_cache_save(void)
 {
-   if (cache_arena && cache_dirty)
+   if (cache_arena && (cache_dirty || cache_migrating))
    {
       RFILE *f = filestream_open(cache_path, RETRO_VFS_FILE_ACCESS_WRITE,
             RETRO_VFS_FILE_ACCESS_HINT_NONE);
       if (f)
       {
          uint32_t head[2];
+         int ok;
          head[0] = SHADER_CACHE_MAGIC;
          head[1] = combiner_cache_version();
-         filestream_write(f, head, sizeof(head));
-         filestream_write(f, cache_arena, (int64_t)cache_used);
-         filestream_close(f);
+         ok = filestream_write(f, head, sizeof(head)) == (int64_t)sizeof(head)
+            && filestream_write(f, cache_arena, (int64_t)cache_used) == (int64_t)cache_used;
+         ok = filestream_close(f) == 0 && ok;
+         /* the files of before go once they are in it */
+         if (ok && cache_migrating)
+            g64vk_cache_remove_before(cache_folder, SHADER_GAME_PREFIX);
       }
    }
    free(cache_arena);
    cache_arena = NULL;
-   cache_dirty = 0;
+   cache_used  = cache_room = 0;
+   cache_dirty = cache_migrating = 0;
 }
 
 /* Built at load; without it (it did not link) a miss compiles as before */
@@ -887,43 +1077,55 @@ static void use_uber_program(void)
    update_uniforms(&uber_program);
 }
 
+/* the program of the key the next draws run */
+static int program_is(const shader_program_key *program)
+{
+   return program->n64_key0 == n64_key[0] &&
+      program->n64_key1 == n64_key[1] &&
+      program->n64_key2 == n64_key[2] &&
+      program->dither_enabled == dither_enabled &&
+      program->three_point_filter0 == three_point_filter[0] &&
+      program->three_point_filter1 == three_point_filter[1];
+}
+
 void compile_shader(void)
 {
    shader_program_key shader;
    glitch64_n64_combiner n64;
+   shader_program_key *program = current_shader;
    int i;
 
    need_to_compile = 0;
 
-   for (i = 0; i < number_of_programs; i++)
+   /* a state change most often leaves the combiner as it was: the
+    * program bound, else each in turn (a key is in one) */
+   if (!program || program == &uber_program || !program_is(program))
+      for (program = NULL, i = 0; i < number_of_programs; i++)
+         if (program_is(&shader_programs[i]))
+         {
+            program = &shader_programs[i];
+            break;
+         }
+   if (program)
    {
-      shader_program_key *program = &shader_programs[i];
-      if (program->n64_key0 == n64_key[0] &&
-            program->n64_key1 == n64_key[1] &&
-            program->n64_key2 == n64_key[2] &&
-            program->dither_enabled == dither_enabled &&
-            program->three_point_filter0 == three_point_filter[0] &&
-            program->three_point_filter1 == three_point_filter[1])
+      if (program->pending == 1)
       {
-         if (program->pending == 1)
+         GLint done = 0;
+         glGetProgramiv(program->program_object, GL_COMPLETION_STATUS_KHR, &done);
+         if (done)
          {
-            GLint done = 0;
-            glGetProgramiv(program->program_object, GL_COMPLETION_STATUS_KHR, &done);
-            if (done)
-            {
-               complete_shader_program(program);
-               program->pending = 0;
-            }
+            complete_shader_program(program);
+            program->pending = 0;
          }
-         if (program->pending || combiner_mode == 1)
-         {
-            use_uber_program();
-            return;
-         }
-         use_shader_program(program);
-         update_uniforms(program);
+      }
+      if (program->pending || combiner_mode == 1)
+      {
+         use_uber_program();
          return;
       }
+      use_shader_program(program);
+      update_uniforms(program);
+      return;
    }
 
    {

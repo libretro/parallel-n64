@@ -3,6 +3,9 @@
 #include <encodings/crc32.h>
 #include <file/file_path.h>
 #include <streams/file_stream.h>
+#include <retro_dirent.h>
+
+#include "../glide2gl/src/Glitch64/glitch64_vk_cache.h"
 
 #include "plugin/plugin.h"
 
@@ -67,4 +70,47 @@ int filestream_close(RFILE *stream)
 {
    (void)stream;
    return 0;
+}
+
+int64_t filestream_get_size(RFILE *stream)
+{
+   (void)stream;
+   return 0;
+}
+
+int64_t filestream_read(RFILE *stream, void *data, int64_t len)
+{
+   (void)stream;
+   (void)data;
+   (void)len;
+   return -1;
+}
+
+struct RDIR *retro_opendir(const char *name)
+{
+   (void)name;
+   return NULL;
+}
+
+int retro_readdir(struct RDIR *rdir)
+{
+   (void)rdir;
+   return 0;
+}
+
+const char *retro_dirent_get_name(struct RDIR *rdir)
+{
+   (void)rdir;
+   return NULL;
+}
+
+void retro_closedir(struct RDIR *rdir)
+{
+   (void)rdir;
+}
+
+void g64vk_cache_remove_before(const char *folder, const char *prefix)
+{
+   (void)folder;
+   (void)prefix;
 }
