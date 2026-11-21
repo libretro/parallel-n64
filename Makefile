@@ -2367,6 +2367,7 @@ test_frame_garbage$(EXE_EXT): tools/test_frame_garbage.c $(VIDEODIR_PARALLEL)/pa
 
 # GLideN64's combiner key journal, from a thread (tools/test_combiner_journal.c)
 COMBINER_JOURNAL_TEST_SRC := $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c \
+	$(LIBRETRO_COMM_DIR)/file/retro_dirent.c \
 	$(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
 	$(LIBRETRO_COMM_DIR)/vfs/vfs_implementation.c $(LIBRETRO_COMM_DIR)/string/stdstring.c \
 	$(LIBRETRO_COMM_DIR)/compat/compat_strl.c $(LIBRETRO_COMM_DIR)/file/file_path.c \
@@ -2402,7 +2403,7 @@ test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLID
 		$(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.h $(COMBINER_JOURNAL_TEST_SRC)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_MMAP -I$(VIDEODIR_GLIDE)/Glitch64 -I$(LIBRETRO_COMM_DIR)/include \
 		tools/test_glitch64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
-		$(LIBRETRO_COMM_DIR)/file/retro_dirent.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
 # GLideN64's Vulkan cache, one file every game shares (tools/test_gliden64_vk_cache.c),
 # read with the VFS's map and without

@@ -301,9 +301,9 @@ static void force_uniforms(void)
 
 static combiner_journal_t *sc_journal = NULL;
 
-void ShaderCombiner_OpenJournal(const char *path)
+void ShaderCombiner_OpenJournal(const char *path, const char *game)
 {
-   sc_journal = combiner_journal_open(path, 1u);
+   sc_journal = combiner_journal_open_game(path, 2u, game);
 }
 
 static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
@@ -541,7 +541,9 @@ static ShaderProgram *ShaderCombiner_Find(DecodedMux *dmux, int flags, int draw)
       static int strict = -1;
       if (strict < 0)
          strict = getenv("PARALLEL_N64_COMBINER_STRICT") != NULL;
-      if (strict)
+      /* a key the journal had would have been built at load: none
+       * where there is no journal (the plugin's own first start) */
+      if (strict && sc_journal)
          abort();
       combiner_journal_push(sc_journal, dmux->combine.mux, (unsigned)flags);
    }

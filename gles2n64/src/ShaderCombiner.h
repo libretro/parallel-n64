@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 void ShaderCombiner_Prebuild(DecodedMux *dmux, int flags);
-void ShaderCombiner_OpenJournal(const char *path);
+void ShaderCombiner_OpenJournal(const char *path, const char *game);
 
 #define SC_POSITION             0
 #define SC_COLOR                1

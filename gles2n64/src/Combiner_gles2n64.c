@@ -123,7 +123,9 @@ static bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
  * used to be heap-allocated and freed by the only caller within the
  * same call (and dereferenced before any NULL check - issue #543);
  * the struct is small and short-lived, so build it on the stack. */
-#define COMBINER_JOURNAL_VERSION 1u
+/* lines of each game's (1: a file a game) */
+#define COMBINER_JOURNAL_VERSION 2u
+#define COMBINER_JOURNAL_OLD_VERSION 1u
 
 static void mux_init(DecodedMux *mux, uint64_t dmux, bool cycle2)
 {
@@ -249,11 +251,26 @@ static void Combiner_PrebuildKey(void *ctx, uint64_t key, unsigned flags)
 void Combiner_Init(void)
 {
    char path[PATH_MAX_LENGTH];
+   char folder[PATH_MAX_LENGTH];
+   char game[COMBINER_JOURNAL_GAME + 1];
 
    ShaderCombiner_Init();
-   combiner_key_path(path, sizeof(path), "gln64", gfx_info.HEADER);
-   combiner_journal_read(path, COMBINER_JOURNAL_VERSION, Combiner_PrebuildKey, NULL);
-   ShaderCombiner_OpenJournal(path);
+   /* The start the plugin's init makes comes before the core has the ROM
+    * in the host's order (its first word, 0x80371240 and the like, still
+    * the wrong way round), its CRCs not yet the game's; the start the
+    * context makes after it has them. No keys for the first. */
+   {
+      const uint32_t first = *(const uint32_t*)gfx_info.HEADER;
+      if ((first >> 24) != 0x80 && (first & 0xff) == 0x80)
+         return;
+   }
+   /* one journal every game shares, this game's keys built; the files a
+    * game of before read into it once */
+   combiner_key_shared(path, folder, sizeof(path), "gln64", game, gfx_info.HEADER);
+   if (!combiner_journal_read_game(path, COMBINER_JOURNAL_VERSION, game, Combiner_PrebuildKey, NULL)
+         && combiner_journal_gather(path, COMBINER_JOURNAL_VERSION, folder, "gln64_", COMBINER_JOURNAL_OLD_VERSION))
+      combiner_journal_read_game(path, COMBINER_JOURNAL_VERSION, game, Combiner_PrebuildKey, NULL);
+   ShaderCombiner_OpenJournal(path, game);
 }
 
 void Combiner_Destroy(void)

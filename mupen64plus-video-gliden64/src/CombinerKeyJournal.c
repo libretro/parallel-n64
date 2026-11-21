@@ -2,7 +2,10 @@
 #include <string.h>
 
 #include <boolean.h>
+#include <file/file_path.h>
 #include <retro_atomic.h>
+#include <retro_dirent.h>
+#include <retro_miscellaneous.h>
 #include <rthreads/rthreads.h>
 #include <rthreads/retro_eventcount.h>
 #include <streams/file_stream.h>
@@ -14,6 +17,7 @@
 #define LINE_SIZE  19u  /* 16 hex digits, a space, a hex digit, a newline */
 #define HEADER     "gliden64-combiner-keys "
 #define HEADER_LEN (sizeof(HEADER) - 1)
+#define GAME_LINE  (1u + COMBINER_JOURNAL_GAME + 1u) /* @, the game, a newline */
 
 #if defined(RETRO_ATOMIC_LOCK_FREE)
 
@@ -33,6 +37,8 @@ struct combiner_journal
     * opened the same way */
    char                *lines_path;
    uint32_t             version;
+   /* the game the lines are of, or none */
+   char                 game[GAME_LINE];
    sthread_t           *thread;
    retro_eventcount_t   work;
    retro_atomic_size_t  head; /* the GL thread's */
@@ -95,6 +101,9 @@ static void open_lines(combiner_journal_t *j)
       line[HEADER_LEN + 8] = '\n';
       filestream_write(j->file, line, (int64_t)sizeof(line));
    }
+   /* this session's lines of its game */
+   if (j->file && j->game[0])
+      filestream_write(j->file, j->game, (int64_t)GAME_LINE);
 }
 
 static void journal_thread(void *data)
@@ -162,7 +171,8 @@ static void journal_thread(void *data)
 
 /* A journal whose file opens on its thread when the first key comes: of
  * records at @path, or of lines made for @version at @lines_path */
-static combiner_journal_t *journal_new(const char *path, const char *lines_path, uint32_t version)
+static combiner_journal_t *journal_new(const char *path, const char *lines_path, uint32_t version,
+      const char *game)
 {
    combiner_journal_t *j;
    const char *at = path ? path : lines_path;
@@ -183,6 +193,12 @@ static combiner_journal_t *journal_new(const char *path, const char *lines_path,
       else
          j->lines_path = copy;
       j->version = version;
+      if (game)
+      {
+         j->game[0] = '@';
+         memcpy(j->game + 1, game, COMBINER_JOURNAL_GAME);
+         j->game[GAME_LINE - 1] = '\n';
+      }
       if (retro_eventcount_init(&j->work))
       {
          if ((j->thread = sthread_create(journal_thread, j)))
@@ -197,12 +213,18 @@ static combiner_journal_t *journal_new(const char *path, const char *lines_path,
 
 combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
 {
-   return journal_new(NULL, path, version);
+   return journal_new(NULL, path, version, NULL);
+}
+
+combiner_journal_t *combiner_journal_open_game(const char *path, uint32_t version,
+      const char *game)
+{
+   return journal_new(NULL, path, version, game);
 }
 
 combiner_journal_t *combiner_journal_append(const char *path)
 {
-   return journal_new(path, NULL, 0);
+   return journal_new(path, NULL, 0, NULL);
 }
 
 /* stops the thread, the queue written */
@@ -265,6 +287,15 @@ combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
    return NULL;
 }
 
+combiner_journal_t *combiner_journal_open_game(const char *path, uint32_t version,
+      const char *game)
+{
+   (void)path;
+   (void)version;
+   (void)game;
+   return NULL;
+}
+
 combiner_journal_t *combiner_journal_append(const char *path)
 {
    (void)path;
@@ -293,65 +324,236 @@ void combiner_journal_close(combiner_journal_t *j)
 
 #endif
 
+/* each byte's hex digit, 16 where it is none */
+static const unsigned char hex_digit[256] = {
+#define N16 16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16
+   N16, N16, N16,
+   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16, 16, 16, 16, 16, 16,
+   N16, N16,
+   16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16,
+   N16, N16, N16, N16, N16, N16, N16, N16, N16
+#undef N16
+};
+
 static int read_hex(const char *in, unsigned digits, uint64_t *value)
 {
    uint64_t v = 0;
-   unsigned i;
+   unsigned i, bad = 0;
 
    for (i = 0; i < digits; i++)
    {
-      char c = in[i];
-      v <<= 4;
-      if (c >= '0' && c <= '9')
-         v |= (uint64_t)(c - '0');
-      else if (c >= 'a' && c <= 'f')
-         v |= (uint64_t)(c - 'a' + 10);
-      else
-         return 0;
+      const unsigned d = hex_digit[(unsigned char)in[i]];
+      bad |= d;
+      v    = v << 4 | (d & 15);
    }
+   if (bad & 16)
+      return 0;
    *value = v;
    return 1;
 }
 
-unsigned combiner_journal_read(const char *path, uint32_t version,
+/* The lines of a journal made for @version, past its header, or NULL */
+static const char *journal_lines(const char *data, int64_t size, uint32_t version)
+{
+   uint64_t file_version;
+   if (      data
+         && (size_t)size >= HEADER_LEN + 9
+         && !memcmp(data, HEADER, HEADER_LEN)
+         && read_hex(data + HEADER_LEN, 8, &file_version)
+         && file_version == version
+         && data[HEADER_LEN + 8] == '\n')
+      return data + HEADER_LEN + 9;
+   return NULL;
+}
+
+/* a whole key line */
+static int key_line(const char *p, size_t len, uint64_t *key, uint64_t *flags)
+{
+   return len == LINE_SIZE - 1
+      && read_hex(p, 16, key)
+      && p[16] == ' '
+      && read_hex(p + 17, 1, flags);
+}
+
+unsigned combiner_journal_read_game(const char *path, uint32_t version, const char *game,
       combiner_journal_key_t cb, void *ctx)
 {
    void *data = NULL;
    int64_t size = 0;
    unsigned count = 0;
    const char *p, *end;
-   uint64_t file_version;
+   /* the lines before any game's are of every game */
+   int mine = 1;
 
-   if (!filestream_exists(path) || !filestream_read_file(path, &data, &size) || !data)
+   if (!filestream_read_file(path, &data, &size) || !data)
       return 0;
-   p   = (const char*)data;
-   end = p + size;
-   if (      (size_t)size >= HEADER_LEN + 9
-         && !memcmp(p, HEADER, HEADER_LEN)
-         && read_hex(p + HEADER_LEN, 8, &file_version)
-         && file_version == version
-         && p[HEADER_LEN + 8] == '\n')
+   end = (const char*)data + size;
+   if ((p = journal_lines((const char*)data, size, version)))
    {
-      p += HEADER_LEN + 9;
       while (p < end)
       {
-         const char *nl = (const char*)memchr(p, '\n', (size_t)(end - p));
+         const char *nl;
          uint64_t key;
          uint64_t flags;
 
-         if (!nl)
-            break; /* the last line, cut short */
-         if (      (size_t)(nl - p) == LINE_SIZE - 1
-               && read_hex(p, 16, &key)
-               && p[16] == ' '
-               && read_hex(p + 17, 1, &flags))
+         if (p + LINE_SIZE <= end && p[16] == ' ' && p[LINE_SIZE - 1] == '\n')
          {
-            cb(ctx, key, (unsigned)flags);
-            count++;
+            /* a key line: only a key line has its space there and its
+             * newline after its flags; another game's passed over */
+            if (!mine)
+            {
+               p += LINE_SIZE;
+               continue;
+            }
+            if (read_hex(p, 16, &key) && read_hex(p + 17, 1, &flags))
+            {
+               cb(ctx, key, (unsigned)flags);
+               count++;
+               p += LINE_SIZE;
+               continue;
+            }
          }
+         if (!(nl = (const char*)memchr(p, '\n', (size_t)(end - p))))
+            break; /* the last line, cut short */
+         /* a game's lines (one cut short is no game's), or a line that is
+          * none, as a key line cut short */
+         if (*p == '@')
+            mine = !game || ((size_t)(nl - p) == GAME_LINE - 1
+                  && !memcmp(p + 1, game, COMBINER_JOURNAL_GAME));
          p = nl + 1;
       }
    }
    free(data);
    return count;
+}
+
+unsigned combiner_journal_read(const char *path, uint32_t version,
+      combiner_journal_key_t cb, void *ctx)
+{
+   return combiner_journal_read_game(path, version, NULL, cb, ctx);
+}
+
+/* a game's file of before: @prefix, its CRCs in hex, .keys */
+static int old_name(const char *name, const char *prefix)
+{
+   const size_t p = strlen(prefix);
+   size_t i;
+   if (strlen(name) != p + COMBINER_JOURNAL_GAME + 5 || strncmp(name, prefix, p)
+         || strcmp(name + p + COMBINER_JOURNAL_GAME, ".keys"))
+      return 0;
+   for (i = p; i < p + COMBINER_JOURNAL_GAME; i++)
+      if (!((name[i] >= '0' && name[i] <= '9') || (name[i] >= 'a' && name[i] <= 'f')))
+         return 0;
+   return 1;
+}
+
+int combiner_journal_gather(const char *path, uint32_t version, const char *folder,
+      const char *prefix, uint32_t old_version)
+{
+   struct RDIR *d;
+   char   *out  = NULL;
+   size_t  used = 0, room = 0;
+   char   *names = NULL; /* the files read, each ended by a NUL */
+   size_t  names_used = 0, names_room = 0;
+   char    file[PATH_MAX_LENGTH];
+   int     ok = 1;
+
+   if (filestream_exists(path) || !(d = retro_opendir(folder)))
+      return 0;
+   while (retro_readdir(d))
+   {
+      const char *name = retro_dirent_get_name(d);
+      void *data = NULL;
+      int64_t size = 0;
+      const char *p, *end;
+      size_t len;
+
+      if (!name || !old_name(name, prefix))
+         continue;
+      len = strlen(name) + 1;
+      if (names_used + len > names_room)
+      {
+         char *more = (char*)realloc(names, names_room * 2 + len + 256);
+         if (!more)
+         {
+            ok = 0;
+            break;
+         }
+         names = more;
+         names_room = names_room * 2 + len + 256;
+      }
+      memcpy(names + names_used, name, len);
+      names_used += len;
+
+      fill_pathname_join(file, folder, name, sizeof(file));
+      if (!filestream_read_file(file, &data, &size) || !data)
+         continue;
+      /* its lines after a line of its game */
+      if ((p = journal_lines((const char*)data, size, old_version)))
+      {
+         end = (const char*)data + size;
+         if (used + GAME_LINE + (size_t)(end - p) > room)
+         {
+            const size_t want = (used + GAME_LINE + (size_t)(end - p)) * 2 + HEADER_LEN + 9;
+            char *more = (char*)realloc(out, want);
+            if (!more)
+            {
+               free(data);
+               ok = 0;
+               break;
+            }
+            out = more;
+            room = want;
+         }
+         if (!used)
+         {
+            memcpy(out, HEADER, HEADER_LEN);
+            write_hex(out + HEADER_LEN, version, 8);
+            out[HEADER_LEN + 8] = '\n';
+            used = HEADER_LEN + 9;
+         }
+         out[used] = '@';
+         memcpy(out + used + 1, name + strlen(prefix), COMBINER_JOURNAL_GAME);
+         out[used + GAME_LINE - 1] = '\n';
+         used += GAME_LINE;
+         while (p < end)
+         {
+            const char *nl = (const char*)memchr(p, '\n', (size_t)(end - p));
+            uint64_t key, flags;
+            if (!nl)
+               break;
+            if (key_line(p, (size_t)(nl - p), &key, &flags))
+            {
+               memcpy(out + used, p, LINE_SIZE);
+               used += LINE_SIZE;
+            }
+            p = nl + 1;
+         }
+      }
+      free(data);
+   }
+   retro_closedir(d);
+
+   if (ok && names_used)
+   {
+      /* written whole before any goes */
+      RFILE *f = NULL;
+      size_t at;
+      if (used)
+      {
+         ok = (f = filestream_open(path, RETRO_VFS_FILE_ACCESS_WRITE,
+                  RETRO_VFS_FILE_ACCESS_HINT_NONE)) != NULL
+            && filestream_write(f, out, (int64_t)used) == (int64_t)used;
+         if (f)
+            ok = filestream_close(f) == 0 && ok;
+      }
+      for (at = 0; ok && at < names_used; at += strlen(names + at) + 1)
+      {
+         fill_pathname_join(file, folder, names + at, sizeof(file));
+         filestream_delete(file);
+      }
+   }
+   free(out);
+   free(names);
+   return names_used != 0;
 }

@@ -3,9 +3,10 @@
 
 The first session writes down the keys it meets. The second must build them
 all at load: PARALLEL_N64_COMBINER_STRICT aborts if a draw has to compile.
-Rice reaches no combiner on these ROMs, so its keys are written in here (its
-journal made here, as a session that meets no key makes none), which tests
-that they build at load but not that a draw finds them.
+Rice reaches no combiner on these ROMs, so its keys are written in here (in
+a game's file of before, gathered into the one journal at load, as a
+session that meets no key makes none), which tests that they build at load
+but not that a draw finds them.
 
   combiner_warm_start.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
@@ -15,10 +16,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import fetch  # noqa: E402
 
 ROMS = ["cube16", "rottri32", "shade32", "tlut16"]
-PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys", "glide64": "glide64-opengl.cache"}
+PLUGINS = {"gln64": "gln64.keys", "rice": "rice.keys", "glide64": "glide64-opengl.cache"}
 SEEDED = {"rice"}
 FRAMES = 40
-JOURNAL_VERSION = 1  # COMBINER_JOURNAL_VERSION
+JOURNAL_VERSION = 1  # COMBINER_JOURNAL_OLD_VERSION: a game's file of before
 
 
 def run(a, rom, plugin, sysdir, strict):
@@ -34,8 +35,8 @@ def run(a, rom, plugin, sysdir, strict):
 
 
 def journal_path(sysdir, plugin, rom):
-    """where the plugin's journal for @rom is: named by its header's CRCs,
-    and made only when a first key is met"""
+    """where the plugin's file of before for @rom was: named by its header's
+    CRCs"""
     with open(rom, "rb") as f:
         head = f.read(0x18)
     if head[:1] == b"\x37":  # byte-swapped

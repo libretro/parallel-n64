@@ -5,7 +5,13 @@
  *
  * Appended to a file of records: one opened only when the first key
  * comes, each key a record in order, the file handed back at its end
- * when the journal stops, and whether every key got there. */
+ * when the journal stops, and whether every key got there.
+ *
+ * A journal every game shares: a session's lines after a line of its
+ * game, made only when its first key comes; a game reading only its
+ * lines, of each session of it, a game line cut short being no game's;
+ * and the files a game of before gathered into it once, each in lines of
+ * its game, then removed, those of other names left alone. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +21,8 @@
 #include <signal.h>
 #include <sys/resource.h>
 #endif
+
+#include <file/file_path.h>
 
 #include "CombinerKeyJournal.h"
 
@@ -38,6 +46,206 @@ static void in_order(void *ctx, uint64_t key, unsigned hwl)
    if (key != key_of(s->next) || hwl != (s->next & 15))
       s->bad++;
    s->next++;
+}
+
+struct got { unsigned n; uint64_t keys[64]; unsigned hwl[64]; };
+
+static void collect(void *ctx, uint64_t key, unsigned hwl)
+{
+   struct got *g = (struct got*)ctx;
+   if (g->n < 64)
+   {
+      g->keys[g->n] = key;
+      g->hwl[g->n]  = hwl;
+   }
+   g->n++;
+}
+
+static void write_file(const char *path, const char *text)
+{
+   FILE *f = fopen(path, "wb");
+   CHECK(f != NULL);
+   if (f)
+   {
+      fputs(text, f);
+      fclose(f);
+   }
+}
+
+static int file_is(const char *path, const char *text)
+{
+   void *data = NULL;
+   int64_t size = 0;
+   int same = filestream_read_file(path, &data, &size) && data
+      && size == (int64_t)strlen(text) && !memcmp(data, text, (size_t)size);
+   free(data);
+   return same;
+}
+
+#define GAME_A "0123456789abcdef"
+#define GAME_B "fedcba9876543210"
+#define DIR    "test_combiner_journal.dir"
+#define SHARED DIR "/p.keys"
+
+static void games(void)
+{
+   combiner_journal_t *j;
+   struct got g;
+
+   filestream_delete(PATH);
+   /* a session that meets no key: nothing */
+   j = combiner_journal_open_game(PATH, 7, GAME_A);
+   combiner_journal_close(j);
+   CHECK(!filestream_exists(PATH));
+   /* the first game's session, then the other's, then the first's again */
+   j = combiner_journal_open_game(PATH, 7, GAME_A);
+   CHECK(combiner_journal_push(j, 0x1111, 1));
+   CHECK(combiner_journal_push(j, 0x2222, 2));
+   combiner_journal_close(j);
+   j = combiner_journal_open_game(PATH, 7, GAME_B);
+   CHECK(combiner_journal_push(j, 0x3333, 3));
+   combiner_journal_close(j);
+   j = combiner_journal_open_game(PATH, 7, GAME_A);
+   CHECK(combiner_journal_push(j, 0x4444, 4));
+   combiner_journal_close(j);
+   CHECK(file_is(PATH, "gliden64-combiner-keys 00000007\n"
+            "@" GAME_A "\n" "0000000000001111 1\n" "0000000000002222 2\n"
+            "\n@" GAME_B "\n" "0000000000003333 3\n"
+            "\n@" GAME_A "\n" "0000000000004444 4\n"));
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_A, collect, &g) == 3);
+   CHECK(g.n == 3 && g.keys[0] == 0x1111 && g.hwl[0] == 1 && g.keys[1] == 0x2222
+         && g.keys[2] == 0x4444 && g.hwl[2] == 4);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_B, collect, &g) == 1 && g.keys[0] == 0x3333);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 8, GAME_A, collect, &g) == 0);
+   /* every game's when none is asked */
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read(PATH, 7, collect, &g) == 4);
+
+   /* a game line cut short is no game's; lines before any game's are
+    * every game's; a game line of another length is no game's */
+   write_file(PATH, "gliden64-combiner-keys 00000007\n"
+         "0000000000000001 0\n"
+         "@" GAME_A "\n" "0000000000000002 0\n"
+         "@0123456789abcde\n" "0000000000000003 0\n"
+         "@" GAME_A "0\n" "0000000000000004 0\n"
+         "@" GAME_A "\n" "0000000000000005 0\n");
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_A, collect, &g) == 3);
+   CHECK(g.keys[0] == 1 && g.keys[1] == 2 && g.keys[2] == 5);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_B, collect, &g) == 1 && g.keys[0] == 1);
+   /* lines that are no key lines, of this game and another's, and the
+    * last cut short: none read */
+   write_file(PATH, "gliden64-combiner-keys 00000007\n"
+         "@" GAME_A "\n" "000000000000000g 0\n" "0000000000000006 z\n" "0000000000000007  \n"
+         "0000000000000008 0\n"
+         "@" GAME_B "\n" "000000000000000g 0\n" "0000000000000009 0\n"
+         "@" GAME_A "\n" "000000000000000a 0\n" "000000000000000b");
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_A, collect, &g) == 2);
+   CHECK(g.keys[0] == 8 && g.keys[1] == 0xa);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_B, collect, &g) == 1 && g.keys[0] == 9);
+   /* a game's line as it was cut short at its end */
+   write_file(PATH, "gliden64-combiner-keys 00000007\n" "@" GAME_A);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(PATH, 7, GAME_A, collect, &g) == 0);
+   filestream_delete(PATH);
+
+   /* the files of before gathered once, in lines of each game */
+   path_mkdir(DIR);
+   write_file(DIR "/p_" GAME_A ".keys", "gliden64-combiner-keys 00000001\n"
+         "000000000000000a 1\n" "cut short" );
+   write_file(DIR "/p_" GAME_B ".keys", "gliden64-combiner-keys 00000001\n"
+         "000000000000000b 2\n" "not a key line\n" "0000000000000011 z\n" "000000000000001g 0\n"
+         "000000000000000c 3\n");
+   /* of another version: removed, not read */
+   write_file(DIR "/p_1111111122222222.keys", "gliden64-combiner-keys 00000009\n"
+         "000000000000000d 0\n");
+   /* of names of no game, or of another plugin: left alone */
+   write_file(DIR "/p_0123.keys", "x");
+   write_file(DIR "/p_0123456789ABCDEF.keys", "x");
+   write_file(DIR "/q_" GAME_A ".keys", "x");
+   write_file(DIR "/p_" GAME_A ".keys.old", "x");
+   CHECK(combiner_journal_gather(SHARED, 7, DIR, "p_", 1));
+   CHECK(!filestream_exists(DIR "/p_" GAME_A ".keys") && !filestream_exists(DIR "/p_" GAME_B ".keys")
+         && !filestream_exists(DIR "/p_1111111122222222.keys"));
+   /* only the whole key lines, after a line of each game */
+   {
+      int64_t size = 0;
+      void *data = NULL;
+      CHECK(filestream_read_file(SHARED, &data, &size) && size == 32 + 2 * 18 + 3 * 19);
+      free(data);
+   }
+   CHECK(filestream_exists(DIR "/p_0123.keys") && filestream_exists(DIR "/p_0123456789ABCDEF.keys")
+         && filestream_exists(DIR "/q_" GAME_A ".keys") && filestream_exists(DIR "/p_" GAME_A ".keys.old"));
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(SHARED, 7, GAME_A, collect, &g) == 1 && g.keys[0] == 0xa && g.hwl[0] == 1);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(SHARED, 7, GAME_B, collect, &g) == 2 && g.keys[0] == 0xb
+         && g.keys[1] == 0xc && g.hwl[1] == 3);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read(SHARED, 7, collect, &g) == 3);
+   /* there: nothing gathered */
+   write_file(DIR "/p_" GAME_A ".keys", "gliden64-combiner-keys 00000001\n" "000000000000000e 0\n");
+   CHECK(!combiner_journal_gather(SHARED, 7, DIR, "p_", 1));
+   CHECK(filestream_exists(DIR "/p_" GAME_A ".keys"));
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read(SHARED, 7, collect, &g) == 3);
+   /* and appended to as any */
+   j = combiner_journal_open_game(SHARED, 7, GAME_B);
+   CHECK(combiner_journal_push(j, 0xf, 5));
+   combiner_journal_close(j);
+   memset(&g, 0, sizeof(g));
+   CHECK(combiner_journal_read_game(SHARED, 7, GAME_B, collect, &g) == 3 && g.keys[2] == 0xf);
+   filestream_delete(SHARED);
+   /* only files of another version: none written, they go */
+   CHECK(combiner_journal_gather(SHARED, 7, DIR, "p_", 2));
+   CHECK(!filestream_exists(SHARED) && !filestream_exists(DIR "/p_" GAME_A ".keys"));
+   /* many games, of many keys each */
+   {
+      char name[64], line[32];
+      unsigned n, k;
+      int64_t size = 0;
+      void *data = NULL;
+      for (n = 0; n < 40; n++)
+      {
+         FILE *f;
+         snprintf(name, sizeof(name), DIR "/p_%016x.keys", n + 1);
+         if (!(f = fopen(name, "wb")))
+            continue;
+         fputs("gliden64-combiner-keys 00000001\n", f);
+         for (k = 0; k < 50; k++)
+         {
+            snprintf(line, sizeof(line), "%016x %x\n", n * 1000 + k, k & 15);
+            fputs(line, f);
+         }
+         fclose(f);
+      }
+      CHECK(combiner_journal_gather(SHARED, 7, DIR, "p_", 1));
+      CHECK(filestream_read_file(SHARED, &data, &size) && size == 32 + 40 * (18 + 50 * 19));
+      free(data);
+      memset(&g, 0, sizeof(g));
+      CHECK(combiner_journal_read_game(SHARED, 7, "0000000000000027", collect, &g) == 50
+            && g.keys[0] == 38000 && g.keys[49] == 38049 && g.hwl[49] == 1);
+      for (n = 0; n < 40; n++)
+      {
+         snprintf(name, sizeof(name), DIR "/p_%016x.keys", n + 1);
+         CHECK(!filestream_exists(name));
+      }
+      filestream_delete(SHARED);
+   }
+   /* none: nothing */
+   CHECK(!combiner_journal_gather(SHARED, 7, DIR, "p_", 1) && !filestream_exists(SHARED));
+   CHECK(!combiner_journal_gather(SHARED, 7, DIR "/none", "p_", 1));
+   filestream_delete(DIR "/p_0123.keys");
+   filestream_delete(DIR "/p_0123456789ABCDEF.keys");
+   filestream_delete(DIR "/q_" GAME_A ".keys");
+   filestream_delete(DIR "/p_" GAME_A ".keys.old");
+   filestream_delete(DIR);
 }
 
 static void append(const char *text)
@@ -222,6 +430,7 @@ int main(void)
       CHECK(combiner_journal_append(NULL) == NULL);
    }
    filestream_delete(PATH);
+   games();
 
    printf("combiner journal: %u keys, queue full %u times\n", KEYS, refused);
    return failures ? 1 : 0;

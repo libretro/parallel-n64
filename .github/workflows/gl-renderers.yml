@@ -102,6 +102,8 @@ jobs:
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/combiner_warm_start.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
       - name: Files through the frontend's VFS (saf:// content)
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/frontend_vfs.py --core ./parallel_n64_libretro.so --host ./lrhost --gl ./lrhost_gl
+      - name: glN64 and Rice combiner keys, one journal every game shares
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gl_keys_shared.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
       - name: Glide64 GL shader cache, one file every game shares
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/glide64_gl_cache.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
 

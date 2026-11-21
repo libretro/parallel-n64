@@ -1,4 +1,4 @@
-/* Where a GL plugin keeps a game's combiner keys. C89. */
+/* Where a GL plugin keeps its combiner keys. C89. */
 #ifndef COMBINER_KEY_PATH_H
 #define COMBINER_KEY_PATH_H
 
@@ -16,20 +16,22 @@ const char *retro_get_system_directory(void);
 }
 #endif
 
-/* @header is the game's ROM header: its CRCs name the file. */
-static INLINE void combiner_key_path(char *path, size_t size, const char *plugin,
-      const unsigned char *header)
+/* The journal every game shares at @path (the shaders folder, which
+ * @folder is, and <plugin>.keys), and @game, @header's CRCs in the hex
+ * digits that name its lines: COMBINER_JOURNAL_GAME and a NUL */
+static INLINE void combiner_key_shared(char *path, char *folder, size_t size,
+      const char *plugin, char *game, const unsigned char *header)
 {
-   char dir[PATH_MAX_LENGTH];
    char name[64];
    const char *system = retro_get_system_directory();
 
-   fill_pathname_join(dir, system ? system : "", "ParallelN64", sizeof(dir));
-   fill_pathname_join(dir, dir, "shaders", sizeof(dir));
-   path_mkdir(dir);
-   snprintf(name, sizeof(name), "%s_%08x%08x.keys", plugin,
+   fill_pathname_join(folder, system ? system : "", "ParallelN64", size);
+   fill_pathname_join(folder, folder, "shaders", size);
+   path_mkdir(folder);
+   snprintf(name, sizeof(name), "%s.keys", plugin);
+   fill_pathname_join(path, folder, name, size);
+   snprintf(game, 17, "%08x%08x",
          *(const uint32_t*)(header + 0x10), *(const uint32_t*)(header + 0x14));
-   fill_pathname_join(path, dir, name, size);
 }
 
 #endif

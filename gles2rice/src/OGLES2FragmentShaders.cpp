@@ -425,7 +425,9 @@ char* MuxToOA(uint8_t val)
     return (char*)muxToFP_Maps[val&0x1F][1];
 }
 
-#define COMBINER_JOURNAL_VERSION 1u
+/* lines of each game's (1: a file a game) */
+#define COMBINER_JOURNAL_VERSION 2u
+#define COMBINER_JOURNAL_OLD_VERSION 1u
 
 static void CheckFpVars(uint8_t MuxVar, bool &bNeedT0, bool &bNeedT1)
 {
@@ -641,18 +643,24 @@ void COGL_FragmentProgramCombiner::PrebuildKey(void *ctx, uint64_t key, unsigned
 void COGL_FragmentProgramCombiner::BuildKnownKeys()
 {
     char path[PATH_MAX_LENGTH];
+    char folder[PATH_MAX_LENGTH];
+    char game[COMBINER_JOURNAL_GAME + 1];
     const bool alpha = bAlphaTestState;
     const bool fog   = bFogState;
 
     if (m_journal)
         return;
-    combiner_key_path(path, sizeof(path), "rice", gfx_info.HEADER);
-    combiner_journal_read(path, COMBINER_JOURNAL_VERSION, PrebuildKey, this);
+    /* one journal every game shares, this game's keys built; the files a
+     * game of before read into it once */
+    combiner_key_shared(path, folder, sizeof(path), "rice", game, gfx_info.HEADER);
+    if (!combiner_journal_read_game(path, COMBINER_JOURNAL_VERSION, game, PrebuildKey, this)
+            && combiner_journal_gather(path, COMBINER_JOURNAL_VERSION, folder, "rice_", COMBINER_JOURNAL_OLD_VERSION))
+        combiner_journal_read_game(path, COMBINER_JOURNAL_VERSION, game, PrebuildKey, this);
     /* the next draw decodes its own mux, with the game's own state */
     m_pDecodedMux->m_dwMux0 = m_pDecodedMux->m_dwMux1 = 0;
     bAlphaTestState = alpha;
     bFogState       = fog;
-    m_journal = combiner_journal_open(path, COMBINER_JOURNAL_VERSION);
+    m_journal = combiner_journal_open_game(path, COMBINER_JOURNAL_VERSION, game);
 }
 
 void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
