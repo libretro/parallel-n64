@@ -28,6 +28,8 @@
  * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
  * LRHOST_REFUSE_HW_RENDER=1 refuses every hardware context, =gl only OpenGL ones.
+ * LRHOST_VFS=1 gives the core a VFS, the content as saf://<path> by path only,
+ * and the system and save folders as saf://<folder>.
  * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler, and LRHOST_COUNT_PIPELINES=1
  * counts the pipelines the core creates by thread; see lrhost_vulkan.h.
  * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system). LRHOST_POKE=offset,length
@@ -238,6 +240,145 @@ static void log_cb(enum retro_log_level lvl, const char *fmt, ...)
     { va_list ap; va_start(ap, fmt); vfprintf(stderr, fmt, ap); va_end(ap); }
 }
 
+/* LRHOST_VFS=1: a frontend whose VFS opens paths no stdio can, as
+ * Android's saf:// ones: the content is handed over as saf://<its path>,
+ * by path only, as to a need_fullpath core. Any other path is opened as it
+ * is. VFS v3: files, then folders. */
+#ifndef _WIN32
+#include <dirent.h>
+#include <unistd.h>
+#define VFS_MKDIR(p) mkdir(p, 0755)
+#else
+#include <direct.h>
+#define VFS_MKDIR(p) _mkdir(p)
+#endif
+#define LRHOST_SAF "saf://"
+struct retro_vfs_file_handle { FILE *f; char *path; };
+struct retro_vfs_dir_handle { void *d; void *e; };
+static const char *vfs_real(const char *path)
+{
+    return strncmp(path, LRHOST_SAF, sizeof(LRHOST_SAF) - 1) ? path : path + sizeof(LRHOST_SAF) - 1;
+}
+static const char *vfs_get_path(struct retro_vfs_file_handle *h) { return h->path; }
+static struct retro_vfs_file_handle *vfs_open(const char *path, unsigned mode, unsigned hints)
+{
+    const char *m = mode == RETRO_VFS_FILE_ACCESS_READ ? "rb"
+        : mode == RETRO_VFS_FILE_ACCESS_WRITE ? "wb"
+        : (mode & RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING) ? "r+b" : "w+b";
+    struct retro_vfs_file_handle *h;
+    FILE *f = path ? fopen(vfs_real(path), m) : NULL;
+    (void)hints;
+    if (!f) return NULL;
+    h = (struct retro_vfs_file_handle*)calloc(1, sizeof(*h));
+    h->f = f; h->path = strdup(path);
+    return h;
+}
+static int vfs_close(struct retro_vfs_file_handle *h) { int r = fclose(h->f); free(h->path); free(h); return r ? -1 : 0; }
+static int64_t vfs_tell(struct retro_vfs_file_handle *h) { return ftell(h->f); }
+static int64_t vfs_seek(struct retro_vfs_file_handle *h, int64_t off, int whence)
+{
+    return fseek(h->f, (long)off, whence == RETRO_VFS_SEEK_POSITION_START ? SEEK_SET
+        : whence == RETRO_VFS_SEEK_POSITION_CURRENT ? SEEK_CUR : SEEK_END) ? -1 : ftell(h->f);
+}
+static int64_t vfs_size(struct retro_vfs_file_handle *h)
+{
+    long at = ftell(h->f), n;
+    fseek(h->f, 0, SEEK_END); n = ftell(h->f); fseek(h->f, at, SEEK_SET);
+    return n;
+}
+static int64_t vfs_read(struct retro_vfs_file_handle *h, void *s, uint64_t len) { return (int64_t)fread(s, 1, (size_t)len, h->f); }
+static int64_t vfs_write(struct retro_vfs_file_handle *h, const void *s, uint64_t len) { return (int64_t)fwrite(s, 1, (size_t)len, h->f); }
+static int vfs_flush(struct retro_vfs_file_handle *h) { return fflush(h->f) ? -1 : 0; }
+static int vfs_remove(const char *path) { return remove(vfs_real(path)) ? -1 : 0; }
+static int vfs_rename(const char *a, const char *b) { return rename(vfs_real(a), vfs_real(b)) ? -1 : 0; }
+static int64_t vfs_truncate(struct retro_vfs_file_handle *h, int64_t len)
+{
+#ifndef _WIN32
+    fflush(h->f);
+    return ftruncate(fileno(h->f), (off_t)len) ? -1 : 0;
+#else
+    (void)h; (void)len; return -1;
+#endif
+}
+static int vfs_stat(const char *path, int32_t *size)
+{
+    struct stat st;
+    if (stat(vfs_real(path), &st)) return 0;
+    if (size) *size = (int32_t)st.st_size;
+    return RETRO_VFS_STAT_IS_VALID | (S_ISDIR(st.st_mode) ? RETRO_VFS_STAT_IS_DIRECTORY : 0);
+}
+static int vfs_mkdir(const char *dir)
+{
+    struct stat st;
+    if (!VFS_MKDIR(vfs_real(dir))) return 0;
+    return (!stat(vfs_real(dir), &st) && S_ISDIR(st.st_mode)) ? -2 : -1;
+}
+static struct retro_vfs_dir_handle *vfs_opendir(const char *dir, bool hidden)
+{
+#ifndef _WIN32
+    DIR *d = opendir(vfs_real(dir));
+    struct retro_vfs_dir_handle *h;
+    (void)hidden;
+    if (!d) return NULL;
+    h = (struct retro_vfs_dir_handle*)calloc(1, sizeof(*h));
+    h->d = d;
+    return h;
+#else
+    (void)dir; (void)hidden; return NULL;
+#endif
+}
+static bool vfs_readdir(struct retro_vfs_dir_handle *h)
+{
+#ifndef _WIN32
+    struct dirent *e;
+    while ((e = readdir((DIR*)h->d)) && (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")))
+        ;
+    h->e = e;
+    return e != NULL;
+#else
+    (void)h; return false;
+#endif
+}
+static const char *vfs_dirent_get_name(struct retro_vfs_dir_handle *h)
+{
+#ifndef _WIN32
+    return h->e ? ((struct dirent*)h->e)->d_name : NULL;
+#else
+    (void)h; return NULL;
+#endif
+}
+static bool vfs_dirent_is_dir(struct retro_vfs_dir_handle *h)
+{
+#ifndef _WIN32
+    return h->e && ((struct dirent*)h->e)->d_type == DT_DIR;
+#else
+    (void)h; return false;
+#endif
+}
+static int vfs_closedir(struct retro_vfs_dir_handle *h)
+{
+#ifndef _WIN32
+    closedir((DIR*)h->d);
+#endif
+    free(h);
+    return 0;
+}
+static struct retro_vfs_interface lrhost_vfs;
+static bool lrhost_vfs_get(struct retro_vfs_interface_info *info)
+{
+    if (!getenv("LRHOST_VFS") || info->required_interface_version > 3) return false;
+    lrhost_vfs.get_path = vfs_get_path; lrhost_vfs.open = vfs_open; lrhost_vfs.close = vfs_close;
+    lrhost_vfs.size = vfs_size; lrhost_vfs.tell = vfs_tell; lrhost_vfs.seek = vfs_seek;
+    lrhost_vfs.read = vfs_read; lrhost_vfs.write = vfs_write; lrhost_vfs.flush = vfs_flush;
+    lrhost_vfs.remove = vfs_remove; lrhost_vfs.rename = vfs_rename; lrhost_vfs.truncate = vfs_truncate;
+    lrhost_vfs.stat = vfs_stat; lrhost_vfs.mkdir = vfs_mkdir; lrhost_vfs.opendir = vfs_opendir;
+    lrhost_vfs.readdir = vfs_readdir; lrhost_vfs.dirent_get_name = vfs_dirent_get_name;
+    lrhost_vfs.dirent_is_dir = vfs_dirent_is_dir; lrhost_vfs.closedir = vfs_closedir;
+    info->required_interface_version = 3;
+    info->iface = &lrhost_vfs;
+    return true;
+}
+
 static bool env_cb(unsigned cmd, void *data)
 {
     /* a frontend whose video driver cannot give the core a context */
@@ -249,6 +390,8 @@ static bool env_cb(unsigned cmd, void *data)
     {
     case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
         ((struct retro_log_callback*)data)->log = log_cb; return true;
+    case RETRO_ENVIRONMENT_GET_VFS_INTERFACE:
+        return lrhost_vfs_get((struct retro_vfs_interface_info*)data);
     case RETRO_ENVIRONMENT_GET_VARIABLE:
     {
         struct retro_variable *v = data;
@@ -262,6 +405,13 @@ static bool env_cb(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
     case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
     case RETRO_ENVIRONMENT_GET_CORE_ASSETS_DIRECTORY:
+        if (getenv("LRHOST_VFS"))
+        {
+            /* the folders too at paths only the VFS opens */
+            static char saf_dir[4096];
+            snprintf(saf_dir, sizeof saf_dir, "%s%s", LRHOST_SAF, system_dir);
+            *(const char**)data = saf_dir; return true;
+        }
         *(const char**)data = system_dir; return true;
     case RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER:
     {
@@ -464,11 +614,22 @@ int main(int argc, char **argv)
     set_video(video_cb); set_audio(audio_sample_cb); set_audio_batch(audio_batch_cb);
     set_input_poll(input_poll_cb); set_input_state(input_state_cb);
 
-    f = fopen(argv[2], "rb");
-    if (!f) { perror(argv[2]); return 1; }
-    fseek(f, 0, SEEK_END); game.size = ftell(f); fseek(f, 0, SEEK_SET);
-    game.data = malloc(game.size); if (fread((void*)game.data, 1, game.size, f) != game.size) return 1; fclose(f);
-    game.path = argv[2]; game.meta = NULL;
+    if (getenv("LRHOST_VFS"))
+    {
+        /* by path only, a path only the VFS opens */
+        static char saf[4096];
+        snprintf(saf, sizeof saf, "%s%s", LRHOST_SAF, argv[2]);
+        game.data = NULL; game.size = 0; game.path = saf;
+    }
+    else
+    {
+        f = fopen(argv[2], "rb");
+        if (!f) { perror(argv[2]); return 1; }
+        fseek(f, 0, SEEK_END); game.size = ftell(f); fseek(f, 0, SEEK_SET);
+        game.data = malloc(game.size); if (fread((void*)game.data, 1, game.size, f) != game.size) return 1; fclose(f);
+        game.path = argv[2];
+    }
+    game.meta = NULL;
     load_ms = now_ms();
     if (!r_load(&game)) { fprintf(stderr, "retro_load_game failed\n"); return 1; }
 #ifdef LRHOST_GL

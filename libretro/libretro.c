@@ -6,6 +6,7 @@
 #include <libretro.h>
 #include <streams/file_stream.h>
 #include <file/file_path.h>
+#include <retro_dirent.h>
 #include <retro_miscellaneous.h>
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -1501,7 +1502,29 @@ void retro_set_input_state(retro_input_state_t cb) { input_cb = cb; }
 
 void retro_set_environment(retro_environment_t cb)
 {
+   struct retro_vfs_interface_info vfs;
+
    environ_cb = cb;
+
+   /* Every file through the frontend's VFS where it has one: the content
+    * (the core reads it itself, need_fullpath) may be at a path only the
+    * frontend can open, as Android's saf:// ones, and so may the system
+    * and save folders. Files and folders (v3), or files alone (v2). */
+   vfs.required_interface_version = DIRENT_REQUIRED_VFS_VERSION;
+   vfs.iface                      = NULL;
+   if (!cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs))
+   {
+      vfs.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
+      vfs.iface                      = NULL;
+      if (!cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs))
+         vfs.iface = NULL;
+   }
+   if (vfs.iface)
+   {
+      filestream_vfs_init(&vfs);
+      path_vfs_init(&vfs);
+      dirent_vfs_init(&vfs);
+   }
 
    setup_variables();
 }
