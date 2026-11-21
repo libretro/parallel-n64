@@ -32,7 +32,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../../Graphics/RSP/RSP_state.h"
 
-extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];    // Totally 4KB TMEM;
 
 // 0 keeps the most recent CI info
 // 1 keeps the frame buffer CI info which is being displayed now
@@ -104,16 +103,6 @@ void FrameBufferManager::Initialize()
 }
 // ===========================================================================
 
-uint16_t ConvertRGBATo555(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-{
-    uint8_t ar = a>=0x20?1:0;
-    return ((r>>3)<<RGBA5551_RedShift) | ((g>>3)<<RGBA5551_GreenShift) | ((b>>3)<<RGBA5551_BlueShift) | ar;//(a>>7);
-}
-
-uint16_t ConvertRGBATo555(uint32_t color32)
-{
-    return (uint16_t)((((color32>>19)&0x1F)<<RGBA5551_RedShift) | (((color32>>11)&0x1F)<<RGBA5551_GreenShift) | (((color32>>3)&0x1F)<<RGBA5551_BlueShift) | ((color32>>31)));;
-}
 
 void FrameBufferManager::UpdateRecentCIAddr(SetImgInfo &ciinfo)
 {
@@ -432,104 +421,6 @@ int FrameBufferManager::CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize, 
     return r;
 }
 
-
-uint8_t CIFindIndex(uint16_t val)
-{
-    for (int i=0; i<=0xFF; i++)
-    {
-       if (val == g_wRDPTlut[i])
-          return (uint8_t)i;
-    }
-
-    return 0;
-}
-
-
-void TexRectToFrameBuffer_8b(uint32_t dwXL, uint32_t dwYL, uint32_t dwXH, uint32_t dwYH, float t0u0, float t0v0, float t0u1, float t0v1, uint32_t dwTile)
-{
-    // Copy the framebuffer texture into the N64 framebuffer memory
-    // Used in Yoshi
-
-    uint32_t maxW = g_pRenderTextureInfo->N64Width;
-    uint32_t maxH = g_pRenderTextureInfo->N64Height;
-
-    uint32_t maxOff = maxW*maxH;
-
-    TMEMLoadMapInfo &info = g_tmemLoadAddrMap[gDP.tiles[dwTile].tmem];
-    uint32_t dwWidth = dwXH-dwXL;
-    uint32_t dwHeight = dwYH-dwYL;
-
-    float xScale = (t0u1-t0u0)/dwWidth;
-    float yScale = (t0v1-t0v0)/dwHeight;
-
-    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    uint8_t* dwSrc = rdram_u8 + info.dwLoadAddress;
-    uint8_t* dwDst = rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr;
-
-    uint32_t dwSrcPitch = gRDP.tilesinfo[dwTile].dwPitch;
-    uint32_t dwDstPitch = g_pRenderTextureInfo->CI_Info.dwWidth;
-
-    uint32_t dwSrcOffX = gRDP.tilesinfo[dwTile].hilite_sl;
-    uint32_t dwSrcOffY = gRDP.tilesinfo[dwTile].hilite_tl;
-
-    uint32_t dwLeft = dwXL;
-    uint32_t dwTop = dwYL;
-
-    dwWidth = MIN(dwWidth, maxW-dwLeft);
-    dwHeight = MIN(dwHeight, maxH-dwTop);
-    
-    if (maxH <= dwTop)
-        return;
-
-    for (uint32_t y = 0; y < dwHeight; y++)
-    {
-        uint32_t dwByteOffset = (uint32_t)(((y*yScale+dwSrcOffY) * dwSrcPitch) + dwSrcOffX);
-
-        for (uint32_t x = 0; x < dwWidth; x++)
-        {
-            if ((((y+dwTop)*dwDstPitch+x+dwLeft)^0x3) > maxOff)
-            {
-#ifdef DEBUGGER
-                TRACE0("Warning: Offset exceeds limit");
-#endif
-                continue;
-            }
-            dwDst[((y+dwTop)*dwDstPitch+x+dwLeft)^0x3] = dwSrc[(uint32_t)(dwByteOffset+x*xScale) ^ 0x3];
-        }
-    }
-
-    TXTRBUF_DUMP(DebuggerAppendMsg("TexRect To FrameBuffer: X0=%d, Y0=%d, X1=%d, Y1=%d,\n\t\tfS0=%f, fT0=%f, fS1=%f, fT1=%f ",
-        dwXL, dwYL, dwXH, dwYH, t0v0, t0v0, t0u1, t0v1););
-}
-
-void TexRectToN64FrameBuffer_16b(uint32_t x0, uint32_t y0, uint32_t width, uint32_t height, uint32_t dwTile)
-{
-    // Copy the framebuffer texture into the N64 RDRAM framebuffer memory structure
-
-    DrawInfo srcInfo;   
-    if (CTexture_StartUpdate(g_textures[dwTile].m_pCTexture, &srcInfo) == false)
-    {
-        DebuggerAppendMsg("Fail to lock texture:TexRectToN64FrameBuffer_16b");
-        return;
-    }
-
-    uint32_t n64CIaddr = g_CI.dwAddr;
-    uint32_t n64CIwidth = g_CI.dwWidth;
-
-    for (uint32_t y = 0; y < height; y++)
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint32_t* pSrc = (uint32_t*)((uint8_t*)srcInfo.lpSurface + y * srcInfo.lPitch);
-        uint16_t* pN64Buffer = (uint16_t*)(rdram_u8 + (n64CIaddr&(g_dwRamSize-1)))+(y+y0)*n64CIwidth;
-
-        for (uint32_t x = 0; x < width; x++)
-        {
-            pN64Buffer[x+x0] = ConvertRGBATo555(pSrc[x]);
-        }
-    }
-
-    CTexture_EndUpdate(g_textures[dwTile].m_pCTexture);
-}
 
 bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
 {
@@ -1134,21 +1025,6 @@ void FrameBufferManager::ClearN64FrameBufferToBlack(uint32_t left, uint32_t top,
     }
 }
 
-uint8_t RevTlutTable[0x10000];
-bool RevTlutTableNeedUpdate = false;
-void InitTlutReverseLookup(void)
-{
-    if (RevTlutTableNeedUpdate)
-    {
-        memset(RevTlutTable, 0, 0x10000);
-        for (int i=0; i<=0xFF; i++)
-        {
-            RevTlutTable[g_wRDPTlut[i]] = uint8_t(i);
-        }
-
-        RevTlutTableNeedUpdate = false;
-    }
-}
 
 
 // Copies backbuffer to N64 framebuffer by notification by emu core
@@ -1553,146 +1429,6 @@ void FrameBufferManager::StoreRenderTextureToRDRAM(int infoIdx)
 
 
 //does FB copy to N64 RDAM structure
-void FrameBufferManager::CopyBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, uint32_t memsize, uint32_t pitch, TextureFmt bufFmt, void *buffer, uint32_t bufPitch)
-{
-    uint32_t startline=0;
-    
-    if (startaddr == 0xFFFFFFFF)
-        startaddr = addr;
-
-    startline = (startaddr-addr)/siz/pitch;
-    if (startline >= height)
-    {
-        //TRACE0("Warning: check me");
-        startline = height;
-    }
-
-    uint32_t endline = height;
-    if (memsize != 0xFFFFFFFF)
-    {
-        endline = (startaddr+memsize-addr)/siz;
-        if (endline % pitch == 0)
-            endline /= pitch;
-        else
-            endline = endline/pitch+1;
-    }
-
-    if (endline > height)
-    {
-        endline = height;
-    }
-
-    if (memsize != 0xFFFFFFFF)
-    {
-        TXTRBUF_DUMP(DebuggerAppendMsg("Start at: 0x%X, from line %d to %d", startaddr-addr, startline, endline););
-    }
-
-    int indexes[600];
-    {
-        float ratio = bufWidth/(float)width;
-        for (uint32_t j=0; j<width; j++)
-        {
-            float sx = j*ratio;
-            int sx0 = int(sx+0.5);
-            indexes[j] = 4*sx0;
-        }
-    }
-
-    if (siz == G_IM_SIZ_16b)
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint16_t *frameBufferBase = (uint16_t*)(rdram_u8 + addr);
-
-        if (bufFmt == TEXTURE_FMT_A8R8G8B8)
-        {
-            float ratio = bufHeight/(float)height;
-
-            for (uint32_t i=startline; i<endline; i++)
-            {
-                int sy0 = int(i*ratio+0.5);
-
-                uint16_t *pD = frameBufferBase + i * pitch;
-                uint8_t *pS0 = (uint8_t *)buffer + sy0 * bufPitch;
-
-                for (uint32_t j=0; j<width; j++)
-                {
-                    // Point
-                    uint8_t r = pS0[indexes[j]+2];
-                    uint8_t g = pS0[indexes[j]+1];
-                    uint8_t b = pS0[indexes[j]+0];
-                    uint8_t a = pS0[indexes[j]+3];
-
-                    // Liner
-                    *(pD+(j^1)) = ConvertRGBATo555( r, g, b, a);
-                }
-            }
-        }
-        else
-        {
-            TRACE1("Copy %sb FrameBuffer to RDRAM, not implemented", pszImgSize[siz]);
-        }
-    }
-    else if (siz == G_IM_SIZ_8b && fmt == G_IM_FMT_CI)
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);
-
-        if (bufFmt == TEXTURE_FMT_A8R8G8B8)
-        {
-            uint16_t tempword;
-            InitTlutReverseLookup();
-
-            for (uint32_t i=startline; i<endline; i++)
-            {
-                uint8_t *pD = frameBufferBase + i * width;
-                uint8_t *pS = (uint8_t *)buffer + i*bufHeight/height * bufPitch;
-                for (uint32_t j=0; j<width; j++)
-                {
-                    int pos = 4*(j*bufWidth/width);
-
-                    tempword = ConvertRGBATo555((pS[pos+2]),    /* Red */
-                                                (pS[pos+1]),    /* Green */
-                                                (pS[pos+0]),    /* Blue */
-                                                (pS[pos+3]));   /* Alpha */
-
-                    //*pD = CIFindIndex(tempword);
-                    *(pD+(j^3)) = RevTlutTable[tempword];
-                }
-            }
-        }
-    }
-    else if (siz == G_IM_SIZ_8b && fmt == G_IM_FMT_I)
-    {
-       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-        uint8_t *frameBufferBase = (uint8_t*)(rdram_u8 + addr);
-
-        if (bufFmt == TEXTURE_FMT_A8R8G8B8)
-        {
-            float ratio = bufHeight/(float)height;
-
-            for (uint32_t i=startline; i<endline; i++)
-            {
-                int sy0 = int(i*ratio+0.5);
-
-                uint8_t *pD = frameBufferBase + i * width;
-                uint8_t *pS0 = (uint8_t *)buffer + sy0 * bufPitch;
-
-                for (uint32_t j=0; j<width; j++)
-                {
-                    // Point
-                    uint32_t r = pS0[indexes[j]+2];
-                    uint32_t g = pS0[indexes[j]+1];
-                    uint32_t b = pS0[indexes[j]+0];
-
-                    // Liner
-                    *(pD+(j^3)) = (uint8_t)((r+b+g)/3);
-                }
-            }
-        }
-    }
-}
-
-
 #ifdef DEBUGGER
 void FrameBufferManager::DisplayRenderTexture(int infoIdx)
 {

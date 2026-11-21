@@ -1204,7 +1204,6 @@ inline int ReverseCITableLookup(uint32_t *pTable, int size, uint32_t val)
     return 0;
 }
 
-extern RenderTextureInfo gRenderTextureInfos[];
 void SetVertexTextureUVCoord(TexCord &dst, const TexCord &src, int tile, TxtrCacheEntry *pEntry)
 {
     RenderTexture &txtr = g_textures[tile];

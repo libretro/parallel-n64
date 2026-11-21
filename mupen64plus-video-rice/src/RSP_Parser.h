@@ -358,13 +358,15 @@ extern const char *pszImgSize[4];
 extern uint8_t pnImgSize[4];
 extern const char *textlutname[4];
 
-extern SetImgInfo g_CI;
-extern SetImgInfo g_ZI;
-extern SetImgInfo g_TI;
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern SetImgInfo g_CI;
+extern SetImgInfo g_ZI;
+extern SetImgInfo g_TI;
 extern TmemType g_Tmem;
+/* what each TMEM line was loaded from, 4KB of it */
+extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];
 #ifdef __cplusplus
 }
 #endif

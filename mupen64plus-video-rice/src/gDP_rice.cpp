@@ -17,7 +17,6 @@
 
 void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
 
-extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200]; /* Totally 4KB TMEM */
 extern TMEMLoadMapInfo g_tmemInfo0;              /* Info for Tmem=0 */
 extern TMEMLoadMapInfo g_tmemInfo1;              /* Info for Tmem=0x100 */
 extern uint32_t g_TmemFlag[16];
@@ -671,7 +670,5 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
          *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile->tmem + i]) = srcPal[i^1];
    }
 
-   extern bool RevTlutTableNeedUpdate;
-   RevTlutTableNeedUpdate = true;
    g_TxtLoadBy = CMD_LOADTLUT;
 }
