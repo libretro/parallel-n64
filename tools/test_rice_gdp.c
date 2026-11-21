@@ -83,6 +83,8 @@ static void reset(void)
 
 /* N64 byte a of RDRAM, as the CPU sees it */
 static uint8_t n64(uint32_t a) { return ram[a ^ 3]; }
+/* N64 halfword a */
+static uint16_t n64h(uint32_t a) { return *(uint16_t *)&ram[a ^ 2]; }
 
 static void colours(void)
 {
@@ -740,6 +742,82 @@ static void load_tile(void)
    ricegDPLoadTile(2, 0, 0, 16, 0);          /* 34: past it */
    CHECK(g_Tmem.g_Tmem64bit[0x10] == 0);
    g_TI.dwAddr = 0x4000;
+   /* rows a pitch apart in RDRAM, a line of words apart in TMEM, every
+      other one's words swapped */
+   for (i = 0; i < sizeof(g_Tmem); i++)
+      ((uint8_t *)&g_Tmem)[i] = (uint8_t)(i * 3 + 1);
+   ricegDPLoadTile(2, 2, 1, 17, 4);          /* 4 rows of 32 bytes from (2, 1) */
+   {
+      const uint8_t *t = (const uint8_t *)&g_Tmem.g_Tmem64bit[0x10];
+      int ok = 1;
+      uint32_t y;
+      for (y = 0; y < 4; y++)
+         for (i = 0; i < 32; i++)
+            if (t[y * 32 + i] != n64(0x4000 + (1 + y) * 128 + 4 + ((y & 1) ? (i ^ 4) : i))) ok = 0;
+      for (i = 0; i < 32; i++)
+         if (t[128 + i] != (uint8_t)((0x80 + 128 + i) * 3 + 1)) ok = 0;
+      CHECK(ok);
+   }
+   /* 32 bits: the line twice, the words' halves of 64 bits swapped */
+   gDP.tiles[2].size = G_IM_SIZ_32b;
+   g_TI.dwSize = G_IM_SIZ_32b;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 15, 1);          /* 2 rows of 64 bytes */
+   {
+      const uint8_t *t = (const uint8_t *)&g_Tmem.g_Tmem64bit[0x10];
+      int ok = 1;
+      for (i = 0; i < 128; i++)
+         if (t[i] != n64(0x4000 + (i / 64) * 128 + ((i / 64) ? ((i % 64) ^ 8) : i))) ok = 0;
+      CHECK(ok && t[128] == 0);
+   }
+   gDP.tiles[2].size = G_IM_SIZ_16b;
+   g_TI.dwSize = G_IM_SIZ_16b;
+   /* no row past TMEM's end */
+   gDP.tiles[2].tmem = 0x1F0;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 15, 4);          /* 5 rows of 4 lines: 4 fit */
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1F0])[0] == n64(0x4000));
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FC])[0] == n64(0x4000 + 3 * 128 + 4));
+   CHECK(g_Tmem.g_Tmem64bit[0] == 0);
+   gDP.tiles[2].line = 2;                    /* rows wider than their line: row 6 to TMEM's end, not 7 */
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 15, 7);
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FA])[0] == n64(0x4000 + 5 * 128 + 4));
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FC])[0] == n64(0x4000 + 6 * 128));
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FE])[0] == n64(0x4000 + 6 * 128 + 16));
+   gDP.tiles[2].line = 4;
+   /* an odd row narrower than its line: its words swapped to the line's end, so not at TMEM's last 16 bytes */
+   gDP.tiles[2].tmem = 0x1FA;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 7, 1);           /* 2 rows of 16 bytes, rows 32 apart */
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FA])[0] == n64(0x4000));
+   CHECK(g_Tmem.g_Tmem64bit[0x1FE] == 0 && g_Tmem.g_Tmem64bit[0x1FF] == 0);
+   /* 8 bits, an odd width: a byte past TMEM's end not written */
+   gDP.tiles[2].size = G_IM_SIZ_8b;
+   g_TI.dwSize = G_IM_SIZ_8b;
+   gDP.tiles[2].tmem = 0x1FF;
+   gDP.tiles[2].line = 1;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 8, 0);           /* 9 bytes at 0xFF8 */
+   CHECK(g_Tmem.g_Tmem64bit[0x1FF] == 0);
+   ricegDPLoadTile(2, 0, 0, 7, 0);           /* 8: to its end */
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x1FF])[7] == n64(0x4007));
+   gDP.tiles[2].size = G_IM_SIZ_16b;
+   g_TI.dwSize = G_IM_SIZ_16b;
+   gDP.tiles[2].line = 4;
+   /* the last row's end in RDRAM, a pitch a row */
+   g_TI.dwAddr = RAM - 3 * 128 - 32;
+   gDP.tiles[2].tmem = 0x10;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 15, 3);          /* row 3 to RDRAM's end */
+   CHECK(((const uint8_t *)&g_Tmem.g_Tmem64bit[0x10])[3 * 32 + 31] == n64(RAM - 1 - 4));
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   ricegDPLoadTile(2, 0, 0, 16, 3);          /* a texel past it */
+   CHECK(g_Tmem.g_Tmem64bit[0x10] == 0);
+   g_TI.dwAddr = RAM + 1;
+   ricegDPLoadTile(2, 0, 0, 15, 0);          /* past it from the start */
+   CHECK(g_Tmem.g_Tmem64bit[0x10] == 0);
+   g_TI.dwAddr = 0x4000;
    options.bUseFullTMEM = false;
 }
 
@@ -784,6 +862,27 @@ static void load_tlut(void)
    ricegDPLoadTLUT(0, 7, 0, 0, 3, 0);
    CHECK(g_wRDPTlut[0 ^ 1] == pal[0 ^ 1] && g_wRDPTlut[3 ^ 1] == pal[3 ^ 1]);
    g_TI.dwAddr = 0x6000;
+   /* each entry wrapped within RDRAM: across its end */
+   for (i = 0; i < 16; i++)
+      ram[i] = (uint8_t)(0x40 + i);
+   g_TI.dwAddr = RAM - 4;
+   memset(g_wRDPTlut, 0, sizeof(g_wRDPTlut));
+   ricegDPLoadTLUT(0, 7, 0, 0, 3, 0);
+   CHECK(g_wRDPTlut[0 ^ 1] == n64h(RAM - 4) && g_wRDPTlut[1 ^ 1] == n64h(RAM - 2));
+   CHECK(g_wRDPTlut[2 ^ 1] == n64h(0) && g_wRDPTlut[3 ^ 1] == n64h(2) && g_wRDPTlut[4 ^ 1] == 0);
+   /* from a halfword not of a word's start: the N64's halfwords in order */
+   g_TI.dwAddr = 0x6000;
+   memset(g_wRDPTlut, 0, sizeof(g_wRDPTlut));
+   ricegDPLoadTLUT(0, 7, 1, 0, 4, 0);
+   for (i = 0; i < 4; i++)
+      CHECK(g_wRDPTlut[i ^ 1] == n64h(0x6000 + 2 + 2 * i));
+   /* a tile below TMEM's upper half: its entries from 0x100 on TLUT's, none before */
+   gDP.tiles[7].tmem = 0xFE;
+   memset(g_wRDPTlut, 0, sizeof(g_wRDPTlut));
+   ricegDPLoadTLUT(0, 7, 0, 0, 3, 0);
+   CHECK(g_wRDPTlut[0 ^ 1] == n64h(0x6000 + 4) && g_wRDPTlut[1 ^ 1] == n64h(0x6000 + 6));
+   CHECK(g_wRDPTlut[2 ^ 1] == 0);
+   gDP.tiles[7].tmem = 0x100;
    /* full TMEM: each entry the first halfword of a TMEM word, to TMEM's end */
    options.bUseFullTMEM = true;
    memset(&g_Tmem, 0, sizeof(g_Tmem));

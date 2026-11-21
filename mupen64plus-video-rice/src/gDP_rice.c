@@ -534,7 +534,7 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    {
       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
       uint32_t address;
-      uint64_t *src;
+      uint8_t *src;
       uint8_t *dest;
       uint32_t y;
       void (*Interleave)( void *mem, uint32_t numDWords );
@@ -551,10 +551,11 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
       }
 
       address = g_TI.dwAddr + tile->lrt * g_TI.bpl + (tile->lrs << g_TI.dwSize >> 1);
-      src = (uint64_t*)&rdram_u8[address];
+      src = &rdram_u8[address];
       dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
-      if ((address + height * bpl) > g_dwRamSize) /* check source ending point */
+      /* the last row's end, a pitch a row, within RDRAM */
+      if (address > g_dwRamSize || (height - 1) * g_TI.bpl + bpl > g_dwRamSize - address)
       {
          return;
       }
@@ -576,13 +577,18 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
          return;
       }
 
+      /* a row a pitch apart in RDRAM, a line of 64-bit words in TMEM;
+         none past TMEM's end */
       for (y = 0; y < height; y++)
       {
+         uint32_t at = (tile->tmem + y * line) << 3;
+         if (at + bpl > 4096 || ((y & 1) && at + (line << 3) > 4096))
+            break;
          UnswapCopy( src, dest, bpl );
          if (y & 1) Interleave( dest, line );
 
          src += g_TI.bpl;
-         dest += line;
+         dest += line << 3;
       }
    }
 
@@ -642,6 +648,12 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    }
 }
 
+/* the N64's halfword i of a palette at addr, within RDRAM */
+static INLINE uint16_t PalEntry(const uint8_t *rdram, uint32_t addr, uint32_t i)
+{
+   return *(const uint16_t*)(rdram + (((addr + (i << 1)) & (g_dwRamSize - 1)) ^ 2));
+}
+
 void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt)
 {
    uint8_t *rdram_u8      = (uint8_t*)gfx_info.RDRAM;
@@ -652,7 +664,6 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
 
    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
    uint32_t dwPalAddress;
-   uint16_t *srcPal;
    uint32_t i;
    struct gDPTile            *tile     = &gDP.tiles[tileno];
 
@@ -670,16 +681,30 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
    dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
    dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
 
-   /* Copy PAL to the PAL memory */
-   srcPal = (uint16_t*)(rdram_u8 + (dwPalAddress& (g_dwRamSize-1)) );
-   for (i = 0; i<dwCount && i<0x100; i++)
-      g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
+   /* Copy PAL to the PAL memory: entry i the N64's halfword at
+      dwPalAddress + 2i, in RDRAM (its size a power of two); an entry
+      before TMEM's upper half (a tile below 0x100) is not TLUT's */
+   {
+      const uint32_t n     = dwCount < 0x100 ? dwCount : 0x100;
+      const uint32_t first = tile->tmem < 0x100 ? 0x100 - tile->tmem : 0;
+      const uint32_t start = dwPalAddress & (g_dwRamSize - 1);
+
+      if ((start & 3) == 0 && start + (n << 1) <= g_dwRamSize)
+      {
+         /* all in RDRAM from a word's start: its halfwords in pairs */
+         const uint16_t *srcPal = (const uint16_t*)(rdram_u8 + start);
+         for (i = first; i < n; i++)
+            g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
+      }
+      else
+         for (i = first; i < n; i++)
+            g_wRDPTlut[(i+dwTMEMOffset)^1] = PalEntry(rdram_u8, dwPalAddress, i);
+   }
 
    if( options.bUseFullTMEM )
    {
-      uint32_t i;
       for (i = 0; i<dwCount && i+tile->tmem < 0x200; i++)
-         *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile->tmem + i]) = srcPal[i^1];
+         *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile->tmem + i]) = PalEntry(rdram_u8, dwPalAddress, i);
    }
 
    g_TxtLoadBy = CMD_LOADTLUT;
