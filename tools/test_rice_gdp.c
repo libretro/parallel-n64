@@ -174,10 +174,15 @@ static void fill_rect(void)
    reset();
    ricegDPFillRect(5, 25, 20, 50);
    CHECK(actives == 0);
-   /* each bound the least so far, the right and bottom too */
-   CHECK(status.leftRendered == 5 && status.topRendered == 20 && status.rightRendered == 21 && status.bottomRendered == 41);
+   /* the least left and top so far, the greatest right and bottom */
+   CHECK(status.leftRendered == 5 && status.topRendered == 20 && status.rightRendered == 31 && status.bottomRendered == 51);
    ricegDPFillRect(7, 21, 40, 30);
-   CHECK(status.leftRendered == 5 && status.topRendered == 20 && status.rightRendered == 21 && status.bottomRendered == 31);
+   CHECK(status.leftRendered == 5 && status.topRendered == 20 && status.rightRendered == 41 && status.bottomRendered == 51);
+   status.rightRendered = status.bottomRendered = 0;            /* a bound of 0 one too */
+   ricegDPFillRect(-6, -6, -3, -3);
+   CHECK(status.rightRendered == 0 && status.bottomRendered == 0 && status.leftRendered == -6 && status.topRendered == -6);
+   status.leftRendered = 5;
+   status.topRendered = 20;
    frameBufferOptions.bSupportRenderTextures = false;
    frameBufferOptions.bCheckBackBufs = true;
    status.leftRendered = -1;
@@ -228,14 +233,16 @@ static void fill_rect(void)
    memset(ram, 0, sizeof(ram));
    gfx_info.RDRAM = ram;
    reset();
-   ricegDPFillRect(0, 2, 0, 4);              /* fill cycle: to 1 and 5; one pixel a row */
-   CHECK(*(uint16_t *)&ram[0x1000 + 2 * 32 + 2] == 0xABCD);
-   CHECK(*(uint16_t *)&ram[0x1000 + 4 * 32 + 2] == 0xABCD);
-   CHECK(*(uint16_t *)&ram[0x1000 + 5 * 32 + 2] == 0);
-   CHECK(*(uint16_t *)&ram[0x1000 + 1 * 32 + 2] == 0);
+   ricegDPFillRect(1, 2, 3, 4);              /* fill cycle: to 4 and 5 */
+   for (i = 0; i < 16 * 8; i++)              /* pixel i of the image: the N64's halfword at 0x1000 + 2i */
+   {
+      uint32_t x = i % 16, y = i / 16;
+      int in = x >= 1 && x < 4 && y >= 2 && y < 5;
+      CHECK(*(uint16_t *)&ram[(0x1000 + 2 * i) ^ 2] == (in ? 0xABCD : 0));
+   }
    g_curRomInfo.bEmulateClear = false;
    memset(ram, 0, sizeof(ram));
-   ricegDPFillRect(0, 2, 0, 4);
+   ricegDPFillRect(1, 2, 3, 4);
    for (i = 0; i < RAM; i++)
       CHECK(ram[i] == 0);
    usedAsDI = 0;
@@ -264,7 +271,7 @@ static void fill_rect(void)
    ricegDPFillRect(2, 1, 5, 3);              /* fill: to 6, 4 */
    CHECK(actives == 1 && fills == 1 && fillColour == 0x11223344);
    CHECK(status.leftRendered == 2 && status.topRendered == 1 && status.rightRendered == 6 && status.bottomRendered == 4);
-   CHECK(g_pRenderTextureInfo->maxUsedHeight == 4);
+   CHECK(g_pRenderTextureInfo->maxUsedHeight == 100);   /* the highest row used: not less */
    CHECK(status.bFrameBufferIsDrawn && status.bFrameBufferDrawnByTriangles);
    for (i = 0; i < 0x1000; i++)
       CHECK(ram[0x2000 + i] == 0);           /* not the whole width: nothing in RDRAM */
@@ -275,8 +282,8 @@ static void fill_rect(void)
    CHECK(actives == 0 && fills == 1);
    CHECK(n64(0x2000 + 0) == 0x5A && n64(0x2000 + 15) == 0x5A && n64(0x2000 + 2 * 16 + 7) == 0x5A);
    CHECK(n64(0x2000 + 3 * 16) == 0);
-   CHECK(g_pRenderTextureInfo->maxUsedHeight == 2);
-   CHECK(status.leftRendered == 0 && status.topRendered == 0 && status.rightRendered == 6 && status.bottomRendered == 3);
+   CHECK(g_pRenderTextureInfo->maxUsedHeight == 3);
+   CHECK(status.leftRendered == 0 && status.topRendered == 0 && status.rightRendered == 16 && status.bottomRendered == 4);
    memset(ram, 0, sizeof(ram));
    ricegDPFillRect(0, 0, 14, 0);             /* the width less one: written too */
    CHECK(n64(0x2000 + 14) == 0x5A && n64(0x2000 + 15) == 0);
@@ -285,8 +292,10 @@ static void fill_rect(void)
    CHECK(n64(0x2000) == 0);
    ricegDPFillRect(0, 1, 15, 1);             /* not from the top: not */
    CHECK(n64(0x2000 + 16) == 0);
+   CHECK(status.topRendered == 0);
    ricegDPFillRect(1, 0, 15, 1);             /* not from the left: not */
    CHECK(n64(0x2000 + 1) == 0);
+   CHECK(status.leftRendered == 0 && status.topRendered == 0);   /* a bound of 0 one */
    /* written directly: written wherever, and not filled */
    status.bDirectWriteIntoRDRAM = true;
    status.bFrameBufferIsDrawn = false;
@@ -296,13 +305,33 @@ static void fill_rect(void)
    CHECK(n64(0x2000 + 16 + 3) == 0x5A && n64(0x2000 + 16 + 4) == 0x5A && n64(0x2000 + 16 + 5) == 0);
    CHECK(n64(0x2000 + 16 + 2) == 0 && n64(0x2000 + 2 * 16 + 3) == 0);
    CHECK(fills == 0 && !status.bFrameBufferIsDrawn && status.bFrameBufferDrawnByTriangles);
-   /* 16 bits: its first pixels, rows of twice the width */
+   /* 16 bits: each pixel two bytes */
    g_pRenderTextureInfo->CI_Info.dwSize = G_IM_SIZ_16b;
    gRDP.originalFillColor = 0xBEEF;
    memset(ram, 0, sizeof(ram));
-   ricegDPFillRect(0, 0, 0, 1);
-   CHECK(*(uint16_t *)&ram[0x2000 + 2] == 0xBEEF && *(uint16_t *)&ram[0x2000 + 32 + 2] == 0xBEEF);
-   CHECK(*(uint16_t *)&ram[0x2000 + 2 * 32 + 2] == 0);
+   ricegDPFillRect(2, 0, 4, 1);              /* to 5, 2 */
+   for (i = 0; i < 16 * 4; i++)
+   {
+      uint32_t x = i % 16, y = i / 16;
+      int in = x >= 2 && x < 5 && y < 2;
+      CHECK(*(uint16_t *)&ram[(0x2000 + 2 * i) ^ 2] == (in ? 0xBEEF : 0));
+   }
+   /* nothing past RDRAM's end: 16 bits to its last halfword, 8 to its last byte */
+   g_pRenderTextureInfo->CI_Info.dwAddr = RAM - 16 * 2 - 4;
+   memset(ram, 0, sizeof(ram));
+   ricegDPFillRect(0, 0, 15, 2);             /* rows 0..2: the second's 2 pixels, no more */
+   CHECK(*(uint16_t *)&ram[(RAM - 2) ^ 2] == 0xBEEF && *(uint16_t *)&ram[(RAM - 36) ^ 2] == 0xBEEF);
+   g_pRenderTextureInfo->CI_Info.dwSize = G_IM_SIZ_8b;
+   g_pRenderTextureInfo->CI_Info.dwAddr = RAM - 16 - 3;
+   memset(ram, 0, sizeof(ram));
+   ricegDPFillRect(0, 0, 15, 2);
+   CHECK(ram[(RAM - 1) ^ 3] == 0xEF && ram[(RAM - 19) ^ 3] == 0xEF && ram[(RAM - 20) ^ 3] == 0);
+   /* a row past it and one back within, the width exceeded */
+   g_pRenderTextureInfo->CI_Info.dwAddr = RAM - 18;
+   memset(ram, 0, sizeof(ram));
+   ricegDPFillRect(0, 0, 19, 0);             /* 20 wide from RAM - 18: 18 of them */
+   CHECK(ram[(RAM - 1) ^ 3] == 0xEF && ram[(RAM - 18) ^ 3] == 0xEF && ram[(RAM - 19) ^ 3] == 0);
+   g_pRenderTextureInfo->CI_Info.dwAddr = 0x2000;
    status.bDirectWriteIntoRDRAM = false;
    /* not a fill cycle: the primitive's colour */
    fill_mode(G_CYC_1CYCLE);

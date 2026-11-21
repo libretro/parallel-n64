@@ -172,6 +172,38 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
     }
 }
 
+/* the fill colour written into an image of RDRAM at addr, width pixels
+   a row of bytes 2 (16 bits) or 1 (8 bits), from (ulx, uly) up to but not
+   through (lrx, lry); nothing past RDRAM's end */
+static void FillRDRAM(uint32_t addr, uint32_t width, uint32_t bytes,
+      uint32_t ulx, uint32_t uly, uint32_t lrx, uint32_t lry)
+{
+   uint8_t *rdram = (uint8_t*)gfx_info.RDRAM;
+   uint32_t i, j;
+
+   for (i = uly; i < lry; i++)
+      for (j = ulx; j < lrx; j++)
+      {
+         uint32_t a = addr + (i * width + j) * bytes;
+         if (a >= g_dwRamSize || g_dwRamSize - a < bytes)
+            break;                          /* the rest of the row past it too */
+         if (bytes == 2)
+            *(uint16_t*)(rdram + (a ^ 2)) = (uint16_t)gRDP.originalFillColor;
+         else
+            rdram[a ^ 3] = (uint8_t)gRDP.originalFillColor;
+      }
+}
+
+/* a rectangle drawn, into the bounds of what was: the least left and
+   top, the greatest right and bottom (none yet: -1) */
+static void Rendered(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry)
+{
+   status.leftRendered   = status.leftRendered   < 0 ? ulx : MIN(ulx, status.leftRendered);
+   status.topRendered    = status.topRendered    < 0 ? uly : MIN(uly, status.topRendered);
+   status.rightRendered  = status.rightRendered  < 0 ? lrx : MAX(lrx, status.rightRendered);
+   status.bottomRendered = status.bottomRendered < 0 ? lry : MAX(lry, status.bottomRendered);
+}
+
 void ricegDPSetScissor(void *data, 
       uint32_t mode, float ulx, float uly, float lrx, float lry )
 {
@@ -198,7 +230,6 @@ void ricegDPSetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 
 void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 {
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
 
    /* Note, in some modes, the right/bottom lines aren't drawn */
 
@@ -265,70 +296,21 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
       if( g_curRomInfo.bEmulateClear )
       {
          /* Emulating Clear, by write the memory in RDRAM */
-         uint16_t color = (uint16_t)gRDP.originalFillColor;
-         uint32_t pitch = g_CI.dwWidth<<1;
-         int64_t base   = (int64_t)(rdram_u8 + g_CI.dwAddr);
-         uint32_t i;
-
-         for( i = uly; i < lry; i++ )
-         {
-            uint32_t j;
-            for( j = ulx; j < lrx; j++ )
-               *(uint16_t*)((base+pitch*i+j)^2) = color;
-         }
+         FillRDRAM(g_CI.dwAddr, g_CI.dwWidth, 2, ulx, uly, lrx, lry);
       }
    }
    else if( status.bHandleN64RenderTexture )
    {
-      int cond1;
-      int cond2;
-      int cond3;
-      int cond4;
-      int cond5;
       if( !status.bCIBufferIsRendered )
          RiceFB_ActiveTextureBuffer();
 
-      cond1 = (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
-      cond2 = (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
-      cond3 = ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
-      cond4 = ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
-      cond5 = ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
-
-      status.leftRendered = status.leftRendered < 0   ? ulx  : cond1;
-      status.topRendered = status.topRendered<0       ? uly : cond2;
-      status.rightRendered = status.rightRendered<0   ? lrx : cond3;
-      status.bottomRendered = status.bottomRendered<0 ? lry : cond4;
-
-      g_pRenderTextureInfo->maxUsedHeight = cond5;
+      Rendered(ulx, uly, lrx, lry);
+      g_pRenderTextureInfo->maxUsedHeight = MAX(g_pRenderTextureInfo->maxUsedHeight, (int)lry);
 
       if( status.bDirectWriteIntoRDRAM || ( ulx ==0 && uly == 0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) ) )
       {
-         if( g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_16b )
-         {
-            uint16_t color = (uint16_t)gRDP.originalFillColor;
-            uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
-            int64_t base   = (int64_t)(rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-            uint32_t i;
-            for( i = uly; i < lry; i++ )
-            {
-               uint32_t j;
-               for( j = ulx; j< lrx; j++ )
-                  *(uint16_t*)((base+pitch*i+j)^2) = color;
-            }
-         }
-         else
-         {
-            uint8_t color  = (uint8_t)gRDP.originalFillColor;
-            uint32_t pitch = g_pRenderTextureInfo->N64Width;
-            int64_t base   = (int64_t) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-            uint32_t i;
-            for( i = uly; i< lry; i++ )
-            {
-               uint32_t j;
-               for( j = ulx; j< lrx; j++ )
-                  *(uint8_t*)((base+pitch*i+j)^3) = color;
-            }
-         }
+         FillRDRAM(g_pRenderTextureInfo->CI_Info.dwAddr, g_pRenderTextureInfo->N64Width,
+               g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_16b ? 2 : 1, ulx, uly, lrx, lry);
 
          status.bFrameBufferDrawnByTriangles = false;
       }
@@ -364,18 +346,9 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
    {
       if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
       {
-         int cond1 =  (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
-         int cond2 =  (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
-         int cond3 =  ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
-         int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
-         int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
-
          if( !status.bCIBufferIsRendered ) RiceFB_ActiveTextureBuffer();
 
-         status.leftRendered = status.leftRendered<0     ? ulx  : cond1;
-         status.topRendered = status.topRendered<0       ? uly  : cond2;
-         status.rightRendered = status.rightRendered<0   ? lrx  : cond3;
-         status.bottomRendered = status.bottomRendered<0 ? lry  : cond4;
+         Rendered(ulx, uly, lrx, lry);
       }
 
       if( gRDP.otherMode.cycle_type == G_CYC_FILL )
