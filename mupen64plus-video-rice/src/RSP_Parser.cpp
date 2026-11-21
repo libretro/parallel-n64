@@ -406,7 +406,7 @@ void RDP_GFX_Reset()
 {
     __RSP.PCi =-1;
     status.bUcodeIsKnown = false;
-    gTextureManager.RecycleAllTextures();
+    TextureManager_RecycleAllTextures();
 }
 
 
@@ -805,7 +805,7 @@ void DLParser_Process(OSTask * pTask)
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
     {
-        gTextureManager.PurgeOldTextures();
+        TextureManager_PurgeOldTextures();
         status.lastPurgeTimeTime = status.gRDPTime;
     }
 
@@ -1343,7 +1343,7 @@ void RDP_DLParser_Process(void)
     // Check if we need to purge (every 5 milliseconds)
     if (status.gRDPTime - status.lastPurgeTimeTime > 5)
     {
-        gTextureManager.PurgeOldTextures();
+        TextureManager_PurgeOldTextures();
         status.lastPurgeTimeTime = status.gRDPTime;
     }
     

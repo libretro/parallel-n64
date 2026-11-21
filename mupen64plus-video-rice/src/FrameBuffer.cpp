@@ -531,161 +531,6 @@ void TexRectToN64FrameBuffer_16b(uint32_t x0, uint32_t y0, uint32_t width, uint3
     CTexture_EndUpdate(g_textures[dwTile].m_pCTexture);
 }
 
-#define FAST_CRC_CHECKING_INC_X 13
-#define FAST_CRC_CHECKING_INC_Y 11
-#define FAST_CRC_MIN_Y_INC      2
-#define FAST_CRC_MIN_X_INC      2
-#define FAST_CRC_MAX_X_INC      7
-#define FAST_CRC_MAX_Y_INC      3
-extern uint32_t dwAsmHeight;
-extern uint32_t dwAsmPitch;
-extern uint32_t dwAsmdwBytesPerLine;
-extern uint32_t dwAsmCRC;
-extern uint8_t* pAsmStart;
-
-uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes )
-{
-    dwAsmCRC = 0;
-    dwAsmdwBytesPerLine = ((width<<size)+1)/2;
-
-    /* Defensive bound: the loops below walk height rows, and within
-     * each row read up to dwAsmdwBytesPerLine bytes (the fast path in
-     * dwords, the slow path in bytes). Callers derive width/height from
-     * guest data (e.g. a degenerate Sprite2D whose width wraps to a huge
-     * unsigned value), so verify the whole walked region stays inside
-     * RDRAM and bail with a harmless CRC rather than reading off the end. */
-    {
-        uint8_t *ramBase = (uint8_t*)gfx_info.RDRAM;
-        uint8_t *region  = (uint8_t*)pPhysicalAddress;
-        uint64_t span    = height ? ((uint64_t)(height - 1) * pitchInBytes
-                                     + dwAsmdwBytesPerLine) : 0;
-        if (region < ramBase ||
-            (uint64_t)(region - ramBase) + span > g_dwRamSize)
-        {
-            return 0;
-        }
-    }
-
-    if (currentRomOptions.bFastTexCRC && !options.bLoadHiResTextures && (height>=32 || (dwAsmdwBytesPerLine>>2)>=16))
-    {
-        uint32_t realWidthInDWORD = dwAsmdwBytesPerLine>>2;
-        uint32_t xinc = realWidthInDWORD / FAST_CRC_CHECKING_INC_X;   
-        if (xinc < FAST_CRC_MIN_X_INC)
-            xinc = MIN(FAST_CRC_MIN_X_INC, width);
-        if (xinc > FAST_CRC_MAX_X_INC)
-            xinc = FAST_CRC_MAX_X_INC;
-
-        uint32_t yinc = height / FAST_CRC_CHECKING_INC_Y; 
-        if (yinc < FAST_CRC_MIN_Y_INC) 
-            yinc = MIN(FAST_CRC_MIN_Y_INC, height);
-        if (yinc > FAST_CRC_MAX_Y_INC)
-            yinc = FAST_CRC_MAX_Y_INC;
-
-        uint32_t pitch   = pitchInBytes>>2;
-        uint32_t *pStart = (uint32_t*)(pPhysicalAddress);
-        pStart += (top * pitch) + (((left<<size)+1)>>3);
-
-        // The original assembly code had a bug in it (it incremented pStart by 'pitch' in bytes, not in dwords)
-        // This C code implements the same algorithm as the ASM but without the bug
-        uint32_t y = 0;
-        while (y < height)
-        {
-            uint32_t x = 0;
-            while (x < realWidthInDWORD)
-            {
-                dwAsmCRC = (dwAsmCRC << 4) + ((dwAsmCRC >> 28) & 15);
-                dwAsmCRC += pStart[x];
-                x += xinc;
-                dwAsmCRC += x;
-            }
-            dwAsmCRC ^= y;
-            y += yinc;
-            pStart += pitch;
-        }
-    }
-    else
-    {
-       dwAsmdwBytesPerLine = ((width<<size)+1)/2;
-
-       pAsmStart = (uint8_t*)(pPhysicalAddress);
-       pAsmStart += (top * pitchInBytes) + (((left<<size)+1)>>1);
-
-       dwAsmHeight = height - 1;
-       dwAsmPitch = pitchInBytes;
-
-       uint32_t pitch = pitchInBytes>>2;
-       uint32_t* pStart = (uint32_t*)pPhysicalAddress;
-       pStart += (top * pitch) + (((left<<size)+1)>>3);
-
-       int y = dwAsmHeight;
-
-       while (y >= 0)
-       {
-          uint32_t esi = 0;
-          int x = dwAsmdwBytesPerLine - 4;
-          while (x >= 0)
-          {
-             esi = *(uint32_t*)(pAsmStart + x);
-             esi ^= x;
-
-             dwAsmCRC = (dwAsmCRC << 4) + ((dwAsmCRC >> 28) & 15);
-             dwAsmCRC += esi;
-             x-=4;
-          }
-          esi ^= y;
-          dwAsmCRC += esi;
-          pAsmStart += dwAsmPitch;
-          y--;
-       }
-
-    }
-    return dwAsmCRC;
-}
-unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes )
-{
-    unsigned char *buf;
-    unsigned char val = 0;
-
-    if (G_IM_SIZ_8b == size)
-    {
-        for (uint32_t y = 0; y<height; y++)
-        {
-            buf = (unsigned char*)pPhysicalAddress + left + pitchInBytes * (y+top);
-            for (uint32_t x=0; x<width; x++)
-            {
-                if (buf[x] > val)
-                    val = buf[x];
-
-                if (val == 0xFF)
-                    return 0xFF;
-            }
-        }
-    }
-    else
-    {
-        unsigned char val1,val2;
-        left >>= 1;
-        width >>= 1;
-        for (uint32_t y = 0; y<height; y++)
-        {
-            buf = (unsigned char*)pPhysicalAddress + left + pitchInBytes * (y+top);
-            for (uint32_t x=0; x<width; x++)
-            {
-                val1 = buf[x]>>4;
-                val2 = buf[x]&0xF;
-
-                if (val1 > val) val = val1;
-                if (val2 > val) val = val2;
-
-                if (val == 0xF)
-                    return 0xF;
-            }
-        }
-    }
-
-    return val;
-}
-
 bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
@@ -1929,3 +1774,32 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, M64P_RECT* pSrcRect, bool
     g_uRecentCIInfoPtrs[ciInfoIdx]->bCopied = true;
 }
 
+/* ---- what the texture cache (TextureManager.c) asks ---- */
+
+extern "C" int RiceFB_CheckAddrInRenderTextures(uint32_t addr)
+{
+    return g_pFrameBufferManager->CheckAddrInRenderTextures(addr, true);
+}
+
+extern "C" int RiceFB_CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize)
+{
+    return g_pFrameBufferManager->CheckAddrInBackBuffers(addr, memsize, false);
+}
+
+extern "C" TxtrCacheEntry *RiceFB_RenderTextureEntry(int idx, const TxtrInfo *ti)
+{
+    RenderTextureInfo &info = gRenderTextureInfos[idx];
+    if (!info.pRenderTexture || info.CI_Info.dwFormat != ti->Format || info.CI_Info.dwSize != ti->Size)
+        return NULL;
+    info.txtEntry.ti = *ti;
+    return &info.txtEntry;
+}
+
+extern "C" uint32_t RiceFB_RenderTextureCRC(int idx)       { return gRenderTextureInfos[idx].crcInRDRAM; }
+extern "C" uint32_t RiceFB_RenderTextureUpdatedAt(int idx) { return gRenderTextureInfos[idx].updateAtFrame; }
+extern "C" uint32_t RiceFB_CIFormat(void)                  { return g_pRenderTextureInfo->CI_Info.dwFormat; }
+
+extern "C" void RiceFB_LoadTextureFromRenderTexture(TxtrCacheEntry *pEntry, int idx)
+{
+    g_pFrameBufferManager->LoadTextureFromRenderTexture(pEntry, idx);
+}

@@ -51,7 +51,7 @@ typedef enum
     DIRECTX_DEVICE
 } SupportedDeviceType;
 
-enum DirectXCombinerType
+typedef enum DirectXCombinerType
 {
     DX_DISABLE_COMBINER,
     DX_BEST_FIT,
@@ -63,7 +63,7 @@ enum DirectXCombinerType
     DX_4_STAGES,
     DX_PIXEL_SHADER,
     DX_SEMI_PIXEL_SHADER
-};
+} DirectXCombinerType;
 
 
 typedef struct
@@ -166,7 +166,7 @@ enum {
     ONSCREEN_DISPLAY_DEBUG_INFORMATION_WITH_CORE_MSG
 };
 
-enum HACK_FOR_GAMES
+typedef enum HACK_FOR_GAMES
 {
     NO_HACK_FOR_GAME,
     HACK_FOR_BANJO_TOOIE,
@@ -204,7 +204,7 @@ enum HACK_FOR_GAMES
     HACK_FOR_DUKE_NUKEM,
     HACK_FOR_ZELDA_MM,
     HACK_FOR_MARIO_KART
-};
+} HACK_FOR_GAMES;
 
 enum {
     NOT_USE_CI_WIDTH_AND_RATIO,
@@ -320,7 +320,7 @@ typedef struct IniSection
     bool    bEnableTxtLOD;
 } section;
 
-struct ROMHeader
+typedef struct ROMHeader
 {
     uint8_t  x1, x2, x3, x4;
     uint32_t dwClockRate;
@@ -337,7 +337,7 @@ struct ROMHeader
     uint16_t  wCartID;
     int8_t    nCountryID;
     uint8_t  nUnknown5;
-};
+} ROMHeader;
 
 typedef struct 
 {
@@ -393,12 +393,18 @@ typedef struct
 #define TV_SYSTEM_NTSC      1
 #define TV_SYSTEM_PAL       0
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern GlobalOptions       options;
 extern FrameBufferOptions  frameBufferOptions;
 extern RomOptions          defaultRomOptions;
 extern RomOptions          currentRomOptions;
-extern const CountryIDInfo g_CountryCodeInfo[];
 extern GameSetting         g_curRomInfo;
+#ifdef __cplusplus
+}
+#endif
+extern const CountryIDInfo g_CountryCodeInfo[];
 extern bool                bIniIsChanged;
 extern char                szIniFileName[300];
 

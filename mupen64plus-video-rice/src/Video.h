@@ -142,7 +142,13 @@ typedef struct {
 #define MI_INTR_DP          0x00000020  
 #define MI_INTR_SP          0x00000001  
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern PluginStatus status;
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -156,7 +162,13 @@ extern GFX_INFO gfx_info;
 
 extern WindowSettingStruct windowSetting;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern uint32_t   g_dwRamSize;
+#ifdef __cplusplus
+}
+#endif
 
 #define renderCallback ricerenderCallback
 

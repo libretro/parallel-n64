@@ -113,7 +113,6 @@ extern int numOfTxtBufInfos;
 extern RecentCIInfo *g_uRecentCIInfoPtrs[5];
 extern uint8_t RevTlutTable[0x10000];
 
-extern uint32_t CalculateRDRAMCRC(void *pAddr, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes);
 extern uint16_t ConvertRGBATo555(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 extern uint16_t ConvertRGBATo555(uint32_t color32);
 extern void InitTlutReverseLookup(void);

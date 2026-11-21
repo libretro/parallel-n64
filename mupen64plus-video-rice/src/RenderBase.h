@@ -35,6 +35,58 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RICE_MATRIX_STACK   60
 #define MAX_TEXTURES         8
 
+/* the RDP state and the textures bound, C's and C++'s */
+typedef struct
+{
+    uint32_t  keyR;
+    uint32_t  keyG;
+    uint32_t  keyB;
+    uint32_t  keyA;
+    uint32_t  keyRGB;
+    uint32_t  keyRGBA;
+    float   fKeyA;
+    
+    bool    bFogEnableInBlender;
+
+    uint32_t  fogColor;
+    uint32_t  primitiveColor;
+    uint32_t  envColor;
+    uint32_t  primitiveDepth;
+    uint32_t  primLODMin;
+    uint32_t  primLODFrac;
+    uint32_t  LODFrac;
+
+    float   fPrimitiveDepth;
+    float   fvFogColor[4];
+    float   fvPrimitiveColor[4];
+    float   fvEnvColor[4];
+
+    uint32_t  fillColor;
+    uint32_t  originalFillColor;
+    uint32_t  blendColor;           /* 0xRRGGBBAA, as set_blend_color gives it */
+
+    RDP_OtherMode otherMode;
+
+    TileAdditionalInfo    tilesinfo[8];
+    ScissorType scissor;
+
+    bool    textureIsChanged;
+    bool    texturesAreReloaded;
+    bool    colorsAreReloaded;
+} RDP_Options;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern ALIGN(16, RDP_Options gRDP);
+extern RenderTexture g_textures[MAX_TEXTURES];
+#ifdef __cplusplus
+}
+#endif
+
+/* the rest C++'s, until Rice's drawing is C */
+#ifdef __cplusplus
+
 enum FillMode
 {
     RICE_FILLMODE_WINFRAME,
@@ -54,8 +106,6 @@ extern float        g_vtxProjected5Clipped[2000][5];
 extern VECTOR2      g_fVtxTxtCoords[MAX_VERTS];
 extern uint32_t       g_dwVtxDifColor[MAX_VERTS];
 //extern uint32_t     g_dwVtxFlags[MAX_VERTS];            // Z_POS Z_NEG etc
-
-extern RenderTexture g_textures[MAX_TEXTURES];
 
 extern TLITVERTEX       g_vtxBuffer[1000];
 extern unsigned short   g_vtxIndex[1000];
@@ -186,46 +236,6 @@ typedef struct
 
 extern ALIGN(16, RSP_Options gRSP);
 
-typedef struct
-{
-    uint32_t  keyR;
-    uint32_t  keyG;
-    uint32_t  keyB;
-    uint32_t  keyA;
-    uint32_t  keyRGB;
-    uint32_t  keyRGBA;
-    float   fKeyA;
-    
-    bool    bFogEnableInBlender;
-
-    uint32_t  fogColor;
-    uint32_t  primitiveColor;
-    uint32_t  envColor;
-    uint32_t  primitiveDepth;
-    uint32_t  primLODMin;
-    uint32_t  primLODFrac;
-    uint32_t  LODFrac;
-
-    float   fPrimitiveDepth;
-    float   fvFogColor[4];
-    float   fvPrimitiveColor[4];
-    float   fvEnvColor[4];
-
-    uint32_t  fillColor;
-    uint32_t  originalFillColor;
-    uint32_t  blendColor;           /* 0xRRGGBBAA, as set_blend_color gives it */
-
-    RDP_OtherMode otherMode;
-
-    TileAdditionalInfo    tilesinfo[8];
-    ScissorType scissor;
-
-    bool    textureIsChanged;
-    bool    texturesAreReloaded;
-    bool    colorsAreReloaded;
-} RDP_Options;
-
-extern ALIGN(16, RDP_Options gRDP);
 
 /*
 *   Global functions
@@ -299,6 +309,8 @@ inline void SetScreenMult(float fMultX, float fMultY)
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
 
 void ricegSPNumLights(int32_t n);
+
+#endif /* __cplusplus */
 
 #endif
 

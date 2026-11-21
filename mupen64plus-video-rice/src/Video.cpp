@@ -285,8 +285,8 @@ void riceRomClosed(void)
     status.bGameIsRunning = false;
 
     // Kill all textures?
-    gTextureManager.RecycleAllTextures();
-    gTextureManager.CleanUp();
+    TextureManager_RecycleAllTextures();
+    TextureManager_CleanUp();
     RDP_Cleanup();
 
     CDeviceBuilder::GetBuilder()->DeleteRender();
@@ -330,7 +330,7 @@ void riceUpdateScreen(void)
     if (status.ToResize && status.gDlistCount > 0)
     {
        // Delete all OpenGL textures
-       gTextureManager.CleanUp();
+       TextureManager_CleanUp();
        RDP_Cleanup();
        // delete our opengl renderer
        CDeviceBuilder::GetBuilder()->DeleteRender();

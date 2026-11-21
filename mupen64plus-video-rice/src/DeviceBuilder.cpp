@@ -187,3 +187,8 @@ CBlender * OGLDeviceBuilder::CreateAlphaBlender(CRender *pRender)
     return m_pAlphaBlender;
 }
 
+/* TextureManager.c's: a texture of the renderer's */
+extern "C" CTexture *RiceDevice_CreateTexture(uint32_t width, uint32_t height)
+{
+    return CDeviceBuilder::GetBuilder()->CreateTexture(width, height);
+}

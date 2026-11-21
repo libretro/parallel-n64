@@ -182,7 +182,7 @@ typedef struct
     bool        reject;
 } UcodeData;
 
-struct TileDescriptor
+typedef struct TileDescriptor
 {
     // Set by SetTile
     unsigned int dwFormat   :3;     // e.g. RGBA, YUV etc
@@ -206,17 +206,17 @@ struct TileDescriptor
     unsigned int tl     :10;    // Upper Left T     - 8:3
     unsigned int sh     :10;    // Lower Right S
     unsigned int th     :10;    // Lower Right T
-};
+} TileDescriptor;
 
-enum LoadType
+typedef enum LoadType
 {
     BY_NEVER_SET,
     BY_LOAD_BLOCK,
     BY_LOAD_TILE,
     BY_LOAD_TLUT,
-};
+} LoadType;
 
-struct LoadCmdInfo
+typedef struct LoadCmdInfo
 {
     LoadType    loadtype;
     unsigned int sl     :10;    // Upper left S     - 8:3
@@ -224,7 +224,7 @@ struct LoadCmdInfo
     unsigned int sh     :10;    // Lower Right S
     unsigned int th     :10;    // Lower Right T
     unsigned int dxt    :12;
-};
+} LoadCmdInfo;
 
 typedef struct {    // This is in Intel format
     uint32_t SourceImagePointer;
@@ -389,7 +389,9 @@ void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t cdSiz
 uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize);
 void RDP_GFX_PopDL();
 
+#ifdef __cplusplus
 extern Matrix matToLoad;
+#endif
 void LoadMatrix(uint32_t addr);
 
 unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len);
@@ -400,10 +402,12 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
 bool IsUsedAsDI(uint32_t addr);
 
+#ifdef __cplusplus
 #if defined(DEBUGGER)
   void __cdecl LOG_UCODE(const char* szFormat, ...);
 #else
   inline void LOG_UCODE(...) {}
+#endif
 #endif
 
 #endif  // __RICE_RDP_GFX_H__

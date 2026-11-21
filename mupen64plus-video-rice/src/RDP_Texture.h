@@ -682,7 +682,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
     }
 
     // Loading the textures by using texture cache manager
-    return gTextureManager.GetTexture(&gti, true, true, true);  // Load the texture by using texture cache
+    return TextureManager_GetTexture(&gti, true, true, true);  // Load the texture by using texture cache
 }
 
 void PrepareTextures()
@@ -712,7 +712,7 @@ void PrepareTextures()
 
             if( CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i] )
             {
-                TxtrCacheEntry *pEntry = gTextureManager.GetConstantColorTexture(CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i]);
+                TxtrCacheEntry *pEntry = TextureManager_GetConstantColorTexture(CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i]);
                 CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
             }
             else
@@ -726,7 +726,7 @@ void PrepareTextures()
                 }
                 else
                 {
-                    pEntry = gTextureManager.GetBlackTexture();
+                    pEntry = TextureManager_GetBlackTexture();
                     CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
                     _VIDEO_DisplayTemporaryMessage("Fail to load texture, use black to replace");
                 }
