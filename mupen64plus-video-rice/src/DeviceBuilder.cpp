@@ -123,11 +123,7 @@ void CDeviceBuilder::DeleteColorCombiner(void)
 
 void CDeviceBuilder::DeleteAlphaBlender(void)
 {
-    if( m_pAlphaBlender != NULL )
-    {
-        delete m_pAlphaBlender;
-        m_pAlphaBlender = NULL;
-    }
+    m_pAlphaBlender = NULL;
 }
 
 
@@ -181,8 +177,8 @@ CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
 
 CBlender * OGLDeviceBuilder::CreateAlphaBlender(CRender *pRender)
 {
-    if( m_pAlphaBlender == NULL )
-        m_pAlphaBlender = new COGLBlender(pRender);
+    (void)pRender;
+    m_pAlphaBlender = OGLBlender_Get();
 
     return m_pAlphaBlender;
 }

@@ -268,8 +268,7 @@ endif
 ifeq ($(HAVE_RICE),1)
 CFLAGS   += -DHAVE_RICE
 CXXFLAGS += -DHAVE_RICE
-SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
-				$(VIDEODIR_RICE)/gSP_rice.cpp \
+SOURCES_CXX += $(VIDEODIR_RICE)/gSP_rice.cpp \
 				$(VIDEODIR_RICE)/gDP_rice.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
@@ -292,7 +291,8 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/RSP_Parser.cpp \
             $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
             $(VIDEODIR_RICE)/Video.cpp
-SOURCES_C += $(VIDEODIR_RICE)/ConvertImage.c \
+SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
+            $(VIDEODIR_RICE)/ConvertImage.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/FrameBufferRDRAM.c \
             $(VIDEODIR_RICE)/OGLTexture.c \

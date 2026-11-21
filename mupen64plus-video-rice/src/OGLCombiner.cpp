@@ -134,32 +134,30 @@ void COGLColorCombiner::InitCombinerCycle12(void)
     }
 }
 
-void COGLBlender::NormalAlphaBlender(void)
+static void OGLBlender_BlendFunc(CBlender *b, uint32_t srcFunc, uint32_t desFunc)
 {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-}
-
-void COGLBlender::DisableAlphaBlender(void)
-{
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ZERO);
-}
-
-
-void COGLBlender::BlendFunc(uint32_t srcFunc, uint32_t desFunc)
-{
+    (void)b;
     glBlendFunc(DirectX_OGL_BlendFuncMaps[srcFunc], DirectX_OGL_BlendFuncMaps[desFunc]);
 }
 
-void COGLBlender::Enable()
+static void OGLBlender_Enable(CBlender *b)
 {
+    (void)b;
     glEnable(GL_BLEND);
 }
 
-void COGLBlender::Disable()
+static void OGLBlender_Disable(CBlender *b)
 {
+    (void)b;
     glDisable(GL_BLEND);
+}
+
+static const CBlenderOps oglBlenderOps = { OGLBlender_BlendFunc, OGLBlender_Enable, OGLBlender_Disable };
+static CBlender oglBlender = { &oglBlenderOps };
+
+CBlender *OGLBlender_Get(void)
+{
+    return &oglBlender;
 }
 
 void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)

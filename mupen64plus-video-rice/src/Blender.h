@@ -19,26 +19,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _BLENDER_H_
 #define _BLENDER_H_
 
-#include "typedefs.h"
+#include <stdint.h>
 
-class CRender;
+/* Rice's blender: what the RDP's blender asks, as the renderer's blend
+ * functions (Blender.c); each renderer's three of them its ops. */
 
-class CBlender
+typedef struct CBlender CBlender;
+
+typedef struct CBlenderOps
 {
-public:
-    virtual ~CBlender() {}
-    
-    virtual void InitBlenderMode(void);
-    virtual void NormalAlphaBlender(void)=0;
-    virtual void DisableAlphaBlender(void)=0;
-    
-    virtual void BlendFunc(uint32_t srcFunc, uint32_t desFunc)=0;
+    void (*BlendFunc)(CBlender *b, uint32_t srcFunc, uint32_t desFunc);   /* BLEND_ each */
+    void (*Enable)(CBlender *b);
+    void (*Disable)(CBlender *b);
+} CBlenderOps;
 
-    virtual void Enable()=0;
-    virtual void Disable()=0;
-protected:
-    CBlender(CRender *pRender) : m_pRender(pRender) {}
-    CRender *m_pRender;
+struct CBlender
+{
+    const CBlenderOps *ops;
 };
 
 typedef enum _BLEND 
@@ -61,7 +58,22 @@ typedef enum _BLEND
     BLEND_FORCE_DWORD     = 0x7fffffff
 } BLEND;
 
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+/* the blend of the RDP's other modes (gRDP.otherMode, gDP.otherMode) */
+void Blender_InitBlenderMode(CBlender *b);
+/* source alpha over the colour image */
+void Blender_NormalAlphaBlender(CBlender *b);
+/* the source as it is */
+void Blender_DisableAlphaBlender(CBlender *b);
 
+/* Render.cpp's: the renderer's alpha test on or off */
+void RiceRender_SetAlphaTestEnable(int enable);
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif

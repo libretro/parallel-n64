@@ -56,22 +56,8 @@ protected:
 
 };
 
-class COGLBlender : public CBlender
-{
-public:
-    void NormalAlphaBlender(void);
-    void DisableAlphaBlender(void);
-    void BlendFunc(uint32_t srcFunc, uint32_t desFunc);
-    void Enable();
-    void Disable();
-
-protected:
-    friend class OGLDeviceBuilder;
-    COGLBlender(CRender *pRender) : CBlender(pRender) {};
-    ~COGLBlender() {};
-
-    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
-};
+/* the GL blender, the one there is */
+CBlender *OGLBlender_Get(void);
 
 
 #endif

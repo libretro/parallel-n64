@@ -256,16 +256,22 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
 }
 
 
+/* Blender.c's: the renderer's alpha test */
+extern "C" void RiceRender_SetAlphaTestEnable(int enable)
+{
+    CRender::g_pRender->SetAlphaTestEnable(enable != 0);
+}
+
 void CRender::SetCombinerAndBlender()
 {
     InitOtherModes();
 
     if( g_curRomInfo.bDisableBlender )
-        m_pAlphaBlender->DisableAlphaBlender();
+        Blender_DisableAlphaBlender(m_pAlphaBlender);
     else if( currentRomOptions.bNormalBlender )
-        m_pAlphaBlender->NormalAlphaBlender();
+        Blender_NormalAlphaBlender(m_pAlphaBlender);
     else
-        m_pAlphaBlender->InitBlenderMode();
+        Blender_InitBlenderMode(m_pAlphaBlender);
 
     m_pColorCombiner->InitCombinerMode();
 }
