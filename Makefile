@@ -1322,7 +1322,7 @@ test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
 # Rice's textures (Texture.c, OGLTexture.c), on GL and GLES 2
-RICE_TEXTURE_SRCS := $(VIDEODIR_RICE)/Texture.c $(VIDEODIR_RICE)/OGLTexture.c
+RICE_TEXTURE_SRCS := $(VIDEODIR_RICE)/Texture.c $(VIDEODIR_RICE)/OGLTexture.c $(VIDEODIR_RICE)/RenderTexture.c
 test_rice_texture$(EXE_EXT): tools/test_rice_texture.c $(RICE_TEXTURE_SRCS) $(GLSM_TEST_SRCS)
 	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL -I$(VIDEODIR_RICE) $< $(RICE_TEXTURE_SRCS) $(GLSM_TEST_SRCS) \
 		$(ROOT_DIR)/libretro/glsym/glsym_gl.c -o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm

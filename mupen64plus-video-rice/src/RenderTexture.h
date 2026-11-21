@@ -17,15 +17,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
+/* A texture Rice draws the N64's colour image into, or saves a back buffer
+   in, and what it knows of it. C89, for C and C++ alike. */
 #ifndef _TEXTURE_BUFFER_H_
 #define _TEXTURE_BUFFER_H_
 
 #include "typedefs.h"
 #include "TextureManager.h"
 
-class CRenderTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct CRenderTexture;
+
 typedef struct {
-    CRenderTexture *pRenderTexture;
+    struct CRenderTexture *pRenderTexture;
     SetImgInfo  CI_Info;
 
     uint32_t      bufferWidth;
@@ -48,76 +55,40 @@ typedef struct {
     TxtrCacheEntry txtEntry;
 } RenderTextureInfo;
 
-
-class CRenderTexture
+/* the renderer's part: drawn into, read from, written back */
+typedef struct CRenderTextureOps
 {
-public:
-    friend class CGraphicsContext;
-    friend class CDXGraphicsContext;
-    friend class FrameBufferManager;
-    CRenderTexture(int width, int height, RenderTextureInfo* pInfo, TextureUsage usage)
-    {
-        m_beingRendered = false;
-        m_width = m_height = 0;
-        m_pTexture = NULL;
-        m_pInfo = pInfo;
-        m_usage = usage;
-    }
-    virtual ~CRenderTexture() {}
+    bool (*set_as_render_target)(struct CRenderTexture *rt, bool enable);
+    void (*load_texture)(struct CRenderTexture *rt, TxtrCacheEntry *pEntry);
+    void (*store_to_rdram)(struct CRenderTexture *rt, int infoIdx);
+} CRenderTextureOps;
 
-    virtual bool SetAsRenderTarget(bool enable)=0;
-    virtual void LoadTexture(TxtrCacheEntry* pEntry)=0;
-
-    virtual void StoreToRDRAM(int infoIdx) {};
-
-    void GetDimension(int &width, int &height)
-    {
-        width = m_width;
-        height = m_height;
-    }
-
-    bool IsBeingRendered()
-    {
-        return m_beingRendered;
-    }
-
-    TextureUsage GetUsage() {return m_usage;}
-
-
-protected:
-    int     m_width;
-    int     m_height;
-    bool    m_beingRendered;
-    TextureUsage m_usage;
-
-    CTexture* m_pTexture;
-    RenderTextureInfo* m_pInfo;
-};
-
-
-class COGLRenderTexture : public CRenderTexture
+typedef struct CRenderTexture
 {
-    // Haven't implemented yet
-public:
-    COGLRenderTexture(int width, int height, RenderTextureInfo* pInfo, TextureUsage usage);
-    ~COGLRenderTexture();
+    const CRenderTextureOps *ops;
+    int                m_width;
+    int                m_height;
+    bool               m_beingRendered;
+    TextureUsage       m_usage;
+    CTexture          *m_pTexture;   /* a back buffer saved's; none drawn into */
+    RenderTextureInfo *m_pInfo;
+} CRenderTexture;
 
-    bool SetAsRenderTarget(bool enable);
-    void LoadTexture(TxtrCacheEntry* pEntry);
-    void StoreToRDRAM(int infoIdx);
+/* GL's (drawing into one is not done: only a back buffer saved has a
+   texture) */
+CRenderTexture *CRenderTexture_New(int width, int height, RenderTextureInfo *pInfo, TextureUsage usage);
+void CRenderTexture_Delete(CRenderTexture *rt);
 
-protected:
-    bool InitPBuffer(void);
-    void ShutdownPBuffer(void);
+#define CRenderTexture_IsBeingRendered(rt)            ((rt)->m_beingRendered)
+#define CRenderTexture_SetAsRenderTarget(rt, enable)  ((rt)->ops->set_as_render_target((rt), (enable)))
+#define CRenderTexture_LoadTexture(rt, entry)         ((rt)->ops->load_texture((rt), (entry)))
+#define CRenderTexture_StoreToRDRAM(rt, idx)          ((rt)->ops->store_to_rdram((rt), (idx)))
 
-    int     m_widthCreated;
-    int     m_heightCreated;
+/* FrameBuffer.cpp's: the texture being drawn into closed */
+void RiceFB_CloseRenderTexture(bool toSave);
 
-
-    COGLTexture *m_pOGLTexture;
-};
-
+#ifdef __cplusplus
+}
 #endif
 
-
-
+#endif

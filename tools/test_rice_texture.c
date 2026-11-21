@@ -9,7 +9,12 @@
  *     options say (mipmapped or not), and GL's format as they say;
  *   - held, an end leaves the upload for later, once, when let go; let go
  *     with nothing pending, nothing is uploaded;
- *   - deleted: the GL texture given back.
+ *   - deleted: the GL texture given back;
+ *   - render textures: a back buffer saved has a texture of its size,
+ *     one drawn into none (GL does not draw into them); their sizes, use
+ *     and info; drawing into them, loading from them and writing them
+ *     back do nothing; let go, their texture given back, and the one being
+ *     drawn into closed first.
  *
  * A backend of its own (counting what it is asked) holds the base to the
  * same, without GL. */
@@ -25,6 +30,7 @@
 #include <glsm/glsm.h>
 
 #include "../mupen64plus-video-rice/src/OGLTexture.h"
+#include "../mupen64plus-video-rice/src/RenderTexture.h"
 
 static int failures;
 #define CHECK(c) do { if (!(c)) { printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #c); failures++; } } while (0)
@@ -254,11 +260,56 @@ static void gl(void)
    CTexture_Delete(tex);
 }
 
+/* FrameBuffer.cpp's, counted */
+static int closed, closed_to_save = -1;
+void RiceFB_CloseRenderTexture(bool toSave) { closed++; closed_to_save = toSave; }
+
+/* a renderer's part of its own: what it was asked last */
+static int target_asked = -1;
+static bool count_target(CRenderTexture *rt, bool enable) { (void)rt; target_asked = enable; return true; }
+static void count_load(CRenderTexture *rt, TxtrCacheEntry *e) { (void)rt; (void)e; }
+static void count_store(CRenderTexture *rt, int idx) { (void)rt; (void)idx; }
+static const CRenderTextureOps counting_rt = { count_target, count_load, count_store };
+
+static void render_textures(void)
+{
+   RenderTextureInfo info;
+   CRenderTexture *rt;
+   TxtrCacheEntry entry;
+   GLuint name;
+
+   memset(&info, 0, sizeof(info));
+   memset(&entry, 0, sizeof(entry));
+   rt = CRenderTexture_New(320, 240, &info, AS_BACK_BUFFER_SAVE);
+   CHECK(rt && rt->m_width == 320 && rt->m_height == 240 && rt->m_usage == AS_BACK_BUFFER_SAVE);
+   CHECK(rt->m_pInfo == &info && !CRenderTexture_IsBeingRendered(rt));
+   CHECK(rt->m_pTexture && rt->m_pTexture->m_dwWidth == 320 && rt->m_pTexture->m_dwHeight == 240);
+   name = COGLTexture_Name(rt->m_pTexture);
+   CHECK(glIsTexture(name));
+   CHECK(CRenderTexture_SetAsRenderTarget(rt, true) && CRenderTexture_SetAsRenderTarget(rt, false));
+   CRenderTexture_LoadTexture(rt, &entry);
+   CRenderTexture_StoreToRDRAM(rt, 0);
+   CHECK(entry.pTexture == NULL);
+   CRenderTexture_Delete(rt);
+   CHECK(!glIsTexture(name) && closed == 0);
+
+   rt = CRenderTexture_New(64, 32, &info, AS_RENDER_TARGET);
+   CHECK(rt && rt->m_pTexture == NULL && rt->m_usage == AS_RENDER_TARGET);
+   /* let go while drawn into: closed first, not saved, and no longer
+      drawn into */
+   rt->m_beingRendered = true;
+   rt->ops = &counting_rt;
+   CRenderTexture_Delete(rt);
+   CHECK(closed == 1 && closed_to_save == 0 && target_asked == 0);
+   CRenderTexture_Delete(NULL);
+}
+
 int main(void)
 {
    context();
    base();
    gl();
+   render_textures();
    printf("rice texture: %s\n", failures ? "FAILED" : "ok");
    return failures ? 1 : 0;
 }

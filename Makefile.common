@@ -289,7 +289,6 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/RenderBase.cpp \
             $(VIDEODIR_RICE)/Render.cpp \
             $(VIDEODIR_RICE)/RenderExt.cpp \
-            $(VIDEODIR_RICE)/RenderTexture.cpp \
             $(VIDEODIR_RICE)/RSP_Parser.cpp \
             $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
@@ -297,6 +296,7 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 SOURCES_C += $(VIDEODIR_RICE)/ConvertImage.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/OGLTexture.c \
+            $(VIDEODIR_RICE)/RenderTexture.c \
             $(VIDEODIR_RICE)/TextureManager.c \
             $(VIDEODIR_RICE)/Texture.c
 endif

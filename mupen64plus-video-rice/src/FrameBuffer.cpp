@@ -84,7 +84,7 @@ void FrameBufferManager::CloseUp()
    for (i=0; i<numOfTxtBufInfos; i++)
    {
       if (gRenderTextureInfos[i].pRenderTexture)
-         delete gRenderTextureInfos[i].pRenderTexture;
+         CRenderTexture_Delete(gRenderTextureInfos[i].pRenderTexture);
       gRenderTextureInfos[i].pRenderTexture = NULL;
    }
 }
@@ -902,7 +902,7 @@ int FrameBufferManager::CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32_
 
         if (covered)
         {
-            if (info.pRenderTexture->IsBeingRendered())
+            if (CRenderTexture_IsBeingRendered(info.pRenderTexture))
             {
                 TRACE0("Error, covering a render_texture which is being rendered");
                 TRACE3("New address=%08X, width=%d, height=%d", CIinfo.dwAddr, CIinfo.dwWidth, height );
@@ -913,7 +913,7 @@ int FrameBufferManager::CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32_
                 i, info.CI_Info.dwAddr, CIinfo.dwAddr, CIinfo.dwWidth, height ));
 
             if (info.pRenderTexture)
-               delete info.pRenderTexture;
+               CRenderTexture_Delete(info.pRenderTexture);
             info.pRenderTexture    = NULL;
             info.txtEntry.pTexture = NULL;
             continue;
@@ -960,7 +960,7 @@ int FrameBufferManager::FindASlot(void)
     }
 
     if (gRenderTextureInfos[idx].pRenderTexture)
-       delete gRenderTextureInfos[idx].pRenderTexture;
+       CRenderTexture_Delete(gRenderTextureInfos[idx].pRenderTexture);
     gRenderTextureInfos[idx].pRenderTexture = NULL;
 
     return idx;
@@ -1044,7 +1044,7 @@ int FrameBufferManager::SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciI
     if (gRenderTextureInfos[idxToUse].pRenderTexture == NULL || matchidx < 0)
     {
         gRenderTextureInfos[idxToUse].pRenderTexture = 
-        new COGLRenderTexture(tempRenderTextureInfo.bufferWidth, tempRenderTextureInfo.bufferHeight, &gRenderTextureInfos[idxToUse], AS_BACK_BUFFER_SAVE);
+        CRenderTexture_New(tempRenderTextureInfo.bufferWidth, tempRenderTextureInfo.bufferHeight, &gRenderTextureInfos[idxToUse], AS_BACK_BUFFER_SAVE);
     }
 
     // Need to set all variables for gRenderTextureInfos[idxToUse]
@@ -1075,7 +1075,7 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
         {
             TXTRBUF_DUMP(TRACE0("Closing render_texture without save"););
             if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-               delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
+               CRenderTexture_Delete(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
             gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
             gRenderTextureInfos[m_curRenderTextureIndex].isUsed         = false;
             TXTRBUF_DUMP(TRACE1("Delete render_texture %d",m_curRenderTextureIndex););
@@ -1088,7 +1088,7 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
             if (frameBufferOptions.bRenderTextureWriteBack)
             {
                if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-                  delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
+                  CRenderTexture_Delete(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
                gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
                gRenderTextureInfos[m_curRenderTextureIndex].isUsed = false;
                TXTRBUF_DUMP(TRACE1("Delete render_texture %d after writing back to RDRAM",m_curRenderTextureIndex););
@@ -1176,7 +1176,7 @@ void FrameBufferManager::CheckRenderTextureCRCInRDRAM(void)
         if (!gRenderTextureInfos[i].isUsed)
             continue;
 
-        if (gRenderTextureInfos[i].pRenderTexture->IsBeingRendered())
+        if (CRenderTexture_IsBeingRendered(gRenderTextureInfos[i].pRenderTexture))
             continue;
 
         if (gRenderTextureInfos[i].crcCheckedAtFrame < status.gDlistCount)
@@ -1188,7 +1188,7 @@ void FrameBufferManager::CheckRenderTextureCRCInRDRAM(void)
                 TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, CRC in RDRAM changed", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
 
                 if (gRenderTextureInfos[i].pRenderTexture)
-                   delete gRenderTextureInfos[i].pRenderTexture;
+                   CRenderTexture_Delete(gRenderTextureInfos[i].pRenderTexture);
                 gRenderTextureInfos[i].pRenderTexture = NULL;
                 gRenderTextureInfos[i].isUsed         = false;
                 continue;
@@ -1209,7 +1209,7 @@ int FrameBufferManager::CheckAddrInRenderTextures(uint32_t addr, bool checkcrc)
         if (!gRenderTextureInfos[i].isUsed)
             continue;
 
-        if (gRenderTextureInfos[i].pRenderTexture->IsBeingRendered())
+        if (CRenderTexture_IsBeingRendered(gRenderTextureInfos[i].pRenderTexture))
             continue;
 
         uint32_t bufHeight = gRenderTextureInfos[i].knownHeight ? gRenderTextureInfos[i].N64Height : gRenderTextureInfos[i].maxUsedHeight;
@@ -1229,7 +1229,7 @@ int FrameBufferManager::CheckAddrInRenderTextures(uint32_t addr, bool checkcrc)
                         TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, crcInRDRAM failed.", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
 
                         if (gRenderTextureInfos[i].pRenderTexture)
-                           delete gRenderTextureInfos[i].pRenderTexture;
+                           CRenderTexture_Delete(gRenderTextureInfos[i].pRenderTexture);
                         gRenderTextureInfos[i].pRenderTexture = NULL;
                         gRenderTextureInfos[i].isUsed         = false;
                         continue;
@@ -1260,7 +1260,7 @@ void FrameBufferManager::LoadTextureFromRenderTexture(TxtrCacheEntry* pEntry, in
     if (infoIdx >= 0 && gRenderTextureInfos[infoIdx].isUsed && gRenderTextureInfos[infoIdx].pRenderTexture)
     {
         TXTRBUF_DUMP(TRACE1("Loading from render_texture %d", infoIdx));
-        gRenderTextureInfos[infoIdx].pRenderTexture->LoadTexture(pEntry);
+        CRenderTexture_LoadTexture(gRenderTextureInfos[infoIdx].pRenderTexture, pEntry);
     }
 }
 
@@ -1269,7 +1269,7 @@ void FrameBufferManager::RestoreNormalBackBuffer()
     if (m_curRenderTextureIndex >= 0 && m_curRenderTextureIndex < numOfTxtBufInfos)
     {
         if( gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture )
-            gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture->SetAsRenderTarget(false);
+            CRenderTexture_SetAsRenderTarget(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture, false);
         m_isRenderingToTexture = false;
         m_lastTextureBufferIndex = m_curRenderTextureIndex;
     }
@@ -1280,7 +1280,7 @@ void FrameBufferManager::RestoreNormalBackBuffer()
         TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, it is never rendered", m_curRenderTextureIndex, gRenderTextureInfos[m_curRenderTextureIndex].CI_Info.dwAddr ));
 
         if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-           delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
+           CRenderTexture_Delete(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
         gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
     }
 }
@@ -1333,7 +1333,7 @@ void FrameBufferManager::ActiveTextureBuffer(void)
             }
 
             gRenderTextureInfos[idxToUse].pRenderTexture = 
-                new COGLRenderTexture(w, newRenderTextureInfo.bufferHeight, &gRenderTextureInfos[idxToUse], AS_RENDER_TARGET);
+                CRenderTexture_New(w, newRenderTextureInfo.bufferHeight, &gRenderTextureInfos[idxToUse], AS_RENDER_TARGET);
         }
 
         // Need to set all variables for gRenderTextureInfos[idxToUse]
@@ -1349,11 +1349,11 @@ void FrameBufferManager::ActiveTextureBuffer(void)
         // Active the render_texture
         if (m_curRenderTextureIndex >= 0 && gRenderTextureInfos[m_curRenderTextureIndex].isUsed && gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
         {
-            gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture->SetAsRenderTarget(false);
+            CRenderTexture_SetAsRenderTarget(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture, false);
             m_isRenderingToTexture = false;
         }
 
-        if (gRenderTextureInfos[idxToUse].pRenderTexture->SetAsRenderTarget(true))
+        if (CRenderTexture_SetAsRenderTarget(gRenderTextureInfos[idxToUse].pRenderTexture, true))
         {
             m_isRenderingToTexture = true;
 
@@ -1542,13 +1542,13 @@ void FrameBufferManager::StoreRenderTextureToRDRAM(int infoIdx)
     if (!gRenderTextureInfos[infoIdx].pRenderTexture)
         return;
 
-    if (gRenderTextureInfos[infoIdx].pRenderTexture->IsBeingRendered())
+    if (CRenderTexture_IsBeingRendered(gRenderTextureInfos[infoIdx].pRenderTexture))
     {
         TXTRBUF_DUMP(TRACE1("Cannot SaveTextureBuffer %d, it is being rendered", infoIdx));
         return;
     }
 
-    gRenderTextureInfos[infoIdx].pRenderTexture->StoreToRDRAM(infoIdx);
+    CRenderTexture_StoreToRDRAM(gRenderTextureInfos[infoIdx].pRenderTexture, infoIdx);
 }
 
 
@@ -1701,7 +1701,7 @@ void FrameBufferManager::DisplayRenderTexture(int infoIdx)
 
     if (gRenderTextureInfos[infoIdx].pRenderTexture)
     {
-        if (gRenderTextureInfos[infoIdx].pRenderTexture->IsBeingRendered())
+        if (CRenderTexture_IsBeingRendered(gRenderTextureInfos[infoIdx].pRenderTexture))
         {
             TRACE1("Render texture %d is being rendered, cannot display", infoIdx);
         }
@@ -1802,4 +1802,9 @@ extern "C" uint32_t RiceFB_CIFormat(void)                  { return g_pRenderTex
 extern "C" void RiceFB_LoadTextureFromRenderTexture(TxtrCacheEntry *pEntry, int idx)
 {
     g_pFrameBufferManager->LoadTextureFromRenderTexture(pEntry, idx);
+}
+
+extern "C" void RiceFB_CloseRenderTexture(bool toSave)
+{
+    g_pFrameBufferManager->CloseRenderTexture(toSave);
 }
