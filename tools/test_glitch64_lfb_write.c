@@ -123,8 +123,8 @@ static int scissor_is(GLint w, GLint h)
    return glIsEnabled(GL_SCISSOR_TEST) && box[2] == w && box[3] == h;
 }
 
-#include "../glide2gl/src/Glitch64/glide.h"
-#include "../glide2gl/src/Glide64/rdp.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glide.h"
+#include "../mupen64plus-video-glide64/src/Glide64/rdp.h"
 
 /* what Glitch64 takes from the rest of the core */
 retro_environment_t environ_cb;

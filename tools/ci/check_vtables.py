@@ -14,7 +14,7 @@ themselves, in the objects of a finished build.
 """
 import os, re, subprocess, sys
 
-DIRS = sys.argv[1:] or ["gles2rice", "glide2gl", "gles2n64"]
+DIRS = sys.argv[1:] or ["mupen64plus-video-rice", "mupen64plus-video-glide64", "mupen64plus-video-gln64"]
 CLASS = re.compile(r"^\s*class\s+([A-Za-z_]\w*)\s*(?::[^{;]*)?\{(.*?)^\};", re.M | re.S)
 OUT_OF_LINE_VIRTUAL = re.compile(r"\bvirtual\b[^;{}]*\)\s*(?:const\s*)?;")
 

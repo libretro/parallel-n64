@@ -173,8 +173,8 @@ static void blit(int w, int h, uint8_t *out)
 }
 
 /* the frontend's half is done: what follows is the core's, through glsm */
-#include "../glide2gl/src/Glitch64/glide.h"
-#include "../glide2gl/src/Glide64/rdp.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glide.h"
+#include "../mupen64plus-video-glide64/src/Glide64/rdp.h"
 
 #ifndef GR_TEXFMT_ARGB_8888
 #define GR_TEXFMT_ARGB_8888 0x12

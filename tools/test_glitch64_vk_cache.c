@@ -1,5 +1,5 @@
 /* test_glitch64_vk_cache: Glide64's Vulkan cache file
- * (glide2gl/src/Glitch64/glitch64_vk_cache.c) on real files.
+ * (mupen64plus-video-glide64/src/Glitch64/glitch64_vk_cache.c) on real files.
  *
  * Written: the header, the records and the pipeline cache, each from
  * where it is, and the files of before removed once it is; not written

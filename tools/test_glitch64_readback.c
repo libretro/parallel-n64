@@ -113,8 +113,8 @@ static void read_window(uint8_t *window)
       glEnable(GL_SCISSOR_TEST);
 }
 
-#include "../glide2gl/src/Glitch64/glide.h"
-#include "../glide2gl/src/Glide64/rdp.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glide.h"
+#include "../mupen64plus-video-glide64/src/Glide64/rdp.h"
 
 /* what Glitch64 takes from the rest of the core */
 retro_environment_t environ_cb;

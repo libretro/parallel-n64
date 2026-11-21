@@ -5,7 +5,7 @@
 #include <streams/file_stream.h>
 #include <retro_dirent.h>
 
-#include "../glide2gl/src/Glitch64/glitch64_vk_cache.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glitch64_vk_cache.h"
 
 #include "plugin/plugin.h"
 

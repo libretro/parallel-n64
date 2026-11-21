@@ -10,7 +10,7 @@
 
 #include <vk_spirv.h>
 #include <vk_shaders.h>
-#include "../glide2gl/src/Glitch64/glitch64_vk_shaders.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glitch64_vk_shaders.h"
 
 static spv_module module_;
 static unsigned   checked, failures;

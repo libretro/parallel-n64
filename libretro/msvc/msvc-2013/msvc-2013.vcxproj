@@ -165,7 +165,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;OS_WINDOWS</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
@@ -183,7 +183,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;GLIDEN64;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
@@ -201,7 +201,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;_DEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_OPENGL;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\Graphics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\Graphics;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
@@ -219,7 +219,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;GLIDEN64;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);DYNAREC;HAVE_OPENGL;GLIDEN64ES;OS_WINDOWS;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -241,7 +241,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;GLIDEN64;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -265,7 +265,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;GLIDEN64;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\glsym;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
@@ -289,7 +289,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_OPENGL</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
@@ -312,7 +312,7 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;INLINE=_inline;__LIBRETRO__;__LIBRETRO_WIN64__;M64P_PLUGIN_API;M64P_CORE_PROTOTYPES;GLIDEN64;NDEBUG;_WINDOWS;_USRDLL;MSVC2010_EXPORTS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;DYNAREC;HAVE_OPENGL;OS_WINDOWS;GLIDEN64ES;HAVE_GLIDE64;HAVE_GLIDEN64;HAVE_RICE</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\glide2gl\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src\api;$(MSBuildProjectDirectory)\..\..\;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-core\src;$(MSBuildProjectDirectory)\..\;$(MSBuildProjectDirectory)\..\..\..\libretro-common\include;$(MSBuildProjectDirectory)\..\..\..\mupen64plus-video-glide64\src\Glitch64\inc;$(MSBuildProjectDirectory)\..\GL;$(MSBuildProjectDirectory)\..\..\..\tools\rzlib;$(MSBuildProjectDirectory)\..\..\libco;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
@@ -328,165 +328,165 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\3DMath.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Combiner_gles2n64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Combiner_gles2n64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\DepthBuffer.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\DepthBuffer.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3D.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3D.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DDKR.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DDKR.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX2.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX2CBFD.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2CBFD.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DPD.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DPD.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DSWSE.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DSWSE.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DWRUS.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DWRUS.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\FrameBuffer_gles2n64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\FrameBuffer_gles2n64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\GBI.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\GBI.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gDP_gles2n64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gDP_gles2n64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gles2N64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gles2N64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gles2n64_rsp.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gles2n64_rsp.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\glN64Config.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gSP_gles2n64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gSP_gles2n64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Hash.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Hash.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3D.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3D.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3DEX.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3DEX.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3DEX2.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3DEX2.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\N64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\N64.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\OpenGL.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\OpenGL.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\RDP.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\RDP.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\S2DEX.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\S2DEX.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\S2DEX2.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\S2DEX2.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\ShaderCombiner.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\ShaderCombiner.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Textures.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Textures.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Turbo3D.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Turbo3D.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\VI.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\VI.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\ZSort.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\ZSort.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\gDP_rice.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.c" />
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.c" />
-    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\GraphicsContext.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLCombiner.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLDecodedMux.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLES2FragmentShaders.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLExtCombiner.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLExtRender.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLGraphicsContext.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLRender.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLRenderExt.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.c" />
-    <ClCompile Include="..\..\..\gles2rice\src\Render.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RenderBase.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RenderTexture.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RSP_Parser.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Texture.c" />
-    <ClCompile Include="..\..\..\gles2rice\src\TextureManager.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\VectorMath.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Video.cpp" />
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_3dmath.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Blender.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage16.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceDebugger.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DecodedMux.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DeviceBuilder.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLCombiner.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLDecodedMux.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtCombiner.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtRender.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLGraphicsContext.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRenderExt.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLTexture.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Render.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderBase.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderExt.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderTexture.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceConfig.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_Parser.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_S2DEX.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Texture.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\TextureManager.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\VectorMath.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Video.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_3dmath.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -496,7 +496,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Combine.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Combine.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -506,7 +506,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Framebuffer_glide64.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Framebuffer_glide64.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -516,7 +516,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_Ini.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Glide64_Ini.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -526,7 +526,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_UCode.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Glide64_UCode.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -536,7 +536,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glidemain.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -640,7 +640,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gDP.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_gDP.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -650,7 +650,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_lle_tri.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_lle_tri.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -660,7 +660,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gSP.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_gSP.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -670,7 +670,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_rdp.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_rdp.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -680,8 +680,8 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\MiClWr.c" />
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexCache.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\MiClWr.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexCache.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -691,7 +691,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_Util.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_Util.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -701,9 +701,9 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoad.c" />
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoadBlock.c" />
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_combiner.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexLoad.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexLoadBlock.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitch64_combiner.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -713,7 +713,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\geometry.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\geometry.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -723,7 +723,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_textures.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitch64_textures.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -733,7 +733,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitchmain.c">
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitchmain.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">CompileAsC</CompileAs>
@@ -1630,138 +1630,138 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\gles2n64\src\3DMath.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\3DMath.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Combiner.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Common.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Combiner.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Config.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Common.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\convert.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Config.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Debug.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\convert.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\DepthBuffer.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Debug.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3D.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\DepthBuffer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DDKR.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3D.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DDKR.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2CBFD.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DPD.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2CBFD.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DSWSE.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DPD.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DWRUS.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DSWSE.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\FrameBuffer.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DWRUS.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\GBI.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\FrameBuffer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gDP.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\GBI.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gles2N64.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gDP.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gSP.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gles2N64.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3D.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gSP.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3DEX.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3D.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3DEX2.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3DEX.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\N64.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3DEX2.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\OpenGL.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\N64.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\RDP.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\OpenGL.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\RSP.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\RDP.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\S2DEX.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\RSP.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\S2DEX2.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\S2DEX.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\ShaderCombiner.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\S2DEX2.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Textures.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\ShaderCombiner.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Turbo3D.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Textures.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\VI.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Turbo3D.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\ZSort.h">
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\VI.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\ZSort.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">true</ExcludedFromBuild>
     </ClInclude>

@@ -49,28 +49,28 @@
     <Filter Include="Source Files\mupen64plus-core\src\plugin">
       <UniqueIdentifier>{178fcce8-709b-4a8f-962a-2da8b76f7c9d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\glide2gl">
+    <Filter Include="Source Files\mupen64plus-video-glide64">
       <UniqueIdentifier>{0a6c2a05-6e47-40cf-9c1a-79c5f75e937c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\glide2gl\src">
+    <Filter Include="Source Files\mupen64plus-video-glide64\src">
       <UniqueIdentifier>{93e9ecbf-9833-4d05-b93d-1e9011be0a30}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\glide2gl\src\Glide64">
+    <Filter Include="Source Files\mupen64plus-video-glide64\src\Glide64">
       <UniqueIdentifier>{42b40386-eb46-4921-bfd4-172300e51fc1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\glide2gl\src\Glitch64">
+    <Filter Include="Source Files\mupen64plus-video-glide64\src\Glitch64">
       <UniqueIdentifier>{29ffaa41-ab03-45ef-b1b5-e4a5e2509f96}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\gles2n64">
+    <Filter Include="Source Files\mupen64plus-video-gln64">
       <UniqueIdentifier>{4e37543d-dd07-4a8c-be81-a0077b49622f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\gles2n64\src">
+    <Filter Include="Source Files\mupen64plus-video-gln64\src">
       <UniqueIdentifier>{8ccebd5b-1c04-4e0f-9aba-ef8ac7c92835}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\gles2rice">
+    <Filter Include="Source Files\mupen64plus-video-rice">
       <UniqueIdentifier>{91a5e14e-8d8f-45d2-aa1a-bf02225f7c78}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\gles2rice\src">
+    <Filter Include="Source Files\mupen64plus-video-rice\src">
       <UniqueIdentifier>{33bfeb66-7c5e-4b3b-a3f2-2bc6c460e0d7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\mupen64plus-core\src\r4300">
@@ -204,131 +204,131 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\plugin.c">
       <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_3dmath.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_3dmath.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Combine.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Combine.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Framebuffer_glide64.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Framebuffer_glide64.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glidemain.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glidemain.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gDP.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_gDP.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_lle_tri.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_lle_tri.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_gSP.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_gSP.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_rdp.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_rdp.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexCache.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexCache.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\glide64_Util.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\glide64_Util.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_combiner.c">
-      <Filter>Source Files\glide2gl\src\Glitch64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitch64_combiner.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glitch64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\geometry.c">
-      <Filter>Source Files\glide2gl\src\Glitch64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\geometry.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glitch64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitchmain.c">
-      <Filter>Source Files\glide2gl\src\Glitch64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitchmain.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glitch64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Blender.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Blender.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\gDP_rice.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.c">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.c">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage16.c">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DecodedMux.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DeviceBuilder.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\FrameBuffer.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\GraphicsContext.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLCombiner.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLCombiner.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLDecodedMux.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLDecodedMux.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLES2FragmentShaders.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLExtCombiner.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtCombiner.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLExtRender.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtRender.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLGraphicsContext.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLGraphicsContext.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLRender.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLRenderExt.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRenderExt.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.c">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLTexture.c">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Render.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Render.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RenderBase.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderBase.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderExt.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RenderTexture.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderTexture.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RSP_Parser.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_Parser.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_S2DEX.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Texture.c">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Texture.c">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\TextureManager.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\TextureManager.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\VectorMath.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\VectorMath.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Video.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Video.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\exception.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
@@ -348,8 +348,8 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\reset.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceConfig.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cached_interp.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
@@ -363,17 +363,17 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\instr_counters.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_textures.c">
-      <Filter>Source Files\glide2gl\src\Glitch64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glitch64\glitch64_textures.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glitch64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\memory\m64p_memory.c">
       <Filter>Source Files\mupen64plus-core\src\memory</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_UCode.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Glide64_UCode.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\Glide64_Ini.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\Glide64_Ini.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video.c">
       <Filter>Source Files\mupen64plus-video-angrylion</Filter>
@@ -384,8 +384,8 @@
     <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_vi.c">
       <Filter>Source Files\mupen64plus-video-angrylion</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp">
-      <Filter>Source Files\gles2rice\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceDebugger.cpp">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\get_time_using_C_localtime.c">
       <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
@@ -477,14 +477,14 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\r4300_core.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\MiClWr.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\MiClWr.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoad.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexLoad.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoadBlock.c">
-      <Filter>Source Files\glide2gl\src\Glide64</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-glide64\src\Glide64\TexLoadBlock.c">
+      <Filter>Source Files\mupen64plus-video-glide64\src\Glide64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\glsym\glsym_gl.c">
       <Filter>Source Files\libretro\glsym</Filter>
@@ -576,98 +576,98 @@
     <ClCompile Include="..\..\..\libretro-common\features\features_cpu.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\3DMath.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\3DMath.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Combiner_gles2n64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Combiner_gles2n64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\DepthBuffer.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\DepthBuffer.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3D.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3D.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DDKR.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DDKR.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX2.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DEX2CBFD.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2CBFD.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DPD.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DPD.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DSWSE.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DSWSE.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\F3DWRUS.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\F3DWRUS.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\FrameBuffer_gles2n64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\FrameBuffer_gles2n64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\GBI.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\GBI.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gDP_gles2n64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gDP_gles2n64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gles2N64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gles2N64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gles2n64_rsp.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gles2n64_rsp.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\glN64Config.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\glN64Config.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\gSP_gles2n64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\gSP_gles2n64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3D.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3D.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3DEX.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3DEX.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\L3DEX2.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\L3DEX2.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\N64.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\N64.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\OpenGL.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\OpenGL.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\RDP.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\RDP.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\S2DEX.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\S2DEX.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\S2DEX2.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\S2DEX2.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\ShaderCombiner.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\ShaderCombiner.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Textures.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Textures.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Turbo3D.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Turbo3D.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\VI.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\VI.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\ZSort.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\ZSort.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\Graphics\RSP\RSP_state.c">
       <Filter>Source Files\Graphics</Filter>
@@ -705,8 +705,8 @@
     <ClCompile Include="..\..\brumme_crc.c">
       <Filter>Source Files\libretro</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2n64\src\Hash.c">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClCompile Include="..\..\..\mupen64plus-video-gln64\src\Hash.c">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\si\transferpak.c">
       <Filter>Source Files\mupen64plus-core\src\si</Filter>
@@ -857,107 +857,107 @@
     <ClInclude Include="..\..\..\mupen64plus-core\src\r4300\hacktarux_dynarec\regcache.h">
       <Filter>Source Files\mupen64plus-core\src\r4300\hacktarux_dynarec</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\3DMath.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\3DMath.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Combiner.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Combiner.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Common.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Common.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Config.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Config.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\convert.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\convert.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Debug.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Debug.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\DepthBuffer.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\DepthBuffer.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3D.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3D.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DDKR.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DDKR.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DEX2CBFD.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DEX2CBFD.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DPD.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DPD.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DSWSE.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DSWSE.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\F3DWRUS.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\F3DWRUS.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\FrameBuffer.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\FrameBuffer.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\GBI.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\GBI.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gDP.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gDP.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gles2N64.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gles2N64.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\gSP.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\gSP.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3D.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3D.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3DEX.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3DEX.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\L3DEX2.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\L3DEX2.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\N64.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\N64.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\OpenGL.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\OpenGL.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\RDP.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\RDP.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\RSP.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\RSP.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\S2DEX.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\S2DEX.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\S2DEX2.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\S2DEX2.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\ShaderCombiner.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\ShaderCombiner.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Textures.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Textures.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\Turbo3D.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\Turbo3D.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\VI.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\VI.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\gles2n64\src\ZSort.h">
-      <Filter>Source Files\gles2n64\src</Filter>
+    <ClInclude Include="..\..\..\mupen64plus-video-gln64\src\ZSort.h">
+      <Filter>Source Files\mupen64plus-video-gln64\src</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\Graphics\HLE\Microcode\Fast3D.h">
       <Filter>Source Files\Graphics</Filter>

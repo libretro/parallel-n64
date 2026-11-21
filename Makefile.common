@@ -4,12 +4,12 @@ CORE_DIR           = $(ROOT_DIR)/mupen64plus-core
 LIBRETRO_COMM_DIR  = $(ROOT_DIR)/libretro-common
 LIBRETRO_DIR       = $(ROOT_DIR)/libretro
 AUDIO_LIBRETRO_DIR = $(CORE_DIR)/src/plugin/audio_libretro
-VIDEODIR_RICE      = $(ROOT_DIR)/gles2rice/src
-VIDEODIR_GLN64     = $(ROOT_DIR)/gles2n64/src
+VIDEODIR_RICE      = $(ROOT_DIR)/mupen64plus-video-rice/src
+VIDEODIR_GLN64     = $(ROOT_DIR)/mupen64plus-video-gln64/src
 VIDEODIR_ANGRYLION = $(ROOT_DIR)/mupen64plus-video-angrylion
 VIDEODIR_PARALLEL  = $(ROOT_DIR)/mupen64plus-video-paraLLEl
 RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
-VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
+VIDEODIR_GLIDE     = $(ROOT_DIR)/mupen64plus-video-glide64/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
 

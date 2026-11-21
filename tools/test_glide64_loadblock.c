@@ -1,5 +1,5 @@
 /* test_glide64_loadblock -- Glide64's LoadBlock and LoadTile copies
- * (glide2gl/src/Glide64/TexLoadBlock.c).
+ * (mupen64plus-video-glide64/src/Glide64/TexLoadBlock.c).
  *
  * LoadBlock copies 64-bit words out of RDRAM, byte-swapped, and swaps
  * the two halves of the words on every other line of the texture. Where
@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../glide2gl/src/Glide64/TexLoadBlock.h"
+#include "../mupen64plus-video-glide64/src/Glide64/TexLoadBlock.h"
 
 static int failures;
 

@@ -100,7 +100,7 @@ extern void riceRomClosed(void);
 #include "../mupen64plus-video-gliden64/src/Graphics/VulkanContext/vk_ContextImpl.h"
 #endif
 #ifdef HAVE_GLIDE64
-#include "../glide2gl/src/Glitch64/glitch64_vk.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glitch64_vk.h"
 #endif
 
 #if defined(HAVE_PARALLEL) || defined(HAVE_GLIDEN64)

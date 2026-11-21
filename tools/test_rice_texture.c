@@ -1,4 +1,4 @@
-/* Rice's textures (gles2rice/src/Texture.h, OGLTexture.h), on a GL
+/* Rice's textures (mupen64plus-video-rice/src/Texture.h, OGLTexture.h), on a GL
  * context of EGL's (llvmpipe in CI):
  *
  *   - a texture made: the size asked for kept, the size made a power of 2
@@ -24,7 +24,7 @@
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
-#include "../gles2rice/src/OGLTexture.h"
+#include "../mupen64plus-video-rice/src/OGLTexture.h"
 
 static int failures;
 #define CHECK(c) do { if (!(c)) { printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #c); failures++; } } while (0)

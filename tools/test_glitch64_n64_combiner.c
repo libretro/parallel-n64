@@ -121,9 +121,9 @@ static void core_context(void)
    while (glGetError() != GL_NO_ERROR) {}
 }
 
-#include "../glide2gl/src/Glitch64/glide.h"
-#include "../glide2gl/src/Glide64/rdp.h"
-#include "../glide2gl/src/Glitch64/glitch64_vk.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glide.h"
+#include "../mupen64plus-video-glide64/src/Glide64/rdp.h"
+#include "../mupen64plus-video-glide64/src/Glitch64/glitch64_vk.h"
 
 #ifndef GR_TEXFMT_ARGB_8888
 #define GR_TEXFMT_ARGB_8888 0x12

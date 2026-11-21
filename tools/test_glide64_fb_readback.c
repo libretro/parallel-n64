@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../glide2gl/src/Glide64/FBReadback.h"
+#include "../mupen64plus-video-glide64/src/Glide64/FBReadback.h"
 
 /* the window, GL rows: the bottom row first */
 static uint8_t *window;

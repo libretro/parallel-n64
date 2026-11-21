@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../glide2gl/src/Glide64/glide64_lle_tri.h"
+#include "../mupen64plus-video-glide64/src/Glide64/glide64_lle_tri.h"
 
 static int failures;
 
