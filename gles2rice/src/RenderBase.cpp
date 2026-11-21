@@ -111,6 +111,9 @@ inline void RSP_Vtx_Clipping(int i) {}
 ALIGN(16,RSP_Options gRSP);
 ALIGN(16,RDP_Options gRDP);
 
+/* ConvertImage.c's: the other mode's texture LUT bits, 14..15 */
+extern "C" uint32_t RiceRDP_TextTlut(void) { return gRDP.otherMode.text_tlut; }
+
 ALIGN(16,XVECTOR4 g_normal);
 //static int norms[3];
 

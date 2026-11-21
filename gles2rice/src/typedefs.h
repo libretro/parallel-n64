@@ -23,7 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdint.h>
 
 #include "osal_preproc.h"
+#ifdef __cplusplus
 #include "VectorMath.h"
+#endif
 
 typedef unsigned int COLOR;
 typedef struct _COORDRECT
@@ -39,13 +41,15 @@ typedef struct _COORDRECT
 #define RGBA_GETGREEN(rgb)      (((rgb) >> 8) & 0xff)
 #define RGBA_GETBLUE(rgb)       ((rgb) & 0xff)
 
+#ifdef __cplusplus
 typedef XMATRIX Matrix;
+#endif
 typedef void* LPRICETEXTURE ;
 
 typedef struct 
 {
     uint32_t dwRGBA, dwRGBACopy;
-    char x,y,z;         // Direction
+    char x,y,z;         /* Direction */
     uint8_t pad;
 } N64Light;
 
@@ -95,6 +99,7 @@ typedef struct
     float v;
 } TexCord;
 
+#ifdef __cplusplus
 typedef struct VECTOR2
 {
     float x;
@@ -102,6 +107,7 @@ typedef struct VECTOR2
     VECTOR2( float newx, float newy )   {x=newx; y=newy;}
     VECTOR2()   {x=0; y=0;}
 } VECTOR2;
+#endif
 
 typedef struct
 {
@@ -170,8 +176,10 @@ typedef struct {
     COLOR dcDiffuse;
 } FILLRECTVERTEX, *LPFILLRECTVERTEX;
 
+#ifdef __cplusplus
 #include "COLOR.h"
 #include "IColor.h"
+#endif
 
 typedef struct
 {
@@ -197,8 +205,8 @@ typedef struct
             float x;
             float y;
             float z;
-            float range;        // Range == 0  for directional light
-                                // Range != 0  for point light, Zelda MM
+            float range;        /* Range == 0  for directional light */
+                                /* Range != 0  for point light, Zelda MM */
         };
     };
 
@@ -244,9 +252,9 @@ typedef struct
 typedef struct
 {
     char na;
-    char nz;    // b
-    char ny;    //g
-    char nx;    //r
+    char nz;    /* b */
+    char ny;    /* g */
+    char nx;    /* r */
 }NormalStruct;
 
 typedef struct
@@ -297,22 +305,17 @@ typedef struct
 
 struct CTexture;
 struct COGLTexture;
-class CDirectXTexture;
 struct TxtrCacheEntry;
 
 typedef struct {
     LPRICETEXTURE m_lpsTexturePtr;
-    union {
-        CTexture *          m_pCTexture;
-        CDirectXTexture *   m_pCDirectXTexture;
-        COGLTexture *       m_pCOGLTexture;
-    };
+    struct CTexture *m_pCTexture;
     
     uint32_t m_dwTileWidth;
     uint32_t m_dwTileHeight;
     float m_fTexWidth;
-    float m_fTexHeight;     // Float to avoid converts when processing verts
-    TxtrCacheEntry *pTextureEntry;
+    float m_fTexHeight;     /* Float to avoid converts when processing verts */
+    struct TxtrCacheEntry *pTextureEntry;
 } RenderTexture;
 
 
@@ -347,13 +350,13 @@ typedef struct
 typedef enum {
     SHADE_DISABLED,
     SHADE_FLAT,
-    SHADE_SMOOTH,
+    SHADE_SMOOTH
 } RenderShadeMode;
 
 typedef enum {
     TEXTURE_UV_FLAG_WRAP,
     TEXTURE_UV_FLAG_MIRROR,
-    TEXTURE_UV_FLAG_CLAMP,
+    TEXTURE_UV_FLAG_CLAMP
 } TextureUVFlag;
 
 typedef struct
@@ -365,7 +368,7 @@ typedef struct
 
 typedef enum {
     FILTER_POINT,
-    FILTER_LINEAR,
+    FILTER_LINEAR
 } TextureFilter;
 
 typedef struct 

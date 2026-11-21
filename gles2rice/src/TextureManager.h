@@ -29,98 +29,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../../Graphics/RDP/gDP_state.h"
 #include "typedefs.h"
 #include "Texture.h"
+#include "TxtrInfo.h"
 #define absi(x)     ((x)>=0?(x):(-x))
 #define S_FLAG  0
 #define T_FLAG  1
 
-class TxtrInfo
-{
-public:
-    uint32_t WidthToCreate;
-    uint32_t HeightToCreate;
-
-    uint32_t Address;
-    void  *pPhysicalAddress;
-
-    uint32_t Format;
-    uint32_t Size;
-
-    int  LeftToLoad;
-    int  TopToLoad;
-    uint32_t WidthToLoad;
-    uint32_t HeightToLoad;
-    uint32_t Pitch;
-
-    uint8_t *PalAddress;
-    uint32_t TLutFmt;
-    uint32_t Palette;
-    
-    bool  bSwapped;
-    
-    uint32_t maskS;
-    uint32_t maskT;
-
-    bool  clampS;
-    bool  clampT;
-    bool  mirrorS;
-    bool  mirrorT;
-
-    int   tileNo;
-
-    inline TxtrInfo& operator = (const TxtrInfo& src)
-    {
-        memcpy(this, &src, sizeof( TxtrInfo ));
-        return *this;
-    }
-
-    inline TxtrInfo& operator = (const gDPTile& tile)
-    {
-        Format  = tile.format;
-        Size    = tile.size;
-        Palette = tile.palette;
-        
-        maskS   = tile.masks;
-        maskT   = tile.maskt;
-        mirrorS = tile.mirrors;
-        mirrorT = tile.mirrort;
-        clampS  = tile.clamps;
-        clampT  = tile.clampt;
-
-        return *this;
-    }
-
-    inline bool operator == ( const TxtrInfo& sec)
-    {
-        return (
-            Address == sec.Address &&
-            WidthToLoad == sec.WidthToLoad &&
-            HeightToLoad == sec.HeightToLoad &&
-            WidthToCreate == sec.WidthToCreate &&
-            HeightToCreate == sec.HeightToCreate &&
-            maskS == sec.maskS &&
-            maskT == sec.maskT &&
-            TLutFmt == sec.TLutFmt &&
-            PalAddress == sec.PalAddress &&
-            Palette == sec.Palette &&
-            LeftToLoad == sec.LeftToLoad &&
-            TopToLoad == sec.TopToLoad &&
-            Format == sec.Format &&
-            Size == sec.Size &&
-            Pitch == sec.Pitch &&
-            bSwapped == sec.bSwapped &&
-            mirrorS == sec.mirrorS &&
-            mirrorT == sec.mirrorT &&
-            clampS == sec.clampS &&
-            clampT == sec.clampT
-            );
-    }
-
-    inline bool isEqual(const TxtrInfo& sec)
-    {
-        return (*this == sec);
-    }
-    
-} ;
 
 
 

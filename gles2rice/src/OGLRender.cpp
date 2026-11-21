@@ -356,7 +356,7 @@ void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     TileUFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture )
         {
             EnableTexUnit(0, true);
@@ -370,7 +370,7 @@ void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     TileVFlags[dwTile] = dwFlag;
     if( dwTile == gRSP.curTile )    // For basic OGL, only support the 1st texel
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture ) 
         {
             EnableTexUnit(0, true);

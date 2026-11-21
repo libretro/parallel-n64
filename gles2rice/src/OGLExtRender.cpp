@@ -131,7 +131,7 @@ void COGLExtRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     {
         if( m_textureUnitMap[textureNo] == tex )
         {
-            COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
+            COGLTexture* pTexture = (COGLTexture *)g_textures[(gRSP.curTile+tex)&7].m_pCTexture;
             if( pTexture ) 
             {
                 EnableTexUnit(textureNo, true);
@@ -172,7 +172,7 @@ void COGLExtRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
     {
         if( m_textureUnitMap[textureNo] == tex )
         {
-            COGLTexture* pTexture = g_textures[(gRSP.curTile+tex)&7].m_pCOGLTexture;
+            COGLTexture* pTexture = (COGLTexture *)g_textures[(gRSP.curTile+tex)&7].m_pCTexture;
             if( pTexture )
             {
                 EnableTexUnit(textureNo, true);

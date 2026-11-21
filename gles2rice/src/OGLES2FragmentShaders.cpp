@@ -335,7 +335,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
     glDisableVertexAttribArray(VS_COLOR);
     glDisableVertexAttribArray(VS_TEXCOORD1);
     glDisableVertexAttribArray(VS_FOG);
-    COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+    COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
     if( pTexture )
     {
         OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);

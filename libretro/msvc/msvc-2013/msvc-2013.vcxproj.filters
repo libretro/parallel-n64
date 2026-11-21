@@ -255,10 +255,10 @@
     <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp">
+    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.c">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp">
+    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.c">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp">
@@ -297,7 +297,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\OGLRenderExt.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.cpp">
+    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.c">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\Render.cpp">
@@ -318,7 +318,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\gles2rice\src\Texture.cpp">
+    <ClCompile Include="..\..\..\gles2rice\src\Texture.c">
       <Filter>Source Files\gles2rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\gles2rice\src\TextureManager.cpp">

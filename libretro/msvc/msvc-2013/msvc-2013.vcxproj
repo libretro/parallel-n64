@@ -459,8 +459,8 @@
     <ClCompile Include="..\..\..\gles2rice\src\gDP_rice.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\gSP_rice.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Combiner.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage.c" />
+    <ClCompile Include="..\..\..\gles2rice\src\ConvertImage16.c" />
     <ClCompile Include="..\..\..\gles2rice\src\RiceDebugger.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DecodedMux.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\DeviceBuilder.cpp" />

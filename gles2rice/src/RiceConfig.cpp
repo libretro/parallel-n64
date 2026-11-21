@@ -1439,3 +1439,6 @@ uint32_t CountryCodeToTVSystem(uint32_t countryCode)
 extern "C" uint32_t RiceConfig_TextureQuality(void) { return options.textureQuality; }
 extern "C" uint32_t RiceConfig_ColorQuality(void)   { return options.colorQuality; }
 extern "C" uint32_t RiceConfig_Mipmapping(void)     { return options.mipmapping; }
+
+/* ConvertImage.c's: textures converted from TMEM itself */
+extern "C" bool RiceConfig_UseFullTMEM(void)       { return options.bUseFullTMEM; }

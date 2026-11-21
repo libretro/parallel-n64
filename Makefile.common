@@ -273,8 +273,6 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
 				$(VIDEODIR_RICE)/gDP_rice.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
-            $(VIDEODIR_RICE)/ConvertImage16.cpp \
-            $(VIDEODIR_RICE)/ConvertImage.cpp \
             $(VIDEODIR_RICE)/RiceDebugger.cpp \
             $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
@@ -297,7 +295,9 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/TextureManager.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
             $(VIDEODIR_RICE)/Video.cpp
-SOURCES_C += $(VIDEODIR_RICE)/OGLTexture.c \
+SOURCES_C += $(VIDEODIR_RICE)/ConvertImage.c \
+            $(VIDEODIR_RICE)/ConvertImage16.c \
+            $(VIDEODIR_RICE)/OGLTexture.c \
             $(VIDEODIR_RICE)/Texture.c
 endif
 

@@ -335,12 +335,12 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     {
         if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
         {
-            pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+            pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
             if( pTexture )  OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
         }
         if( m_bTex1Enabled )
         {
-            pTexture1 = g_textures[(gRSP.curTile+1)&7].m_pCOGLTexture;
+            pTexture1 = (COGLTexture *)g_textures[(gRSP.curTile+1)&7].m_pCTexture;
             if( pTexture1 ) OGLRenderer()->BindTexture(pTexture1->m_dwTextureName, 1);
         }
     }

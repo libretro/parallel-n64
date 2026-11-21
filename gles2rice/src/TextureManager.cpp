@@ -362,7 +362,7 @@ TxtrCacheEntry * CTextureManager::GetTxtrCacheEntry(TxtrInfo * pti)
 
     for (pEntry = m_pCacheTxtrList[dwKey]; pEntry; pEntry = pEntry->pNext)
     {
-        if ( pEntry->ti == *pti )
+        if ( TxtrInfo_Equal(&pEntry->ti, pti) )
         {
             MakeTextureYoungest(pEntry);
             return pEntry;
@@ -388,7 +388,7 @@ void CTextureManager::RemoveTexture(TxtrCacheEntry * pEntry)
     while (pCurr)
     {
         // Check that the attributes match
-        if ( pCurr->ti == pEntry->ti )
+        if ( TxtrInfo_Equal(&pCurr->ti, &pEntry->ti) )
         {
             if (pPrev != NULL) 
                 pPrev->pNext = pCurr->pNext;
@@ -754,12 +754,6 @@ uint8_t pnImgSize[4]   = {4, 8, 16, 32};
 const char *textlutname[4] = {"RGB16", "I16?", "RGBA16", "IA16"};
 
 extern uint16_t g_wRDPTlut[];
-extern ConvertFunction  gConvertFunctions_FullTMEM[ 8 ][ 4 ];
-extern ConvertFunction  gConvertFunctions[ 8 ][ 4 ];
-extern ConvertFunction  gConvertTlutFunctions[ 8 ][ 4 ];
-extern ConvertFunction  gConvertFunctions_16[ 8 ][ 4 ];
-extern ConvertFunction  gConvertFunctions_16_FullTMEM[ 8 ][ 4 ];
-extern ConvertFunction  gConvertTlutFunctions_16[ 8 ][ 4 ];
 void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
 {
    static uint32_t dwCount = 0;
@@ -787,7 +781,7 @@ void CTextureManager::ConvertTexture(TxtrCacheEntry * pEntry, bool fromTMEM)
 
    if( pF )
    {
-      pF( pEntry->pTexture, pEntry->ti );
+      pF( pEntry->pTexture, &pEntry->ti );
    }
    else
    {
@@ -816,7 +810,7 @@ void CTextureManager::ConvertTexture_16(TxtrCacheEntry * pEntry, bool fromTMEM)
     }
 
     if( pF )
-        pF( pEntry->pTexture, pEntry->ti );
+        pF( pEntry->pTexture, &pEntry->ti );
     else
     {
         TRACE2("ConvertTexture: Unable to decompress %s/%dbpp", pszImgFormat[pEntry->ti.Format], pnImgSize[pEntry->ti.Size]);

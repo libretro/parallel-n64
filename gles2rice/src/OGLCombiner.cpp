@@ -86,7 +86,7 @@ void COGLColorCombiner::DisableCombiner(void)
     
     if( m_bTexelsEnable )
     {
-        COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+        COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
         if( pTexture ) 
         {
             OGLRenderer()->EnableTexUnit(0, true);
@@ -106,7 +106,7 @@ void COGLColorCombiner::InitCombinerCycleCopy(void)
 {
     OGLRenderer()->DisableMultiTexture();
     OGLRenderer()->EnableTexUnit(0, true);
-    COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
+    COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
     if( pTexture )
     {
         OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);

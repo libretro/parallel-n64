@@ -644,7 +644,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
         }
     }
 
-    gti = *tile; // Copy tile info to textureInfo entry
+    TxtrInfo_SetTile(&gti, tile); // Copy tile info to textureInfo entry
 
     gti.TLutFmt = gRDP.otherMode.text_tlut << G_MDSFT_TEXTLUT;
     if (gti.Format == G_IM_FMT_CI && gti.TLutFmt == TLUT_FMT_NONE )

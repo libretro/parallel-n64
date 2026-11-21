@@ -20,65 +20,71 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __CONVERTIMAGE_H__
 #define __CONVERTIMAGE_H__
 
+#include <retro_inline.h>
+
 #include "typedefs.h"
 #include "Texture.h"
-#include "TextureManager.h"
+#include "TxtrInfo.h"
 
 #include "../../Graphics/image_convert.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static const uint8_t OneToEight[2] =
 {
-    0x00,       // 0 -> 00 00 00 00
-    0xff        // 1 -> 11 11 11 11
+    0x00,       /* 0 -> 00 00 00 00 */
+    0xff        /* 1 -> 11 11 11 11 */
 };
 
 static const uint8_t OneToFour[2] =
 {
-    0x00,       // 0 -> 00 00 
-    0x0f        // 1 -> 11 11 
+    0x00,       /* 0 -> 00 00 */
+    0x0f        /* 1 -> 11 11 */
 };
 
 static const uint8_t TwoToEight[4] =
 {
-    0x00,       // 00 -> 00 00 00 00
-    0x55,       // 01 -> 01 01 01 01
-    0xaa,       // 10 -> 10 10 10 10
-    0xff        // 11 -> 11 11 11 11
+    0x00,       /* 00 -> 00 00 00 00 */
+    0x55,       /* 01 -> 01 01 01 01 */
+    0xaa,       /* 10 -> 10 10 10 10 */
+    0xff        /* 11 -> 11 11 11 11 */
 };
 
 static const uint8_t TwoToFour[4] =
 {
-    0x0,        // 00 -> 00 00 
-    0x5,        // 01 -> 01 01 
-    0xa,        // 10 -> 10 10 
-    0xf         // 11 -> 11 11
+    0x0,        /* 00 -> 00 00 */
+    0x5,        /* 01 -> 01 01 */
+    0xa,        /* 10 -> 10 10 */
+    0xf         /* 11 -> 11 11 */
 };
 
 static const uint8_t ThreeToEight[8] =
 {
-    0x00,       // 000 -> 00 00 00 00
-    0x24,       // 001 -> 00 10 01 00
-    0x49,       // 010 -> 01 00 10 01
-    0x6d,       // 011 -> 01 10 11 01
-    0x92,       // 100 -> 10 01 00 10
-    0xb6,       // 101 -> 10 11 01 10
-    0xdb,       // 110 -> 11 01 10 11
-    0xff        // 111 -> 11 11 11 11
+    0x00,       /* 000 -> 00 00 00 00 */
+    0x24,       /* 001 -> 00 10 01 00 */
+    0x49,       /* 010 -> 01 00 10 01 */
+    0x6d,       /* 011 -> 01 10 11 01 */
+    0x92,       /* 100 -> 10 01 00 10 */
+    0xb6,       /* 101 -> 10 11 01 10 */
+    0xdb,       /* 110 -> 11 01 10 11 */
+    0xff        /* 111 -> 11 11 11 11 */
 };
 
 static const uint8_t ThreeToFour[8] =
 {
-    0x0,        // 000 -> 00 00 00 00
-    0x2,        // 001 -> 00 10 01 00
-    0x4,        // 010 -> 01 00 10 01
-    0x6,        // 011 -> 01 10 11 01
-    0x9,        // 100 -> 10 01 00 10
-    0xb,        // 101 -> 10 11 01 10
-    0xd,        // 110 -> 11 01 10 11
-    0xf         // 111 -> 11 11 11 11
+    0x0,        /* 000 -> 00 00 00 00 */
+    0x2,        /* 001 -> 00 10 01 00 */
+    0x4,        /* 010 -> 01 00 10 01 */
+    0x6,        /* 011 -> 01 10 11 01 */
+    0x9,        /* 100 -> 10 01 00 10 */
+    0xb,        /* 101 -> 10 11 01 10 */
+    0xd,        /* 110 -> 11 01 10 11 */
+    0xf         /* 111 -> 11 11 11 11 */
 };
 
-static const uint8_t FourToEight[16] = 
+static const uint8_t FourToEight[16] =
 {
     0x00, 0x11, 0x22, 0x33,
     0x44, 0x55, 0x66, 0x77,
@@ -86,7 +92,7 @@ static const uint8_t FourToEight[16] =
     0xcc, 0xdd, 0xee, 0xff
 };
 
-static const uint16_t FourToSixteen[16] = 
+static const uint16_t FourToSixteen[16] =
 {
     0x0000, 0x1111, 0x2222, 0x3333,
     0x4444, 0x5555, 0x6666, 0x7777,
@@ -96,39 +102,39 @@ static const uint16_t FourToSixteen[16] =
 
 static const uint8_t FiveToEight[32] =
 {
-    0x00, // 00000 -> 00000000
-    0x08, // 00001 -> 00001000
-    0x10, // 00010 -> 00010000
-    0x18, // 00011 -> 00011000
-    0x21, // 00100 -> 00100001
-    0x29, // 00101 -> 00101001
-    0x31, // 00110 -> 00110001
-    0x39, // 00111 -> 00111001
-    0x42, // 01000 -> 01000010
-    0x4a, // 01001 -> 01001010
-    0x52, // 01010 -> 01010010
-    0x5a, // 01011 -> 01011010
-    0x63, // 01100 -> 01100011
-    0x6b, // 01101 -> 01101011
-    0x73, // 01110 -> 01110011
-    0x7b, // 01111 -> 01111011
-    
-    0x84, // 10000 -> 10000100
-    0x8c, // 10001 -> 10001100
-    0x94, // 10010 -> 10010100
-    0x9c, // 10011 -> 10011100
-    0xa5, // 10100 -> 10100101
-    0xad, // 10101 -> 10101101
-    0xb5, // 10110 -> 10110101
-    0xbd, // 10111 -> 10111101
-    0xc6, // 11000 -> 11000110
-    0xce, // 11001 -> 11001110
-    0xd6, // 11010 -> 11010110
-    0xde, // 11011 -> 11011110
-    0xe7, // 11100 -> 11100111
-    0xef, // 11101 -> 11101111
-    0xf7, // 11110 -> 11110111
-    0xff  // 11111 -> 11111111
+    0x00, /* 00000 -> 00000000 */
+    0x08, /* 00001 -> 00001000 */
+    0x10, /* 00010 -> 00010000 */
+    0x18, /* 00011 -> 00011000 */
+    0x21, /* 00100 -> 00100001 */
+    0x29, /* 00101 -> 00101001 */
+    0x31, /* 00110 -> 00110001 */
+    0x39, /* 00111 -> 00111001 */
+    0x42, /* 01000 -> 01000010 */
+    0x4a, /* 01001 -> 01001010 */
+    0x52, /* 01010 -> 01010010 */
+    0x5a, /* 01011 -> 01011010 */
+    0x63, /* 01100 -> 01100011 */
+    0x6b, /* 01101 -> 01101011 */
+    0x73, /* 01110 -> 01110011 */
+    0x7b, /* 01111 -> 01111011 */
+
+    0x84, /* 10000 -> 10000100 */
+    0x8c, /* 10001 -> 10001100 */
+    0x94, /* 10010 -> 10010100 */
+    0x9c, /* 10011 -> 10011100 */
+    0xa5, /* 10100 -> 10100101 */
+    0xad, /* 10101 -> 10101101 */
+    0xb5, /* 10110 -> 10110101 */
+    0xbd, /* 10111 -> 10111101 */
+    0xc6, /* 11000 -> 11000110 */
+    0xce, /* 11001 -> 11001110 */
+    0xd6, /* 11010 -> 11010110 */
+    0xde, /* 11011 -> 11011110 */
+    0xe7, /* 11100 -> 11100111 */
+    0xef, /* 11101 -> 11101111 */
+    0xf7, /* 11110 -> 11110111 */
+    0xff  /* 11111 -> 11111111 */
 };
 
 
@@ -151,9 +157,9 @@ static const uint8_t FiveToEight[32] =
 #define RGBA565_GreenShift  5
 #define RGBA565_BlueShift   0
 
-inline uint16_t Convert555To565(uint16_t w555)
+static INLINE uint16_t Convert555To565(uint16_t w555)
 {
-    // Probably a faster method by fudging the low bits..
+    /* Probably a faster method by fudging the low bits.. */
 
     uint8_t red = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
     uint8_t grn = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
@@ -162,7 +168,7 @@ inline uint16_t Convert555To565(uint16_t w555)
     return PAL8toRGB565(red, grn, blu, 0);
 }
 
-inline uint32_t Convert555ToRGBA(uint16_t w555)
+static INLINE uint32_t Convert555ToRGBA(uint16_t w555)
 {
     uint32_t dwRed   = FiveToEight[(w555&RGBA5551_RedMask)  >> RGBA5551_RedShift];
     uint32_t dwGreen = FiveToEight[(w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift];
@@ -171,7 +177,7 @@ inline uint32_t Convert555ToRGBA(uint16_t w555)
     return COLOR_RGBA(dwRed, dwGreen, dwBlue, dwAlpha);
 
 }
-inline uint16_t Convert555ToR4G4B4A4(uint16_t w555)
+static INLINE uint16_t Convert555ToR4G4B4A4(uint16_t w555)
 {
     uint8_t dwRed   = ((w555&RGBA5551_RedMask)  >> RGBA5551_RedShift)>>1;
     uint8_t dwGreen = ((w555&RGBA5551_GreenMask)>> RGBA5551_GreenShift)>>1;
@@ -181,44 +187,53 @@ inline uint16_t Convert555ToR4G4B4A4(uint16_t w555)
     return PAL8toR4G4B4A4(dwRed, dwGreen, dwBlue, dwAlpha);
 }
 
-inline uint32_t ConvertIA4ToRGBA(uint8_t IA4)
+static INLINE uint32_t ConvertIA4ToRGBA(uint8_t IA4)
 {
     uint32_t I = ThreeToEight[(IA4 & 0x0F) >> 1];
-    uint32_t A = OneToEight[(IA4 & 0x01)];        
+    uint32_t A = OneToEight[(IA4 & 0x01)];
     return COLOR_RGBA(I, I, I, A);
 }
 
-inline uint16_t ConvertIA4ToR4G4B4A4(uint8_t IA4)
+static INLINE uint16_t ConvertIA4ToR4G4B4A4(uint8_t IA4)
 {
     uint32_t I = ThreeToFour[(IA4 & 0x0F) >> 1];
-    uint32_t A = OneToFour[(IA4 & 0x01)];     
+    uint32_t A = OneToFour[(IA4 & 0x01)];
     return PAL8toR4G4B4A4(I, I, I, A);
 }
-inline uint32_t ConvertI4ToRGBA(uint8_t I4)
+static INLINE uint32_t ConvertI4ToRGBA(uint8_t I4)
 {
     uint32_t I = FourToEight[I4 & 0x0F];
     return COLOR_RGBA(I, I, I, I);
 }
 
-inline uint16_t ConvertI4ToR4G4B4A4(uint8_t I4)
+static INLINE uint16_t ConvertI4ToR4G4B4A4(uint8_t I4)
 {
     return FourToSixteen[I4 & 0x0F];
 }
 
-inline uint32_t ConvertIA16ToRGBA(uint16_t wIA)
+static INLINE uint32_t ConvertIA16ToRGBA(uint16_t wIA)
 {
     uint32_t dwIntensity = (wIA >> 8) & 0xFF;
     uint32_t dwAlpha     = (wIA     ) & 0xFF;
     return COLOR_RGBA(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
 }
 
-inline uint16_t ConvertIA16ToR4G4B4A4(uint16_t wIA)
+static INLINE uint16_t ConvertIA16ToR4G4B4A4(uint16_t wIA)
 {
     uint16_t dwIntensity = (wIA >> 12) & 0x0F;
     uint16_t dwAlpha     = (wIA >> 4) & 0x0F;
 
     return PAL8toR4G4B4A4(dwIntensity, dwIntensity, dwIntensity, dwAlpha);
 }
+
+/* TMEM, the textures are converted from */
+extern TmemType g_Tmem;
+/* Conker's 4-bit intensity textures: every other row's words swapped */
+extern bool conkerSwapHack;
+
+/* the options and RDP state the conversions read */
+bool RiceConfig_UseFullTMEM(void);
+uint32_t RiceRDP_TextTlut(void);
 
 extern int g_convk0,g_convk1,g_convk2,g_convk3,g_convk4,g_convk5;
 extern float g_convc0,g_convc1,g_convc2,g_convc3,g_convc4,g_convc5;
@@ -227,58 +242,71 @@ uint32_t ConvertYUV16ToR8G8B8(int Y, int U, int V);
 uint16_t ConvertYUV16ToR4G4B4(int Y, int U, int V);
 
 
-typedef void    ( * ConvertFunction )( CTexture * p_texture, const TxtrInfo & ti );
+typedef void    ( * ConvertFunction )( CTexture * p_texture, const TxtrInfo * ti );
 
-void ConvertRGBA16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertRGBA32(CTexture *pTexture, const TxtrInfo &tinfo);
+/* by format (RGBA, YUV, CI, IA, I) and size (4, 8, 16, 32 bit); 32-bit
+   pixels, then 16-bit (_16); the palette's (Tlut), TMEM's (FullTMEM) */
+extern ConvertFunction gConvertFunctions_FullTMEM[ 8 ][ 4 ];
+extern ConvertFunction gConvertFunctions[ 8 ][ 4 ];
+extern ConvertFunction gConvertTlutFunctions[ 8 ][ 4 ];
+extern ConvertFunction gConvertFunctions_16[ 8 ][ 4 ];
+extern ConvertFunction gConvertFunctions_16_FullTMEM[ 8 ][ 4 ];
+extern ConvertFunction gConvertTlutFunctions_16[ 8 ][ 4 ];
 
-
-void ConvertIA4(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertIA16(CTexture *pTexture, const TxtrInfo &tinfo);
-
-void ConvertI4(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertI8(CTexture *pTexture, const TxtrInfo &tinfo);
-
-void ConvertCI4( CTexture *pTexture, const TxtrInfo & ti );
-void ConvertCI8( CTexture *pTexture, const TxtrInfo & ti );
-
-void ConvertCI4_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI4_IA16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI8_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI8_IA16(CTexture *pTexture, const TxtrInfo &tinfo);
-
-void ConvertYUV(CTexture *pTexture, const TxtrInfo &tinfo);
-
-// 16 a4r4g4b4
-void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo &tinfo);
+void ConvertRGBA16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertRGBA32(CTexture *pTexture, const TxtrInfo *tinfo);
 
 
-void ConvertIA4_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertIA8_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertIA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
+void ConvertIA4(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertIA8(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertIA16(CTexture *pTexture, const TxtrInfo *tinfo);
 
-void ConvertI4_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertI8_16(CTexture *pTexture, const TxtrInfo &tinfo);
+void ConvertI4(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertI8(CTexture *pTexture, const TxtrInfo *tinfo);
 
-void ConvertCI4_16( CTexture *pTexture, const TxtrInfo & ti );
-void ConvertCI8_16( CTexture *pTexture, const TxtrInfo & ti );
+void ConvertCI4( CTexture *pTexture, const TxtrInfo *ti );
+void ConvertCI8( CTexture *pTexture, const TxtrInfo *ti );
 
-void ConvertCI4_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI4_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI8_RGBA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void ConvertCI8_IA16_16(CTexture *pTexture, const TxtrInfo &tinfo);
+void ConvertCI4_RGBA16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI4_IA16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI8_RGBA16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI8_IA16(CTexture *pTexture, const TxtrInfo *tinfo);
 
-void ConvertYUV_16(CTexture *pTexture, const TxtrInfo &tinfo);
+void ConvertYUV(CTexture *pTexture, const TxtrInfo *tinfo);
 
-void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo);
-void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo);
-void Convert16b(CTexture *pTexture, const TxtrInfo &tinfo);
+/* 16 a4r4g4b4 */
+void ConvertRGBA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertRGBA32_16(CTexture *pTexture, const TxtrInfo *tinfo);
 
-void Convert4b_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void Convert8b_16(CTexture *pTexture, const TxtrInfo &tinfo);
-void Convert16b_16(CTexture *pTexture, const TxtrInfo &tinfo);
+
+void ConvertIA4_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertIA8_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertIA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+
+void ConvertI4_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertI8_16(CTexture *pTexture, const TxtrInfo *tinfo);
+
+void ConvertCI4_16( CTexture *pTexture, const TxtrInfo *ti );
+void ConvertCI8_16( CTexture *pTexture, const TxtrInfo *ti );
+
+void ConvertCI4_RGBA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI4_IA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI8_RGBA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void ConvertCI8_IA16_16(CTexture *pTexture, const TxtrInfo *tinfo);
+
+void ConvertYUV_16(CTexture *pTexture, const TxtrInfo *tinfo);
+
+void Convert4b(CTexture *pTexture, const TxtrInfo *tinfo);
+void Convert8b(CTexture *pTexture, const TxtrInfo *tinfo);
+void Convert16b(CTexture *pTexture, const TxtrInfo *tinfo);
+
+void Convert4b_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void Convert8b_16(CTexture *pTexture, const TxtrInfo *tinfo);
+void Convert16b_16(CTexture *pTexture, const TxtrInfo *tinfo);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

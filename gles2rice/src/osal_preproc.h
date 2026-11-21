@@ -41,4 +41,4 @@ typedef struct
    int left;
 } M64P_RECT;
 
-#endif // OSAL_PREPROC_H
+#endif /* OSAL_PREPROC_H */

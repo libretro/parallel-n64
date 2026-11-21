@@ -77,11 +77,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define RSP_PIPELINE_MODE_1PRIMITIVE        (1 << RSP_SETOTHERMODE_SHIFT_PIPELINE)
 #define RSP_PIPELINE_MODE_NPRIMITIVE        (0 << RSP_SETOTHERMODE_SHIFT_PIPELINE)
 
-// RSP_SETOTHERMODE_H gSetTextureLUT 
-#define TLUT_FMT_NONE           (0 << G_MDSFT_TEXTLUT)
-#define TLUT_FMT_UNKNOWN        (1 << G_MDSFT_TEXTLUT)
-#define TLUT_FMT_RGBA16         (2 << G_MDSFT_TEXTLUT)
-#define TLUT_FMT_IA16           (3 << G_MDSFT_TEXTLUT)
+// RSP_SETOTHERMODE_H gSetTextureLUT: TLUT_FMT_* in TxtrInfo.h
+#include "TxtrInfo.h"
 
 // RSP_SETOTHERMODE_H gSetTextureFilter 
 #define RDP_TFILTER_POINT       (0 << G_MDSFT_TEXTFILT)
@@ -364,7 +361,13 @@ extern const char *textlutname[4];
 extern SetImgInfo g_CI;
 extern SetImgInfo g_ZI;
 extern SetImgInfo g_TI;
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern TmemType g_Tmem;
+#ifdef __cplusplus
+}
+#endif
 
 void DLParser_Init();
 void RDP_GFX_Reset();
