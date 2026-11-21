@@ -145,7 +145,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint
     //Upto here, the texture is loaded wrong because the format is wrong
 
     DrawInfo info;  
-    if( pEntry->pTexture->StartUpdate(&info) )
+    if( CTexture_StartUpdate(pEntry->pTexture, &info) )
     {
         for( uint32_t i=0; i<height; i++)
         {
@@ -156,7 +156,7 @@ void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint
                 pdst[j]=psrc[j];
             }
         }
-        pEntry->pTexture->EndUpdate(&info);
+        CTexture_EndUpdate(pEntry->pTexture);
     }
     SetCurrentTexture( 0, pEntry->pTexture, width, height, pEntry);
 }

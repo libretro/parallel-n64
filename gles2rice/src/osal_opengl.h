@@ -30,23 +30,24 @@
 
 #include <glsm/glsmsym.h>
 
-#if defined(HAVE_OPENGLES) // Desktop GL fix
+/* desktop GL: GLSL 1.20 */
+#if defined(HAVE_OPENGLES)
 #define GLSL_VERSION "100"
 #else
 #define GLSL_VERSION "120"
 #endif
 
-// Extension names
+/* extension names */
 #define OSAL_GL_ARB_TEXTURE_ENV_ADD         "GL_texture_env_add"
 
-// Vertex shader params
+/* vertex shader attributes */
 #define VS_POSITION                         0
 #define VS_COLOR                            1
 #define VS_TEXCOORD0                        2
 #define VS_TEXCOORD1                        3
 #define VS_FOG                              4
 
-// Constant substitutions
+/* constants GLES lacks */
 #ifdef HAVE_OPENGLES
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
 #define GL_MAX_TEXTURE_UNITS                GL_MAX_TEXTURE_IMAGE_UNITS
@@ -58,7 +59,7 @@
 #define GL_PREVIOUS                         0x8578
 #endif
 
-// No-op substitutions (unavailable in GLES2)
+/* no-op stand-ins for what GLES2 lacks */
 #define glTexEnvi(x,y,z)
 #define glTexEnvfv(x,y,z)
 
@@ -68,4 +69,4 @@
 #define GL_INTERPOLATE                    0x8575
 #endif
 
-#endif // OSAL_OPENGL_H
+#endif

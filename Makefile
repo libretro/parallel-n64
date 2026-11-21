@@ -1322,10 +1322,17 @@ test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
 	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
+# Rice's textures (Texture.c, OGLTexture.c), on GL and GLES 2
+RICE_TEXTURE_SRCS := $(VIDEODIR_RICE)/Texture.c $(VIDEODIR_RICE)/OGLTexture.c
+test_rice_texture$(EXE_EXT): tools/test_rice_texture.c $(RICE_TEXTURE_SRCS) $(GLSM_TEST_SRCS)
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL -I$(VIDEODIR_RICE) $< $(RICE_TEXTURE_SRCS) $(GLSM_TEST_SRCS) \
+		$(ROOT_DIR)/libretro/glsym/glsym_gl.c -o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+
 GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_readback$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
 	test_glitch64_depth_image$(EXE_EXT) test_glitch64_depth_image_gles$(EXE_EXT) \
 	test_glitch64_n64_combiner$(EXE_EXT) test_glitch64_n64_combiner_gles$(EXE_EXT) \
-	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT)
+	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT) \
+	test_rice_texture$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm

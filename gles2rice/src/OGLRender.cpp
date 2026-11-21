@@ -274,10 +274,10 @@ bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWid
     RenderTexture &texture = g_textures[tile];
     texture.pTextureEntry = pTextureEntry;
 
-    if( handler!= NULL  && texture.m_lpsTexturePtr != handler->GetTexture() )
+    if( handler!= NULL  && texture.m_lpsTexturePtr != CTexture_GetTexture(handler) )
     {
         texture.m_pCTexture = handler;
-        texture.m_lpsTexturePtr = handler->GetTexture();
+        texture.m_lpsTexturePtr = CTexture_GetTexture(handler);
 
         texture.m_dwTileWidth = dwTileWidth;
         texture.m_dwTileHeight = dwTileHeight;

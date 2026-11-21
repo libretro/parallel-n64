@@ -131,9 +131,9 @@ typedef struct TxtrCacheEntry
 
     ~TxtrCacheEntry()
     {
-       /* both come from CDeviceBuilder::CreateTexture, with new */
-       delete pTexture;
-       delete pEnhancedTexture;
+       /* both from CDeviceBuilder::CreateTexture */
+       CTexture_Delete(pTexture);
+       CTexture_Delete(pEnhancedTexture);
 
        pTexture         = NULL;
        pEnhancedTexture = NULL;

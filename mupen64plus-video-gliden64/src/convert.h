@@ -102,7 +102,7 @@ static INLINE u32 RGBA5551_RGBA8888( u16 color )
 	g = Five2Eight[(color >> 6) & 0x001f];
 	b = Five2Eight[(color >> 1) & 0x001f];
 	a = One2Eight [(color     ) & 0x0001];
-	return (a << 24) | (b << 16) | (g << 8) | r;
+	return ((u32)a << 24) | (b << 16) | (g << 8) | r;
 #endif /* WIN32_ASM */
 }
 
@@ -139,7 +139,7 @@ static INLINE u32 IA88_RGBA8888( u16 color )
 	/* ok */
 	u8 a = color >> 8;
 	u8 i = color & 0x00FF;
-	return (a << 24) | (i << 16) | (i << 8) | i;
+	return ((u32)a << 24) | (i << 16) | (i << 8) | i;
 #endif /* WIN32_ASM */
 }
 
@@ -211,7 +211,7 @@ static INLINE u32 IA44_RGBA8888( u8 color )
 #else /* WIN32_ASM */
 	u8 i = Four2Eight[color >> 4];
 	u8 a = Four2Eight[color & 0x0F];
-	return (a << 24) | (i << 16) | (i << 8) | i;
+	return ((u32)a << 24) | (i << 16) | (i << 8) | i;
 #endif /* WIN32_ASM */
 }
 
@@ -270,7 +270,7 @@ static INLINE u32 IA31_RGBA8888( u8 color )
 #else /* WIN32_ASM */
 	u8 i = Three2Eight[color >> 1];
 	u8 a = One2Eight[color & 0x01];
-	return (a << 24) | (i << 16) | (i << 8) | i;
+	return ((u32)a << 24) | (i << 16) | (i << 8) | i;
 #endif /* WIN32_ASM */
 }
 
@@ -307,7 +307,7 @@ static INLINE u32 I8_RGBA8888( u8 color )
 		mov		al, cl
 	}
 #else /* WIN32_ASM */
-	return (color << 24) | (color << 16) | (color << 8) | color;
+	return ((u32)color << 24) | (color << 16) | (color << 8) | color;
 #endif /* WIN32_ASM */
 }
 
@@ -340,7 +340,7 @@ static INLINE u32 CI4_RGBA4444(u8 color)
 
 static INLINE u32 CI4_RGBA8888(u8 color)
 {
-	return (color << 24) | (color << 16) | (color << 8) | color;
+	return ((u32)color << 24) | (color << 16) | (color << 8) | color;
 }
 
 static INLINE u32 I4_RGBA8888(u8 color)
@@ -362,7 +362,7 @@ static INLINE u32 I4_RGBA8888(u8 color)
 #else /* WIN32_ASM */
 	u8 c = Four2Eight[color];
 	c |= c << 4;
-	return (c << 24) | (c << 16) | (c << 8) | c;
+	return ((u32)c << 24) | (c << 16) | (c << 8) | c;
 #endif /* WIN32_ASM */
 }
 

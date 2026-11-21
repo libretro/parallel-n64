@@ -507,7 +507,7 @@ void TexRectToN64FrameBuffer_16b(uint32_t x0, uint32_t y0, uint32_t width, uint3
     // Copy the framebuffer texture into the N64 RDRAM framebuffer memory structure
 
     DrawInfo srcInfo;   
-    if (g_textures[dwTile].m_pCTexture->StartUpdate(&srcInfo) == false)
+    if (CTexture_StartUpdate(g_textures[dwTile].m_pCTexture, &srcInfo) == false)
     {
         DebuggerAppendMsg("Fail to lock texture:TexRectToN64FrameBuffer_16b");
         return;
@@ -528,7 +528,7 @@ void TexRectToN64FrameBuffer_16b(uint32_t x0, uint32_t y0, uint32_t width, uint3
         }
     }
 
-    g_textures[dwTile].m_pCTexture->EndUpdate(&srcInfo);
+    CTexture_EndUpdate(g_textures[dwTile].m_pCTexture);
 }
 
 #define FAST_CRC_CHECKING_INC_X 13

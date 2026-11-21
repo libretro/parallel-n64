@@ -288,17 +288,17 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Blender.cpp \
             $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLRender.cpp \
             $(VIDEODIR_RICE)/OGLRenderExt.cpp \
-            $(VIDEODIR_RICE)/OGLTexture.cpp \
             $(VIDEODIR_RICE)/RenderBase.cpp \
             $(VIDEODIR_RICE)/Render.cpp \
             $(VIDEODIR_RICE)/RenderExt.cpp \
             $(VIDEODIR_RICE)/RenderTexture.cpp \
             $(VIDEODIR_RICE)/RSP_Parser.cpp \
             $(VIDEODIR_RICE)/RSP_S2DEX.cpp \
-            $(VIDEODIR_RICE)/Texture.cpp \
             $(VIDEODIR_RICE)/TextureManager.cpp \
             $(VIDEODIR_RICE)/VectorMath.cpp \
             $(VIDEODIR_RICE)/Video.cpp
+SOURCES_C += $(VIDEODIR_RICE)/OGLTexture.c \
+            $(VIDEODIR_RICE)/Texture.c
 endif
 
 # Libretro

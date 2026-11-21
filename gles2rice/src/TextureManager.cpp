@@ -115,11 +115,11 @@ bool CTextureManager::CleanUp()
         }
     }
 
-    if( m_blackTextureEntry.pTexture )      delete m_blackTextureEntry.pTexture;    
-    if( m_PrimColorTextureEntry.pTexture )  delete m_PrimColorTextureEntry.pTexture;
-    if( m_EnvColorTextureEntry.pTexture )   delete m_EnvColorTextureEntry.pTexture;
-    if( m_LODFracTextureEntry.pTexture )    delete m_LODFracTextureEntry.pTexture;
-    if( m_PrimLODFracTextureEntry.pTexture )    delete m_PrimLODFracTextureEntry.pTexture;
+    if( m_blackTextureEntry.pTexture )      CTexture_Delete(m_blackTextureEntry.pTexture);    
+    if( m_PrimColorTextureEntry.pTexture )  CTexture_Delete(m_PrimColorTextureEntry.pTexture);
+    if( m_EnvColorTextureEntry.pTexture )   CTexture_Delete(m_EnvColorTextureEntry.pTexture);
+    if( m_LODFracTextureEntry.pTexture )    CTexture_Delete(m_LODFracTextureEntry.pTexture);
+    if( m_PrimLODFracTextureEntry.pTexture )    CTexture_Delete(m_PrimLODFracTextureEntry.pTexture);
     memset(&m_blackTextureEntry, 0, sizeof(TxtrCacheEntry));
     memset(&m_PrimColorTextureEntry, 0, sizeof(TxtrCacheEntry));
     memset(&m_EnvColorTextureEntry, 0, sizeof(TxtrCacheEntry));
@@ -460,7 +460,7 @@ TxtrCacheEntry * CTextureManager::CreateNewCacheEntry(uint32_t dwAddr, uint32_t 
       }
 
       pEntry->pTexture = CDeviceBuilder::GetBuilder()->CreateTexture(dwWidth, dwHeight);
-      if (pEntry->pTexture == NULL || pEntry->pTexture->GetTexture() == NULL)
+      if (pEntry->pTexture == NULL || CTexture_GetTexture(pEntry->pTexture) == NULL)
       {
          _VIDEO_DisplayTemporaryMessage("Error to create an texture");
          TRACE2("Warning, unable to create %d x %d texture!", dwWidth, dwHeight);
@@ -669,14 +669,14 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
           pEntry->pTexture->m_bScaledS = false;
        }
 
-       TextureFmt dwType = pEntry->pTexture->GetSurfaceFormat();
+       TextureFmt dwType = CTexture_GetSurfaceFormat(pEntry->pTexture);
 
        if (pEntry->pEnhancedTexture)
-          delete pEntry->pEnhancedTexture;
+          CTexture_Delete(pEntry->pEnhancedTexture);
        pEntry->pEnhancedTexture  = NULL;
        pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
 
-       pEntry->pTexture->HoldUpload(true);
+       CTexture_HoldUpload(pEntry->pTexture, true);
        if (dwType != TEXTURE_FMT_UNKNOWN)
        {
           if( loadFromTextureBuffer )
@@ -704,7 +704,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
              pEntry->FrameLastUpdated = status.gDlistCount;
 
              if (pEntry->pEnhancedTexture)
-                delete pEntry->pEnhancedTexture;
+                CTexture_Delete(pEntry->pEnhancedTexture);
              pEntry->pEnhancedTexture  = NULL;
              pEntry->dwEnhancementFlag = TEXTURE_NO_ENHANCEMENT;
           }
@@ -718,7 +718,7 @@ TxtrCacheEntry * CTextureManager::GetTexture(TxtrInfo * pgti, bool fromTMEM, boo
           ExpandTextureS(pEntry);
           ExpandTextureT(pEntry);
        }
-       pEntry->pTexture->HoldUpload(false);
+       CTexture_HoldUpload(pEntry->pTexture, false);
 
 #ifdef DEBUGGER
        if( pauseAtNext && eventToPause == NEXT_NEW_TEXTURE )
@@ -832,7 +832,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
         return;
 
     uint32_t maskWidth = (1<<mask);
-    int size = pEntry->pTexture->GetPixelSize();
+    int size = CTexture_GetPixelSize(pEntry->pTexture);
 
 #ifdef DEBUGGER
     // Some checks
@@ -845,7 +845,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
     // to width = pEntry->ti.WidthToCreate by doing mirroring or wrapping
 
     DrawInfo di;
-    if( !(pEntry->pTexture->StartUpdate(&di)) )
+    if( !(CTexture_StartUpdate(pEntry->pTexture, &di)) )
     {
         TRACE0("Can't update the texture");
         return;
@@ -857,7 +857,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
         // Clamp
         Clamp(di.lpSurface, sizeToLoad, sizeCreated, arrayWidth, otherSize, 
             flag, size);
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 
@@ -865,13 +865,13 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
     if( sizeToLoad > maskWidth )
     {
         TRACE0("Something is wrong, check me here in ExpandTextureS");
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
     if( sizeToLoad == maskWidth && maskWidth == sizeToCreate && sizeToCreate != sizeCreated )
     {
         TRACE0("Something is wrong, check me here in ExpandTextureS");
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 #endif
@@ -896,7 +896,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
                 flag, size );
         }
 
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 
@@ -906,7 +906,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
         // widthToLoad < widthToCreate = maskWidth
         Wrap(di.lpSurface, sizeToLoad, mask, sizeCreated, arrayWidth, otherSize, flag, size );
 
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 
@@ -917,7 +917,7 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
 #endif
         Clamp(di.lpSurface, sizeToLoad, sizeCreated, arrayWidth, otherSize, flag, size );
 
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 
@@ -928,12 +928,12 @@ void CTextureManager::ExpandTexture(TxtrCacheEntry * pEntry, uint32_t sizeToLoad
         if( maskWidth < sizeCreated )   TRACE0("Incorrect condition, check me");
 #endif
         Clamp(di.lpSurface, sizeToLoad, sizeCreated, arrayWidth, otherSize, flag, size );
-        pEntry->pTexture->EndUpdate(&di);
+        CTexture_EndUpdate(pEntry->pTexture);
         return;
     }
 
     TRACE0("Check me, should not get here");
-    pEntry->pTexture->EndUpdate(&di);
+    CTexture_EndUpdate(pEntry->pTexture);
 }
 
 void CTextureManager::ExpandTextureS(TxtrCacheEntry * pEntry)
@@ -1344,13 +1344,13 @@ TxtrCacheEntry * CTextureManager::GetConstantColorTexture(uint32_t constant)
 void CTextureManager::updateColorTexture(CTexture *ptexture, uint32_t color)
 {
    DrawInfo di;
-   if( !(ptexture->StartUpdate(&di)) )
+   if( !(CTexture_StartUpdate(ptexture, &di)) )
    {
       TRACE0("Cann't update the texture");
       return;
    }
 
-   int size = ptexture->GetPixelSize();
+   int size = CTexture_GetPixelSize(ptexture);
    switch( size )
    {
       case 2: // 16 bits
@@ -1377,13 +1377,13 @@ void CTextureManager::updateColorTexture(CTexture *ptexture, uint32_t color)
          break;
    }
 
-   ptexture->EndUpdate(&di);
+   CTexture_EndUpdate(ptexture);
 }
 
 void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha)
 {
    DrawInfo srcInfo;   
-   if( pEntry->pTexture->StartUpdate(&srcInfo) )
+   if( CTexture_StartUpdate(pEntry->pTexture, &srcInfo) )
    {
       uint32_t *buf;
       uint32_t val;
@@ -1403,7 +1403,7 @@ void ConvertTextureRGBAtoI(TxtrCacheEntry* pEntry, bool alpha)
             buf[nX] = (a|(i<<16)|(i<<8)|i);
          }
       }
-      pEntry->pTexture->EndUpdate(&srcInfo);
+      CTexture_EndUpdate(pEntry->pTexture);
    }
 }
 

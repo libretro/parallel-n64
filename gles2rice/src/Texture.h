@@ -16,106 +16,112 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
-
+/* A texture Rice draws with: its size, what was made of it, and the
+ * pixels it is converted into, which the backend (OGLTexture.h) puts on
+ * the GPU. C89. */
 #ifndef __SURFACEHANDLER_H__
 #define __SURFACEHANDLER_H__
 
-#include "typedefs.h"
+#include <stdint.h>
+#include <boolean.h>
 
-/////////////// Define a struct to use as
-///////////////  storage for all the surfaces
-///////////////  created so far.
-class CTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct 
+/* where an update writes: the texture's pixels, as made */
+typedef struct
 {
-    unsigned short int  dwWidth;            // Describes the width of the real texture area. Use lPitch to move between successive lines
-    unsigned short int  dwHeight;           // Describes the height of the real texture area
-    unsigned short int  dwCreatedWidth;     // Describes the width of the created texture area. Use lPitch to move between successive lines
-    unsigned short int  dwCreatedHeight;    // Describes the height of the created texture area
-    int        lPitch;             // Specifies the number of bytes on each row (not necessarily bitdepth*width/8)
-    void        *lpSurface;         // Pointer to the top left pixel of the image
+    unsigned short int  dwWidth;            /* the texture's own width; lPitch moves between rows */
+    unsigned short int  dwHeight;           /* the texture's own height */
+    unsigned short int  dwCreatedWidth;     /* the width made, a power of 2 */
+    unsigned short int  dwCreatedHeight;    /* the height made, a power of 2 */
+    int                 lPitch;             /* bytes a row */
+    void               *lpSurface;          /* the top left pixel */
 } DrawInfo;
 
-
-enum TextureFmt
+typedef enum TextureFmt
 {
     TEXTURE_FMT_A8R8G8B8,
     TEXTURE_FMT_A4R4G4B4,
-    TEXTURE_FMT_UNKNOWN,
-};
+    TEXTURE_FMT_UNKNOWN
+} TextureFmt;
 
-enum TextureUsage
+typedef enum TextureUsage
 {
     AS_NORMAL,
     AS_RENDER_TARGET,
-    AS_BACK_BUFFER_SAVE,
-};
+    AS_BACK_BUFFER_SAVE
+} TextureUsage;
 
-class CTexture
+typedef struct CTexture CTexture;
+
+/* what a backend does with a texture */
+typedef struct CTextureOps
 {
-public:
-    virtual ~CTexture();
+    /* the pixels put on the GPU */
+    void (*upload)(CTexture *tex);
+    /* the backend's part let go */
+    void (*release)(CTexture *tex);
+} CTextureOps;
 
-    uint32_t      m_dwWidth;    // The requested Texture width.
-    uint32_t      m_dwHeight;   // The requested Texture height.
+struct CTexture
+{
+    const CTextureOps *ops;
 
-    unsigned int m_dwCreatedTextureWidth;    // What was actually created
-    unsigned int m_dwCreatedTextureHeight;
+    uint32_t      m_dwWidth;                 /* the size asked for */
+    uint32_t      m_dwHeight;
 
-    float       m_fXScale;      // = m_dwCorrectedWidth/m_dwWidth
-    float       m_fYScale;      // = m_dwCorrectedHeight/m_dwWidth
+    unsigned int  m_dwCreatedTextureWidth;   /* the size made */
+    unsigned int  m_dwCreatedTextureHeight;
 
-    bool        m_bScaledS;
-    bool        m_bScaledT;
+    float         m_fXScale;                 /* made / asked for */
+    float         m_fYScale;
 
-    bool        m_bClampedS;
-    bool        m_bClampedT;
+    bool          m_bScaledS;
+    bool          m_bScaledT;
 
-    bool        m_bIsEnhancedTexture;
-    
-    TextureUsage    m_Usage;
+    bool          m_bClampedS;
+    bool          m_bClampedT;
 
-    virtual void ScaleImageToSurface(bool scaleS, bool scaleT);
-    virtual void ClampImageToSurfaceS();
-    virtual void ClampImageToSurfaceT();
+    bool          m_bIsEnhancedTexture;
 
-    virtual LPRICETEXTURE GetTexture() { return m_pTexture; }
+    TextureUsage  m_Usage;
 
-    uint32_t          GetPixelSize();
-    TextureFmt      GetSurfaceFormat(void); // Surface pixel format...
-    inline void     SetOthersVariables(void)
-    {
-        m_bClampedS = m_bScaledS = (m_dwWidth == m_dwCreatedTextureWidth);
-        m_bClampedT = m_bScaledT = (m_dwHeight == m_dwCreatedTextureHeight);
-    }
-
-    // Provides access to "surface"
-    virtual bool StartUpdate(DrawInfo *di)=0;
-    virtual void EndUpdate(DrawInfo *di)=0;
-
-    /* While held, EndUpdate leaves the upload for later: a texture that is
-     * converted and then expanded goes to the GPU once, when released. */
-    void HoldUpload(bool hold)
-    {
-        m_bHoldUpload = hold;
-        if (!hold && m_bUploadPending)
-        {
-            m_bUploadPending = false;
-            EndUpdate(0);
-        }
-    }
-
-    virtual void RestoreAlphaChannel(void); // Restore Alpha channel from RGB channel
-
-protected:
-    CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage);
-    bool            m_bHoldUpload;
-    bool            m_bUploadPending;
-    LPRICETEXTURE   m_pTexture;
-    TextureFmt      m_dwTextureFmt;
+    /* while held, an update's end leaves the upload for later: a texture
+     * converted and then expanded goes to the GPU once, when let go */
+    bool          m_bHoldUpload;
+    bool          m_bUploadPending;
+    void         *m_pTexture;                /* the pixels */
+    TextureFmt    m_dwTextureFmt;
 };
 
+/* @tex, a backend's, made @dwWidth x @dwHeight for @usage, its size made
+ * the same, nothing more */
+void CTexture_Init(CTexture *tex, const CTextureOps *ops, uint32_t dwWidth, uint32_t dwHeight,
+      TextureUsage usage);
+/* @tex let go, and freed */
+void CTexture_Delete(CTexture *tex);
+
+uint32_t   CTexture_GetPixelSize(const CTexture *tex);
+TextureFmt CTexture_GetSurfaceFormat(const CTexture *tex);
+#define CTexture_GetTexture(tex) ((tex)->m_pTexture)
+
+/* @di where @tex's pixels are, to write; false where there are none */
+bool CTexture_StartUpdate(CTexture *tex, DrawInfo *di);
+/* the pixels written: on the GPU, or once let go while held */
+void CTexture_EndUpdate(CTexture *tex);
+void CTexture_HoldUpload(CTexture *tex, bool hold);
+
+/* scaled, clamped or not, as its size made says */
+#define CTexture_SetOthersVariables(tex) \
+    do { \
+        (tex)->m_bClampedS = (tex)->m_bScaledS = ((tex)->m_dwWidth == (tex)->m_dwCreatedTextureWidth); \
+        (tex)->m_bClampedT = (tex)->m_bScaledT = ((tex)->m_dwHeight == (tex)->m_dwCreatedTextureHeight); \
+    } while (0)
+
+#ifdef __cplusplus
+}
 #endif
 
+#endif

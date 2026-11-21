@@ -1434,3 +1434,8 @@ uint32_t CountryCodeToTVSystem(uint32_t countryCode)
 }
 
 
+
+/* the options OGLTexture.c makes and puts textures on the GPU by */
+extern "C" uint32_t RiceConfig_TextureQuality(void) { return options.textureQuality; }
+extern "C" uint32_t RiceConfig_ColorQuality(void)   { return options.colorQuality; }
+extern "C" uint32_t RiceConfig_Mipmapping(void)     { return options.mipmapping; }

@@ -295,8 +295,8 @@ typedef struct
     short s;
 } N64VtxPD;
 
-class CTexture;
-class COGLTexture;
+struct CTexture;
+struct COGLTexture;
 class CDirectXTexture;
 struct TxtrCacheEntry;
 

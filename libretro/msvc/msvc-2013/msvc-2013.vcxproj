@@ -474,7 +474,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\OGLGraphicsContext.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLRender.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\OGLRenderExt.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\OGLTexture.c" />
     <ClCompile Include="..\..\..\gles2rice\src\Render.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderBase.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RenderExt.cpp" />
@@ -482,7 +482,7 @@
     <ClCompile Include="..\..\..\gles2rice\src\RiceConfig.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_Parser.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\RSP_S2DEX.cpp" />
-    <ClCompile Include="..\..\..\gles2rice\src\Texture.cpp" />
+    <ClCompile Include="..\..\..\gles2rice\src\Texture.c" />
     <ClCompile Include="..\..\..\gles2rice\src\TextureManager.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\VectorMath.cpp" />
     <ClCompile Include="..\..\..\gles2rice\src\Video.cpp" />

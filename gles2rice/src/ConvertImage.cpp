@@ -69,7 +69,7 @@ void ConvertRGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
 
     uint8_t * pByteSrc = (uint8_t *)pSrc;
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     uint32_t nFiddle;
@@ -124,14 +124,14 @@ void ConvertRGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 void ConvertRGBA32(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     uint32_t * pSrc = (uint32_t*)(tinfo.pPhysicalAddress);
@@ -225,8 +225,8 @@ void ConvertRGBA32(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 // E.g. Dear Mario text
@@ -242,7 +242,7 @@ void ConvertIA4(CTexture *pTexture, const TxtrInfo &tinfo)
     if (((int64_t)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -329,8 +329,8 @@ void ConvertIA4(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 
 }
 
@@ -346,7 +346,7 @@ void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo)
     if (((int64_t)pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -400,8 +400,8 @@ void ConvertIA8(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }   
     
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 
 }
 
@@ -414,7 +414,7 @@ void ConvertIA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pSrc = (uint16_t*)(tinfo.pPhysicalAddress);
     uint8_t * pByteSrc = (uint8_t *)pSrc;
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -468,8 +468,8 @@ void ConvertIA16(CTexture *pTexture, const TxtrInfo &tinfo)
     }
 
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 
@@ -486,7 +486,7 @@ void ConvertI4(CTexture *pTexture, const TxtrInfo &tinfo)
     if (((int64_t) pSrc) % 4) TRACE0("Texture src addr is not aligned to 4 bytes, check me");
 #endif
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -584,8 +584,8 @@ void ConvertI4(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 // Used by MarioKart
@@ -595,7 +595,7 @@ void ConvertI8(CTexture *pTexture, const TxtrInfo &tinfo)
     uint32_t nFiddle;
 
     int64_t pSrc = (int64_t) tinfo.pPhysicalAddress;
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -646,8 +646,8 @@ void ConvertI8(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 
 }
 
@@ -691,7 +691,7 @@ void ConvertCI4_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
     
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -783,8 +783,8 @@ void ConvertCI4_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
             }
         }
     }
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 // Used by Starfox intro
@@ -802,7 +802,7 @@ void ConvertCI4_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -890,8 +890,8 @@ void ConvertCI4_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
             }
         }
     }
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 
@@ -910,7 +910,7 @@ void ConvertCI8_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_NONE);
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
     
     if (tinfo.bSwapped)
@@ -964,8 +964,8 @@ void ConvertCI8_RGBA16(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 
 }
 
@@ -985,7 +985,7 @@ void ConvertCI8_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
     bool bIgnoreAlpha = (tinfo.TLutFmt==TLUT_FMT_UNKNOWN);
 
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     if (tinfo.bSwapped)
@@ -1038,14 +1038,14 @@ void ConvertCI8_IA16(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 void ConvertYUV(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    if (!pTexture->StartUpdate(&dInfo))
+    if (!CTexture_StartUpdate(pTexture, &dInfo))
         return;
 
     uint32_t x, y;
@@ -1142,8 +1142,8 @@ void ConvertYUV(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 uint32_t ConvertYUV16ToR8G8B8(int Y, int U, int V)
@@ -1172,7 +1172,7 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
 
-    if (!pTexture->StartUpdate(&dInfo)) 
+    if (!CTexture_StartUpdate(pTexture, &dInfo)) 
         return;
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
@@ -1289,14 +1289,14 @@ void Convert4b(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    if (!pTexture->StartUpdate(&dInfo)) 
+    if (!CTexture_StartUpdate(pTexture, &dInfo)) 
         return;
 
     uint16_t * pPal = (uint16_t *)tinfo.PalAddress;
@@ -1386,15 +1386,15 @@ void Convert8b(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 
 
 void Convert16b(CTexture *pTexture, const TxtrInfo &tinfo)
 {
     DrawInfo dInfo;
-    if (!pTexture->StartUpdate(&dInfo)) 
+    if (!CTexture_StartUpdate(pTexture, &dInfo)) 
         return;
 
     gDPTile *tile = &gDP.tiles[tinfo.tileNo];
@@ -1452,7 +1452,7 @@ void Convert16b(CTexture *pTexture, const TxtrInfo &tinfo)
         }
     }
 
-    pTexture->EndUpdate(&dInfo);
-    pTexture->SetOthersVariables();
+    CTexture_EndUpdate(pTexture);
+    CTexture_SetOthersVariables(pTexture);
 }
 

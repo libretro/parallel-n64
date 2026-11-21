@@ -160,14 +160,9 @@ CRender * OGLDeviceBuilder::CreateRender(void)
 
 CTexture * OGLDeviceBuilder::CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage)
 {
-    COGLTexture *txtr = new COGLTexture(dwWidth, dwHeight, usage);
-    if( txtr->m_pTexture == NULL )
-    {
-        delete txtr;
+    CTexture *txtr = COGLTexture_New(dwWidth, dwHeight, usage);
+    if( txtr == NULL )
         TRACE0("Cannot create new texture, out of video memory");
-        return NULL;
-    }
-
     return txtr;
 }
 
