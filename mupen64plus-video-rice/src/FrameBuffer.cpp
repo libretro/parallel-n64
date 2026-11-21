@@ -1544,3 +1544,8 @@ extern "C" void RiceFB_CloseRenderTexture(bool toSave)
 {
     g_pFrameBufferManager->CloseRenderTexture(toSave);
 }
+
+extern "C" void RiceFB_ActiveTextureBuffer(void)
+{
+   g_pFrameBufferManager->ActiveTextureBuffer();
+}

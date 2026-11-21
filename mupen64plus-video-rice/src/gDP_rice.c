@@ -1,33 +1,30 @@
 #include <stdint.h>
+#include <string.h>
 
 #include <retro_miscellaneous.h>
 
 #include "osal_preproc.h"
-#include "float.h"
+#include "Config.h"
 #include "ConvertImage.h"
-#include "DeviceBuilder.h"
 #include "FrameBuffer.h"
-#include "Render.h"
+#include "RenderBase.h"
 #include "Timing.h"
+#include "Video.h"
 
 #include "../../Graphics/GBI.h"
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
 #include "../../Graphics/image_convert.h"
 #include "../../Graphics/rdp_coverage.h"
 
-void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
-
-extern TMEMLoadMapInfo g_tmemInfo0;              /* Info for Tmem=0 */
-extern TMEMLoadMapInfo g_tmemInfo1;              /* Info for Tmem=0x100 */
-extern uint32_t g_TmemFlag[16];
-extern uint32_t g_TxtLoadBy;
-
-static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
+static INLINE void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 {
-   // copy leading bytes
+   /* copy leading bytes */
    int leadingBytes = ((uintptr_t)src) & 3;
+   int numDWords;
+   int trailingBytes;
    if (leadingBytes != 0)
    {
+      int i;
       leadingBytes = 4-leadingBytes;
       if ((unsigned int)leadingBytes > numBytes)
          leadingBytes = numBytes;
@@ -38,7 +35,7 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
 #else
       src = (void *)((uintptr_t)src ^ 3);
 #endif
-      for (int i = 0; i < leadingBytes; i++)
+      for (i = 0; i < leadingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
          dest = (void *)((uintptr_t)dest+1);
@@ -47,27 +44,29 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
       src = (void *)((uintptr_t)src+5);
    }
 
-   // copy dwords
-   int numDWords = numBytes >> 2;
+   /* copy dwords */
+   numDWords = numBytes >> 2;
    while (numDWords--)
    {
-      uint32_t dword = *(uint32_t *)src;
+      uint32_t dword;
+      memcpy(&dword, src, 4);               /* src aligned, dest after the leading bytes not */
       dword = ((dword<<24)|((dword<<8)&0x00FF0000)|((dword>>8)&0x0000FF00)|(dword>>24));
-      *(uint32_t *)dest = dword;
+      memcpy(dest, &dword, 4);
       dest = (void *)((uintptr_t)dest+4);
       src  = (void *)((uintptr_t)src +4);
    }
 
-   // copy trailing bytes
-   int trailingBytes = numBytes & 3;
+   /* copy trailing bytes */
+   trailingBytes = numBytes & 3;
    if (trailingBytes)
    {
+    int i;
 #ifdef MSB_FIRST
       src = (void *)((uintptr_t)src);
 #else
       src = (void *)((uintptr_t)src ^ 3);
 #endif
-      for (int i = 0; i < trailingBytes; i++)
+      for (i = 0; i < trailingBytes; i++)
       {
          *(uint8_t *)(dest) = *(uint8_t *)(src);
          dest = (void *)((uintptr_t)dest+1);
@@ -76,7 +75,7 @@ static inline void UnswapCopy( void *src, void *dest, uint32_t numBytes )
    }
 }
 
-static inline void DWordInterleave( void *mem, uint32_t numDWords )
+static INLINE void DWordInterleave( void *mem, uint32_t numDWords )
 {
     int tmp;
     while( numDWords-- )
@@ -88,9 +87,9 @@ static inline void DWordInterleave( void *mem, uint32_t numDWords )
     }
 }
 
-static inline void QWordInterleave( void *mem, uint32_t numDWords )
+static INLINE void QWordInterleave( void *mem, uint32_t numDWords )
 {
-   numDWords >>= 1; // qwords
+   numDWords >>= 1; /* qwords */
    while( numDWords-- )
    {
       int tmp0, tmp1;
@@ -127,8 +126,8 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
 
         if( (size&0x1F) != 0 && (index+i) < TMEM_FLAG_COUNT )
         {
-            //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-            g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
+            /* ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size); */
+            g_TmemFlag[index+i] &= ~((1u<<(size&0x1F))-1);
         }
 
         g_TmemFlag[index] |= 1;
@@ -138,19 +137,19 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
         if( bitIndex + size <= 0x1F )
         {
             uint32_t val = g_TmemFlag[index];
-            uint32_t mask = (1<<(bitIndex))-1;
-            mask |= ~((1<<(bitIndex + size))-1);
+            uint32_t mask = (1u<<(bitIndex))-1;
+            mask |= ~((1u<<(bitIndex + size))-1);
             val &= mask;
-            val |= (1<<bitIndex);
+            val |= (1u<<bitIndex);
             g_TmemFlag[index] = val;
         }
         else
         {
-            //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
+            /* ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size); */
             uint32_t val = g_TmemFlag[index];
-            uint32_t mask = (1<<bitIndex)-1;
+            uint32_t mask = (1u<<bitIndex)-1;
             val &= mask;
-            val |= (1<<bitIndex);
+            val |= (1u<<bitIndex);
             g_TmemFlag[index] = val;
             index++;
             size -= (0x20-bitIndex);
@@ -165,8 +164,8 @@ static void SetTmemFlag(uint32_t tmemAddr, uint32_t size)
 
                 if( (size&0x1F) != 0 && (index+i) < TMEM_FLAG_COUNT )
                 {
-                    //ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size);
-                    g_TmemFlag[index+i] &= ~((1<<(size&0x1F))-1);
+                    /* ErrorMsg("Check me: tmemaddr=%X, size=%x", tmemAddr, size); */
+                    g_TmemFlag[index+i] &= ~((1u<<(size&0x1F))-1);
                 }
             }
         }
@@ -194,7 +193,7 @@ void ricegDPSetFillColor(uint32_t c)
 void ricegDPSetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {
    DP_Timing(DLParser_SetFogColor);
-   CRender::g_pRender->SetFogColor(r, g, b, a );
+   RiceRender_SetFogColor(r, g, b, a);
 }
 
 void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
@@ -212,73 +211,88 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
    else if (RDPCVG_MAY_DRAW_COVERAGE(gRDP.otherMode._u32[0]))
       rice_coverage_fill(ulx, uly, lrx, lry);
 
-   //TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor););
+   /* TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor);); */
 
-   // Skip this
+   /* Skip this */
    if( status.bHandleN64RenderTexture && options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
       return;
 
    if (IsUsedAsDI(g_CI.dwAddr))
    {
-      // Clear the Z Buffer
+      /* Clear the Z Buffer */
       if( ulx != 0 || uly != 0 || windowSetting.uViWidth- lrx > 1 || windowSetting.uViHeight - lry > 1)
       {
          if( options.enableHackForGames == HACK_FOR_GOLDEN_EYE )
          {
-            // GoldenEye is using double zbuffer
+            /* GoldenEye is using double zbuffer */
             if( g_CI.dwAddr == g_ZI.dwAddr )
             {
-               // The zbuffer is the upper screen
-               COORDRECT rect={int(ulx * windowSetting.fMultX),int(uly * windowSetting.fMultY),int(lrx * windowSetting.fMultX),int(lry * windowSetting.fMultY)};
-               CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-               LOG_UCODE("    Clearing ZBuffer");
+               /* The zbuffer is the upper screen */
+               COORDRECT rect;
+               rect.x1 = (int)(ulx * windowSetting.fMultX);
+               rect.y1 = (int)(uly * windowSetting.fMultY);
+               rect.x2 = (int)(lrx * windowSetting.fMultX);
+               rect.y2 = (int)(lry * windowSetting.fMultY);
+               RiceRender_ClearDepth(&rect);   /* Check me */
             }
             else
             {
-               // The zbuffer is the lower screen
+               /* The zbuffer is the lower screen */
                int h = (g_CI.dwAddr-g_ZI.dwAddr)/g_CI.dwWidth/2;
-               COORDRECT rect={int(ulx * windowSetting.fMultX),int((uly + h)*windowSetting.fMultY),int(lrx * windowSetting.fMultX),int((lry + h)*windowSetting.fMultY)};
-               CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-               LOG_UCODE("    Clearing ZBuffer");
+               COORDRECT rect;
+               rect.x1 = (int)(ulx * windowSetting.fMultX);
+               rect.y1 = (int)((uly + h)*windowSetting.fMultY);
+               rect.x2 = (int)(lrx * windowSetting.fMultX);
+               rect.y2 = (int)((lry + h)*windowSetting.fMultY);
+               RiceRender_ClearDepth(&rect);   /* Check me */
             }
          }
          else
          {
-            COORDRECT rect={int(ulx * windowSetting.fMultX),int(uly * windowSetting.fMultY),int(lrx * windowSetting.fMultX),int(lry * windowSetting.fMultY)};
-            CRender::g_pRender->ClearBuffer(false,true,rect);   //Check me
-            LOG_UCODE("    Clearing ZBuffer");
+            COORDRECT rect;
+               rect.x1 = (int)(ulx * windowSetting.fMultX);
+               rect.y1 = (int)(uly * windowSetting.fMultY);
+               rect.x2 = (int)(lrx * windowSetting.fMultX);
+               rect.y2 = (int)(lry * windowSetting.fMultY);
+            RiceRender_ClearDepth(&rect);   /* Check me */
          }
       }
       else
       {
-         CRender::g_pRender->ClearBuffer(false,true);    //Check me
-         LOG_UCODE("    Clearing ZBuffer");
+         RiceRender_ClearDepth(NULL);    /* Check me */
       }
 
       if( g_curRomInfo.bEmulateClear )
       {
-         // Emulating Clear, by write the memory in RDRAM
+         /* Emulating Clear, by write the memory in RDRAM */
          uint16_t color = (uint16_t)gRDP.originalFillColor;
          uint32_t pitch = g_CI.dwWidth<<1;
          int64_t base   = (int64_t)(rdram_u8 + g_CI.dwAddr);
+         uint32_t i;
 
-         for( uint32_t i = uly; i < lry; i++ )
+         for( i = uly; i < lry; i++ )
          {
-            for( uint32_t j= ulx; j < lrx; j++ )
+            uint32_t j;
+            for( j = ulx; j < lrx; j++ )
                *(uint16_t*)((base+pitch*i+j)^2) = color;
          }
       }
    }
    else if( status.bHandleN64RenderTexture )
    {
+      int cond1;
+      int cond2;
+      int cond3;
+      int cond4;
+      int cond5;
       if( !status.bCIBufferIsRendered )
-         g_pFrameBufferManager->ActiveTextureBuffer();
+         RiceFB_ActiveTextureBuffer();
 
-      int cond1 =  (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
-      int cond2 =  (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
-      int cond3 =  ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
-      int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
-      int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
+      cond1 = (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
+      cond2 = (((int)uly < status.topRendered)      ? ((int)uly) : (status.topRendered));
+      cond3 = ((status.rightRendered > ((int)lrx))  ? ((int)lrx) : (status.rightRendered));
+      cond4 = ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
+      cond5 = ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
 
       status.leftRendered = status.leftRendered < 0   ? ulx  : cond1;
       status.topRendered = status.topRendered<0       ? uly : cond2;
@@ -294,9 +308,11 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
             uint16_t color = (uint16_t)gRDP.originalFillColor;
             uint32_t pitch = g_pRenderTextureInfo->N64Width<<1;
             int64_t base   = (int64_t)(rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-            for( uint32_t i = uly; i < lry; i++ )
+            uint32_t i;
+            for( i = uly; i < lry; i++ )
             {
-               for( uint32_t j= ulx; j< lrx; j++ )
+               uint32_t j;
+               for( j = ulx; j< lrx; j++ )
                   *(uint16_t*)((base+pitch*i+j)^2) = color;
             }
          }
@@ -305,9 +321,11 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
             uint8_t color  = (uint8_t)gRDP.originalFillColor;
             uint32_t pitch = g_pRenderTextureInfo->N64Width;
             int64_t base   = (int64_t) (rdram_u8 + g_pRenderTextureInfo->CI_Info.dwAddr);
-            for( uint32_t i= uly; i< lry; i++ )
+            uint32_t i;
+            for( i = uly; i< lry; i++ )
             {
-               for( uint32_t j= ulx; j< lrx; j++ )
+               uint32_t j;
+               for( j = ulx; j< lrx; j++ )
                   *(uint8_t*)((base+pitch*i+j)^3) = color;
             }
          }
@@ -324,27 +342,26 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
       {
          status.bFrameBufferIsDrawn = true;
 
-         //if( ulx ==0 && uly ==0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) && gRDP.fillColor == 0)
-         //{
-         //  CRender::g_pRender->ClearBuffer(true,false);
-         //}
-         //else
+         /* if( ulx ==0 && uly ==0 && (lrx == g_pRenderTextureInfo->N64Width || lrx == g_pRenderTextureInfo->N64Width-1 ) && gRDP.fillColor == 0) */
+         /* { */
+         /* CRender::g_pRender->ClearBuffer(true,false); */
+         /* } */
+         /* else */
          {
             if( gRDP.otherMode.cycle_type == G_CYC_FILL )
             {
-               CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
+               RiceRender_FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
             }
             else
             {
-               COLOR primColor = GetPrimitiveColor();
-               CRender::g_pRender->FillRect(ulx, uly, lrx, lry, primColor);
+               COLOR primColor = gRDP.primitiveColor;
+               RiceRender_FillRect(ulx, uly, lrx, lry, primColor);
             }
          }
       }
    }
    else
    {
-      LOG_UCODE("    Filling Rectangle");
       if( frameBufferOptions.bSupportRenderTextures || frameBufferOptions.bCheckBackBufs )
       {
          int cond1 =  (((int)ulx < status.leftRendered)     ? ((int)ulx) : (status.leftRendered));
@@ -353,7 +370,7 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          int cond4 =  ((status.bottomRendered > ((int)lry)) ? ((int)lry) : (status.bottomRendered));
          int cond5 =  ((g_pRenderTextureInfo->maxUsedHeight > ((int)lry)) ? ((int)lry) : (g_pRenderTextureInfo->maxUsedHeight));
 
-         if( !status.bCIBufferIsRendered ) g_pFrameBufferManager->ActiveTextureBuffer();
+         if( !status.bCIBufferIsRendered ) RiceFB_ActiveTextureBuffer();
 
          status.leftRendered = status.leftRendered<0     ? ulx  : cond1;
          status.topRendered = status.topRendered<0       ? uly  : cond2;
@@ -364,14 +381,14 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
       if( gRDP.otherMode.cycle_type == G_CYC_FILL )
       {
          if( !status.bHandleN64RenderTexture || g_pRenderTextureInfo->CI_Info.dwSize == G_IM_SIZ_16b )
-            CRender::g_pRender->FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
+            RiceRender_FillRect(ulx, uly, lrx, lry, gRDP.fillColor);
       }
       else
       {
-         COLOR primColor = GetPrimitiveColor();
-         //if( RGBA_GETALPHA(primColor) != 0 )
+         COLOR primColor = gRDP.primitiveColor;
+         /* if( RGBA_GETALPHA(primColor) != 0 ) */
          {
-            CRender::g_pRender->FillRect(ulx, uly, lrx, lry, primColor);
+            RiceRender_FillRect(ulx, uly, lrx, lry, primColor);
          }
       }
    }
@@ -391,56 +408,59 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t dxt )
 {
    TileAdditionalInfo *tileinfo   = &gRDP.tilesinfo[tileno];
-   gDPTile            *tile       = &gDP.tiles[tileno];
+   uint32_t size;
+   TMEMLoadMapInfo *info;
+   int i;
+   struct gDPTile            *tile       = &gDP.tiles[tileno];
 
    tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
-   uint32_t size     = lrs+1;
+   size = lrs+1;
 
    if( tile->size == G_IM_SIZ_32b )
       size<<=1;
 
    SetTmemFlag(tile->tmem, size>>2);
 
-   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile->tmem];
+   info = &g_tmemLoadAddrMap[tile->tmem];
 
-   info.bSwapped = (dxt == 0? true : false);
+   info->bSwapped = (dxt == 0? true : false);
 
-   info.sl = tileinfo->hilite_sl = tile->lrs = uls;
-   info.sh = tileinfo->hilite_sh  = tile->uls = lrs;
-   info.tl = tile->lrt = ult;
-   info.th = tile->ult = dxt;
+   info->sl = tileinfo->hilite_sl = tile->lrs = uls;
+   info->sh = tileinfo->hilite_sh  = tile->uls = lrs;
+   info->tl = tile->lrt = ult;
+   info->th = tile->ult = dxt;
 
    tileinfo->bSizeIsValid = false;
 
-   for( int i=0; i<8; i++ )
+   for( i = 0; i<8; i++ )
    {
       if( gDP.tiles[i].tmem == tile->tmem )
          tileinfo->lastTileCmd = CMD_LOADBLOCK;
    }
 
-   info.dwLoadAddress = g_TI.dwAddr;
-   info.bSetBy        = CMD_LOADBLOCK;
-   info.dxt           = dxt;
-   info.dwLine        = tile->line;
+   info->dwLoadAddress = g_TI.dwAddr;
+   info->bSetBy        = CMD_LOADBLOCK;
+   info->dxt           = dxt;
+   info->dwLine        = tile->line;
 
-   info.dwFormat      = g_TI.dwFormat;
-   info.dwSize        = g_TI.dwSize;
-   info.dwWidth       = g_TI.dwWidth;
-   info.dwTotalWords  = size;
-   info.dwTmem        = tile->tmem;
+   info->dwFormat      = g_TI.dwFormat;
+   info->dwSize        = g_TI.dwSize;
+   info->dwWidth       = g_TI.dwWidth;
+   info->dwTotalWords  = size;
+   info->dwTmem        = tile->tmem;
 
    if( gDP.tiles[tileno].tmem == 0 )
    {
       if( size >= 1024 )
       {
-         memcpy(&g_tmemInfo0, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo0, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo0.dwTotalWords = size>>2;
       }
 
       if( size == 2048 )
       {
-         memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo1, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo1.dwTotalWords = size>>2;
       }
    }
@@ -448,7 +468,7 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
    {
       if( size == 1024 )
       {
-         memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo1, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo1.dwTotalWords = size>>2;
       }
    }
@@ -461,27 +481,33 @@ void ricegDPLoadBlock( uint32_t tileno, uint32_t uls, uint32_t ult,
       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
       uint32_t bytes = (lrs + 1) << tile->size >> 1;
       uint32_t address = g_TI.dwAddr + ult * g_TI.bpl + (uls << g_TI.dwSize >> 1);
+      uint64_t *src;
+      uint64_t *dest;
       if ((bytes == 0) || ((address + bytes) > g_dwRamSize) || (((tile->tmem << 3) + bytes) > 4096))
       {
          return;
       }
-      uint64_t* src = (uint64_t*)(rdram_u8 + address);
-      uint64_t* dest = &g_Tmem.g_Tmem64bit[tile->tmem];
+      src = (uint64_t*)(rdram_u8 + address);
+      dest = &g_Tmem.g_Tmem64bit[tile->tmem];
 
       if( dxt > 0)
       {
+         uint32_t line;
+         uint32_t bpl;
+         uint32_t height;
+         uint32_t y;
          void (*Interleave)( void *mem, uint32_t numDWords );
 
-         uint32_t line = (2047 + dxt) / dxt;
-         uint32_t bpl = line << 3;
-         uint32_t height = bytes / bpl;
+         line = (2047 + dxt) / dxt;
+         bpl = line << 3;
+         height = bytes / bpl;
 
          if (tile->size == G_IM_SIZ_32b)
             Interleave = QWordInterleave;
          else
             Interleave = DWordInterleave;
 
-         for (uint32_t y = 0; y < height; y++)
+         for (y = 0; y < height; y++)
          {
             UnswapCopy( src, dest, bpl );
             if (y & 1) Interleave( dest, line );
@@ -501,7 +527,13 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
       uint32_t lrs, uint32_t lrt)
 {
    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
-   gDPTile                *tile = &gDP.tiles[tileno];
+   uint32_t bpl;
+   uint32_t height;
+   uint32_t line;
+   int i;
+   uint32_t size;
+   TMEMLoadMapInfo *info;
+   struct gDPTile                *tile = &gDP.tiles[tileno];
    tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
    if (lrt < ult)
@@ -515,44 +547,47 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    tileinfo->hilite_th = tile->ult = lrt;
    tileinfo->bSizeIsValid = true;
 
-   // compute block height, and bpl of source and destination
-   uint32_t bpl    = (lrs - uls + 1) << tile->size >> 1;
-   uint32_t height = lrt - ult + 1;
-   uint32_t line   = tile->line;
+   /* compute block height, and bpl of source and destination */
+   bpl = (lrs - uls + 1) << tile->size >> 1;
+   height = lrt - ult + 1;
+   line = tile->line;
    if (tile->size == G_IM_SIZ_32b)
       line <<= 1;
 
-   if (((tile->tmem << 3) + line * height) > 4096)  // check destination ending point (TMEM is 4k bytes)
+   if (((tile->tmem << 3) + line * height) > 4096)  /* check destination ending point (TMEM is 4k bytes) */
       return;
 
    if( options.bUseFullTMEM )
    {
       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
+      uint32_t address;
+      uint64_t *src;
+      uint8_t *dest;
+      uint32_t y;
       void (*Interleave)( void *mem, uint32_t numDWords );
 
       if( g_TI.bpl == 0 )
       {
          if( options.enableHackForGames == HACK_FOR_BUST_A_MOVE )
          {
-            g_TI.bpl = 1024;        // Hack for Bust-A-Move
+            g_TI.bpl = 1024;        /* Hack for Bust-A-Move */
          }
          else
          {
-            TRACE0("Warning: g_TI.bpl = 0" );
          }
       }
 
-      uint32_t address = g_TI.dwAddr + tile->lrt * g_TI.bpl + (tile->lrs << g_TI.dwSize >> 1);
-      uint64_t* src = (uint64_t*)&rdram_u8[address];
-      uint8_t* dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
+      address = g_TI.dwAddr + tile->lrt * g_TI.bpl + (tile->lrs << g_TI.dwSize >> 1);
+      src = (uint64_t*)&rdram_u8[address];
+      dest = (uint8_t*)&g_Tmem.g_Tmem64bit[tile->tmem];
 
-      if ((address + height * bpl) > g_dwRamSize) // check source ending point
+      if ((address + height * bpl) > g_dwRamSize) /* check source ending point */
       {
          return;
       }
 
-      // Line given for 32-bit is half what it seems it should since they split the
-      // high and low words. I'm cheating by putting them together.
+      /* Line given for 32-bit is half what it seems it should since they split the */
+      /* high and low words. I'm cheating by putting them together. */
       if (tile->size == G_IM_SIZ_32b)
       {
          Interleave = QWordInterleave;
@@ -564,11 +599,11 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 
       if( tile->line == 0 )
       {
-         //tile->line = 1;
+         /* tile->line = 1; */
          return;
       }
 
-      for (uint32_t y = 0; y < height; y++)
+      for (y = 0; y < height; y++)
       {
          UnswapCopy( src, dest, bpl );
          if (y & 1) Interleave( dest, line );
@@ -579,34 +614,34 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    }
 
 
-   for( int i=0; i<8; i++ )
+   for( i = 0; i<8; i++ )
    {
       if( gDP.tiles[i].tmem == tile->tmem )
          gRDP.tilesinfo[i].lastTileCmd = CMD_LOADTILE;
    }
 
-   uint32_t size = line * height;
+   size = line * height;
    SetTmemFlag(tile->tmem, size );
 
-   TMEMLoadMapInfo &info = g_tmemLoadAddrMap[tile->tmem];
+   info = &g_tmemLoadAddrMap[tile->tmem];
 
-   info.dwLoadAddress = g_TI.dwAddr;
-   info.dwFormat = g_TI.dwFormat;
-   info.dwSize = g_TI.dwSize;
-   info.dwWidth = g_TI.dwWidth;
+   info->dwLoadAddress = g_TI.dwAddr;
+   info->dwFormat = g_TI.dwFormat;
+   info->dwSize = g_TI.dwSize;
+   info->dwWidth = g_TI.dwWidth;
 
-   info.sl = uls;
-   info.sh = lrs;
-   info.tl = ult;
-   info.th = lrt;
+   info->sl = uls;
+   info->sh = lrs;
+   info->tl = ult;
+   info->th = lrt;
 
-   info.dxt = 0;
-   info.dwLine = tile->line;
-   info.dwTmem = tile->tmem;
-   info.dwTotalWords = size<<2;
+   info->dxt = 0;
+   info->dwLine = tile->line;
+   info->dwTmem = tile->tmem;
+   info->dwTotalWords = size<<2;
 
-   info.bSetBy = CMD_LOADTILE;
-   info.bSwapped =false;
+   info->bSetBy = CMD_LOADTILE;
+   info->bSwapped =false;
 
    g_TxtLoadBy = CMD_LOADTILE;
 
@@ -614,13 +649,13 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    {
       if( size >= 256 )
       {
-         memcpy(&g_tmemInfo0, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo0, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo0.dwTotalWords = size;
       }
 
       if( size == 512 )
       {
-         memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo1, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo1.dwTotalWords = size;
       }
    }
@@ -628,7 +663,7 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
    {
       if( size == 256 )
       {
-         memcpy(&g_tmemInfo1, &info, sizeof(TMEMLoadMapInfo) );
+         memcpy(&g_tmemInfo1, info, sizeof(TMEMLoadMapInfo));
          g_tmemInfo1.dwTotalWords = size;
       }
    }
@@ -643,7 +678,10 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
    uint32_t dwRDRAMOffset = 0;
 
    TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
-   gDPTile            *tile     = &gDP.tiles[tileno];
+   uint32_t dwPalAddress;
+   uint16_t *srcPal;
+   uint32_t i;
+   struct gDPTile            *tile     = &gDP.tiles[tileno];
 
    tileinfo->bForceWrapS = tileinfo->bForceWrapT = tileinfo->bForceClampS = tileinfo->bForceClampT = false;
 
@@ -657,16 +695,17 @@ void ricegDPLoadTLUT(uint16_t dwCount, uint32_t tileno, uint32_t uls, uint32_t u
 
    dwCount = (lrs - uls)+1;
    dwRDRAMOffset = (uls + ult*g_TI.dwWidth )*2;
-   uint32_t dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
+   dwPalAddress = g_TI.dwAddr + dwRDRAMOffset;
 
    /* Copy PAL to the PAL memory */
-   uint16_t *srcPal = (uint16_t*)(rdram_u8 + (dwPalAddress& (g_dwRamSize-1)) );
-   for (uint32_t i=0; i<dwCount && i<0x100; i++)
+   srcPal = (uint16_t*)(rdram_u8 + (dwPalAddress& (g_dwRamSize-1)) );
+   for (i = 0; i<dwCount && i<0x100; i++)
       g_wRDPTlut[(i+dwTMEMOffset)^1] = srcPal[i^1];
 
    if( options.bUseFullTMEM )
    {
-      for (uint32_t i=0; i<dwCount && i+tile->tmem < 0x200; i++)
+      uint32_t i;
+      for (i = 0; i<dwCount && i+tile->tmem < 0x200; i++)
          *(uint16_t*)(&g_Tmem.g_Tmem64bit[tile->tmem + i]) = srcPal[i^1];
    }
 

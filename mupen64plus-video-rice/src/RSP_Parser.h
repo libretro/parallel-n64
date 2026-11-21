@@ -350,7 +350,6 @@ typedef struct
 // Mask down to 0x003FFFFF?
 #define RSPSegmentAddr(seg) ( gSP.segment[((seg)>>24)&0x0F] + ((seg)&0x00FFFFFF) )
 
-extern uint16_t g_wRDPTlut[];
 extern const char *textluttype[4];
 
 extern const char *pszImgFormat[8];
@@ -367,6 +366,20 @@ extern SetImgInfo g_TI;
 extern TmemType g_Tmem;
 /* what each TMEM line was loaded from, 4KB of it */
 extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200];
+/* the last load that filled TMEM from 0, and from 0x100 */
+extern TMEMLoadMapInfo g_tmemInfo0;
+extern TMEMLoadMapInfo g_tmemInfo1;
+/* which TMEM lines a load started at, a bit each */
+extern uint32_t g_TmemFlag[16];
+/* the command that loaded TMEM last (CMD_LOADBLOCK, ...) */
+extern uint32_t g_TxtLoadBy;
+/* Rice's copy of TLUT */
+extern uint16_t g_wRDPTlut[0x200];
+
+/* whether the colour image at addr is a depth image */
+bool IsUsedAsDI(uint32_t addr);
+/* a fill rectangle's memory coverage, in RDRAM */
+void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
 #ifdef __cplusplus
 }
 #endif
@@ -402,7 +415,6 @@ void TriggerDPInterrupt();
 void TriggerSPInterrupt();
 uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize, uint32_t ucDSize);
 
-bool IsUsedAsDI(uint32_t addr);
 
 #ifdef __cplusplus
 #if defined(DEBUGGER)

@@ -80,6 +80,12 @@ extern "C" {
 #endif
 extern ALIGN(16, RDP_Options gRDP);
 extern RenderTexture g_textures[MAX_TEXTURES];
+
+/* Render.cpp's, the renderer's to C: the fog colour; the depth buffer
+   cleared, in rect or (NULL) all of it; a rectangle filled */
+void RiceRender_SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+void RiceRender_ClearDepth(COORDRECT *rect);
+bool RiceRender_FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor);
 #ifdef __cplusplus
 }
 #endif

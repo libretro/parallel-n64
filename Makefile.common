@@ -269,7 +269,6 @@ ifeq ($(HAVE_RICE),1)
 CFLAGS   += -DHAVE_RICE
 CXXFLAGS += -DHAVE_RICE
 SOURCES_CXX += $(VIDEODIR_RICE)/gSP_rice.cpp \
-				$(VIDEODIR_RICE)/gDP_rice.cpp \
             $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
             $(VIDEODIR_RICE)/RiceDebugger.cpp \
@@ -295,6 +294,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/ConvertImage.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/FrameBufferRDRAM.c \
+            $(VIDEODIR_RICE)/gDP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \
             $(VIDEODIR_RICE)/RenderTexture.c \
             $(VIDEODIR_RICE)/TextureManager.c \

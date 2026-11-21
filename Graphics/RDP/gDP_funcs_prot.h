@@ -61,9 +61,10 @@ void gln64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
 #endif
 #endif
 
-#ifdef __cplusplus
-
 /* Rice prototypes */
+#ifdef __cplusplus
+extern "C" {
+#endif
 void ricegDPSetScissor(void *data, 
       uint32_t mode, float ulx, float uly, float lrx, float lry );
 void ricegDPSetFillColor(uint32_t c);
@@ -77,6 +78,8 @@ void ricegDPLoadTile(uint32_t tileno, uint32_t uls, uint32_t ult,
 void ricegDPLoadTLUT(uint16_t count, uint32_t tileno,
       uint32_t uls, uint32_t ult, uint32_t lrs, uint32_t lrt);
 
+#ifdef __cplusplus
+}
 #endif
 
 #endif

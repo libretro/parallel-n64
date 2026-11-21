@@ -40,6 +40,9 @@ uint16_t ConvertRGBATo555(uint32_t color32);
 extern RenderTextureInfo gRenderTextureInfos[];
 extern RenderTextureInfo *g_pRenderTextureInfo;
 
+/* FrameBuffer.cpp's: the render texture drawn into made active */
+void RiceFB_ActiveTextureBuffer(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -256,6 +256,25 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
 }
 
 
+/* gDP_rice.c's: the renderer's to C */
+extern "C" void RiceRender_SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
+    CRender::g_pRender->SetFogColor(r, g, b, a);
+}
+
+extern "C" void RiceRender_ClearDepth(COORDRECT *rect)
+{
+    if (rect)
+        CRender::g_pRender->ClearBuffer(false, true, *rect);
+    else
+        CRender::g_pRender->ClearBuffer(false, true);
+}
+
+extern "C" bool RiceRender_FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
+{
+    return CRender::g_pRender->FillRect(nX0, nY0, nX1, nY1, dwColor);
+}
+
 /* Blender.c's: the renderer's alpha test */
 extern "C" void RiceRender_SetAlphaTestEnable(int enable)
 {
