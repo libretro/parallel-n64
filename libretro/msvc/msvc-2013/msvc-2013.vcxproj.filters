@@ -327,7 +327,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\TextureManager.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\VectorMath.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\VectorMath.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Video.cpp">

@@ -18,13 +18,11 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
 #ifndef VECTORMATH_H
 #define VECTORMATH_H
 
-/******************************************************************************
- * 4x4 matrix
- ******************************************************************************/
+/* Rice's 4x4 matrices and vectors: C structs and C functions; for C++,
+ * the same structs with the constructors and the product its code uses. */
 
 typedef struct _MATRIX {
     union {
@@ -38,93 +36,12 @@ typedef struct _MATRIX {
     };
 } MATRIX;
 
-typedef struct XMATRIX : public MATRIX {
-public:
-    XMATRIX();
-    XMATRIX( const float * );
-    XMATRIX( const MATRIX & );
-    XMATRIX( float _11, float _12, float _13, float _14,
-             float _21, float _22, float _23, float _24,
-             float _31, float _32, float _33, float _34,
-             float _41, float _42, float _43, float _44 );
-
-    float& operator () ( unsigned int Row, unsigned int Col );
-    float  operator () ( unsigned int Row, unsigned int Col ) const;
-
-    operator float* ();
-    operator const float* () const;
-
-    // assignment operators
-    XMATRIX& operator *= ( const XMATRIX & );
-    XMATRIX& operator += ( const XMATRIX & );
-    XMATRIX& operator -= ( const XMATRIX & );
-    XMATRIX& operator *= ( float );
-    XMATRIX& operator /= ( float );
-
-    // unary operators
-    XMATRIX operator + () const;
-    XMATRIX operator - () const;
-
-    // binary operators
-    XMATRIX operator * ( const XMATRIX & ) const;
-    XMATRIX operator + ( const XMATRIX & ) const;
-    XMATRIX operator - ( const XMATRIX & ) const;
-    XMATRIX operator * ( float ) const;
-    XMATRIX operator / ( float ) const;
-    friend XMATRIX operator * ( float, const XMATRIX & );
-    bool operator == ( const XMATRIX & ) const;
-    bool operator != ( const XMATRIX & ) const;
-} XMATRIX, *LPXMATRIX;
-
-/******************************************************************************
- * 3d vector
- ******************************************************************************/
-
 typedef struct _VECTOR3
 {
     float x;
     float y;
     float z;
 } VECTOR3;
-
-class XVECTOR3 : public VECTOR3
-{
-public:
-    XVECTOR3();
-    XVECTOR3( const float *f );
-    XVECTOR3( const VECTOR3 &v );
-    XVECTOR3( float _x, float _y, float _z );
-
-    // casting
-    inline operator float* ();
-    inline operator const float* () const;
-
-    // assignment operators
-    inline XVECTOR3& operator += ( const XVECTOR3 &op );
-    inline XVECTOR3& operator -= ( const XVECTOR3 &op );
-    inline XVECTOR3& operator *= ( float op );
-    inline XVECTOR3& operator /= ( float op );
-
-    // unary operators
-    inline XVECTOR3 operator + () const;
-    inline XVECTOR3 operator - () const;
-
-    // binary operators
-        inline XVECTOR3 operator + ( const XVECTOR3 &op ) const;
-    inline XVECTOR3 operator - ( const XVECTOR3 &op ) const;
-    inline XVECTOR3 operator * ( float op ) const;
-    inline XVECTOR3 operator / ( float op ) const;
-
-
-    friend XVECTOR3 operator * ( float, const XVECTOR3& );
-
-    inline bool operator == ( const XVECTOR3 &op ) const;
-    inline bool operator != ( const XVECTOR3 &op ) const;
-};
-
-/******************************************************************************
- * 4d vector
- ******************************************************************************/
 
 typedef struct _VECTOR4
 {
@@ -134,43 +51,61 @@ typedef struct _VECTOR4
     float w;
 } VECTOR4;
 
-class XVECTOR4 : public VECTOR4
-{
-public:
-    XVECTOR4();
-    XVECTOR4( const float *f );
-    XVECTOR4( const VECTOR4 &v );
-    XVECTOR4( float _x, float _y, float _z, float _w );
-
-    // casting
-    inline operator float* ();
-    inline operator const float* () const;
-
-    // assignment operators
-    inline XVECTOR4& operator += ( const XVECTOR4 &op );
-    inline XVECTOR4& operator -= ( const XVECTOR4 &op );
-    inline XVECTOR4& operator *= ( float op );
-    inline XVECTOR4& operator /= ( float op );
-
-    // unary operators
-    inline XVECTOR4 operator + () const;
-    inline XVECTOR4 operator - () const;
-
-    // binary operators
-    inline XVECTOR4 operator + ( const XVECTOR4 &op ) const;
-    inline XVECTOR4 operator - ( const XVECTOR4 &op ) const;
-    inline XVECTOR4 operator * ( float op ) const;
-    inline XVECTOR4 operator / ( float op ) const;
-
-    friend XVECTOR4 operator * ( float, const XVECTOR4& );
-
-    inline bool operator == ( const XVECTOR4 &op ) const;
-    inline bool operator != ( const XVECTOR4 &op ) const;
-};
-
-XVECTOR4 Vec3Transform(XVECTOR4 *pOut, const XVECTOR3 *pV, const XMATRIX *pM);
-
-XMATRIX* MatrixTranspose(XMATRIX* pOut, const XMATRIX* pM);
-
+#ifdef __cplusplus
+struct XMATRIX;
+struct XVECTOR3;
+struct XVECTOR4;
+#else
+typedef MATRIX XMATRIX;
+typedef VECTOR3 XVECTOR3;
+typedef VECTOR4 XVECTOR4;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* pOut = pA times pB; pOut is neither of them */
+void MatrixMultiply(XMATRIX *pOut, const XMATRIX *pA, const XMATRIX *pB);
+/* pOut = pM transposed; pOut is not pM */
+XMATRIX *MatrixTranspose(XMATRIX *pOut, const XMATRIX *pM);
+/* pOut = (pV, 1) times pM */
+void Vec3Transform(XVECTOR4 *pOut, const XVECTOR3 *pV, const XMATRIX *pM);
+
+#ifdef __cplusplus
+}
+
+struct XMATRIX : public MATRIX
+{
+    XMATRIX() { }
+    XMATRIX(float a11, float a12, float a13, float a14,
+            float a21, float a22, float a23, float a24,
+            float a31, float a32, float a33, float a34,
+            float a41, float a42, float a43, float a44)
+    {
+        _11 = a11; _12 = a12; _13 = a13; _14 = a14;
+        _21 = a21; _22 = a22; _23 = a23; _24 = a24;
+        _31 = a31; _32 = a32; _33 = a33; _34 = a34;
+        _41 = a41; _42 = a42; _43 = a43; _44 = a44;
+    }
+    XMATRIX operator * (const XMATRIX &b) const
+    {
+        XMATRIX r;
+        MatrixMultiply(&r, this, &b);
+        return r;
+    }
+};
+
+struct XVECTOR3 : public VECTOR3
+{
+    XVECTOR3() { }
+    XVECTOR3(float _x, float _y, float _z) { x = _x; y = _y; z = _z; }
+};
+
+struct XVECTOR4 : public VECTOR4
+{
+    XVECTOR4() { }
+};
+#endif
+
+#endif
