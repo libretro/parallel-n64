@@ -67,7 +67,8 @@ void TextureManager_PurgeOldTextures(void);
 void TextureManager_RecycleAllTextures(void);
 bool TextureManager_CleanUp(void);
 
-/* a CRC of texels in RDRAM, and the highest palette index among them */
+/* a CRC of texels in RDRAM, and the highest palette index among them; 0,
+   and every index, where they are not all in RDRAM */
 uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height,
       uint32_t size, uint32_t pitchInBytes);
 unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height,

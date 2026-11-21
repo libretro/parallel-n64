@@ -206,6 +206,17 @@ static TxtrCacheEntry *CreateNewCacheEntry(uint32_t dwAddr, uint32_t dwWidth, ui
 /* the last CRC worked out: GetTexture reads it after CalculateRDRAMCRC */
 static uint32_t dwAsmCRC;
 
+/* @height rows of @bytes, @pitch apart, from @offset past @p: all in
+   RDRAM */
+static bool InRDRAM(const void *p, uint64_t offset, uint32_t height, uint32_t pitch, uint64_t bytes)
+{
+    /* below RDRAM: past any end, as an unsigned distance */
+    uint64_t at = (uint64_t)((uintptr_t)p - (uintptr_t)gfx_info.RDRAM);
+    if (height == 0)
+        return at <= g_dwRamSize;
+    return at <= g_dwRamSize && at + offset + (uint64_t)(height - 1) * pitch + bytes <= g_dwRamSize;
+}
+
 uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t size, uint32_t pitchInBytes )
 {
     uint32_t dwAsmdwBytesPerLine;
@@ -213,23 +224,16 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
     dwAsmCRC = 0;
     dwAsmdwBytesPerLine = ((width<<size)+1)/2;
 
-    /* Defensive bound: the loops below walk height rows, and within
-     * each row read up to dwAsmdwBytesPerLine bytes (the fast path in
-     * dwords, the slow path in bytes). Callers derive width/height from
-     * guest data (e.g. a degenerate Sprite2D whose width wraps to a huge
-     * unsigned value), so verify the whole walked region stays inside
-     * RDRAM and bail with a harmless CRC rather than reading off the end. */
-    {
-        uint8_t *ramBase = (uint8_t*)gfx_info.RDRAM;
-        uint8_t *region  = (uint8_t*)pPhysicalAddress;
-        uint64_t span    = height ? ((uint64_t)(height - 1) * pitchInBytes
-                                     + dwAsmdwBytesPerLine) : 0;
-        if (region < ramBase ||
-            (uint64_t)(region - ramBase) + span > g_dwRamSize)
-        {
-            return 0;
-        }
-    }
+    /* The loops below walk height rows from the texel at (left, top),
+     * reading up to dwAsmdwBytesPerLine bytes of each (the fast path in
+     * dwords, the slow path in bytes; the fast path starts at or before
+     * the slow path's first byte). Callers derive the sizes from guest
+     * data (e.g. a degenerate Sprite2D whose width wraps to a huge
+     * unsigned value): what is not all inside RDRAM gets a harmless CRC
+     * of 0 rather than a read off its end. */
+    if (!InRDRAM(pPhysicalAddress, (uint64_t)top * pitchInBytes + (((uint64_t)(left << size) + 1) >> 1),
+             height, pitchInBytes, dwAsmdwBytesPerLine))
+        return 0;
 
     if (currentRomOptions.bFastTexCRC && !options.bLoadHiResTextures && (height>=32 || (dwAsmdwBytesPerLine>>2)>=16))
     {
@@ -306,6 +310,12 @@ unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top
 {
     unsigned char *buf;
     unsigned char val = 0;
+
+    /* as the CRC: what is not all in RDRAM is taken to use every index */
+    if (G_IM_SIZ_8b == size
+          ? !InRDRAM(pPhysicalAddress, (uint64_t)top * pitchInBytes + left, height, pitchInBytes, width)
+          : !InRDRAM(pPhysicalAddress, (uint64_t)top * pitchInBytes + (left >> 1), height, pitchInBytes, width >> 1))
+        return G_IM_SIZ_8b == size ? 0xFF : 0xF;
 
     if (G_IM_SIZ_8b == size)
     {
@@ -727,6 +737,53 @@ static void ConvertTextureRGBAtoI(TxtrCacheEntry *pEntry, bool alpha)
    }
 }
 
+/* ---- palettes ---- */
+
+/* the texels are indices into the palette: 4 and 8 bits of CI, of RGBA (as
+   the conversions take them) and, in a TLUT mode, of I and IA */
+static bool UsesPalette(const TxtrInfo *ti)
+{
+   if (ti->Size > G_IM_SIZ_8b)
+      return false;
+   if (ti->Format == G_IM_FMT_CI || ti->Format == G_IM_FMT_RGBA)
+      return true;
+   return (ti->Format == G_IM_FMT_I || ti->Format == G_IM_FMT_IA) && gRDP.otherMode.text_tlut >= 2;
+}
+
+/* a CRC of palette entries 0 to @maxCI where the conversion reads them:
+   from TMEM's upper half, each four times over, the 4-bit tile's palette
+   of 16 on (a conversion from TMEM); or from PalAddress, the caller's
+   (RDP_Texture.h points it at the 4-bit tile's palette already), in
+   RDRAM or Rice's copy of TLUT, each entry's half of its word swapped */
+static uint32_t PaletteCRC(const TxtrInfo *ti, uint32_t maxCI, bool fromTMEM)
+{
+   uint32_t crc = 0, i, n = (maxCI | 1) + 1;
+   const uint16_t *pal;
+   uint32_t step = 1;
+
+   if (options.bUseFullTMEM && fromTMEM && status.bAllowLoadFromTMEM)
+   {
+      pal  = (const uint16_t *)&g_Tmem.g_Tmem16bit[0x400 + (ti->Size == G_IM_SIZ_4b ? ti->Palette * 0x40 : 0)];
+      step = 4;
+   }
+   else
+   {
+      pal = (const uint16_t *)ti->PalAddress;
+      if (!pal)
+         return 0;
+      /* in RDRAM: no further than it (Rice's copy of TLUT holds all 256) */
+      if ((uintptr_t)pal - (uintptr_t)gfx_info.RDRAM < g_dwRamSize && !InRDRAM(pal, 0, 1, 0, (uint64_t)n * 2))
+         return 0;
+   }
+
+   for (i = 0; i < n; i++)
+   {
+      crc  = (crc << 4) + ((crc >> 28) & 15);
+      crc += pal[i * step] ^ i;
+   }
+   return crc;
+}
+
 /* ---- the cache ---- */
 
 TxtrCacheEntry *TextureManager_GetTexture(TxtrInfo *pgti, bool fromTMEM, bool doCRCCheck, bool AutoExtendTexture)
@@ -788,12 +845,9 @@ TxtrCacheEntry *TextureManager_GetTexture(TxtrInfo *pgti, bool fromTMEM, bool do
                pgti->HeightToLoad, pgti->Size, pgti->Pitch);
    }
 
-   if (doCRCCheck && (pgti->Format == G_IM_FMT_CI || (pgti->Format == G_IM_FMT_RGBA && pgti->Size <= G_IM_SIZ_8b)))
+   if (doCRCCheck && UsesPalette(pgti))
    {
       /* the palette's CRC, over the entries the texels use */
-      uint8_t *pStart;
-      uint32_t dwOffset;
-      uint32_t dwAsmCRCSave;
 
       if (!pEntry || pEntry->dwCRC != dwAsmCRC || pEntry->maxCI < 0)
          maxCI = CalculateMaxCI(pgti->pPhysicalAddress, pgti->LeftToLoad, pgti->TopToLoad, pgti->WidthToLoad,
@@ -801,14 +855,7 @@ TxtrCacheEntry *TextureManager_GetTexture(TxtrInfo *pgti, bool fromTMEM, bool do
       else
          maxCI = pEntry->maxCI;
 
-      /* 8-bit: all 256 entries; 4-bit: the tile's palette of 16 */
-      dwOffset = pgti->Size == G_IM_SIZ_8b ? 0 : pgti->Palette << 4;
-
-      pStart       = (uint8_t *)pgti->PalAddress + dwOffset * 2;
-      dwAsmCRCSave = dwAsmCRC;
-      /* one row: no pitch */
-      dwPalCRC     = CalculateRDRAMCRC(pStart, 0, 0, maxCI + 1, 1, G_IM_SIZ_16b, 0);
-      dwAsmCRC     = dwAsmCRCSave;
+      dwPalCRC = PaletteCRC(pgti, (uint32_t)maxCI, fromTMEM);
    }
 
    if (pEntry && doCRCCheck)

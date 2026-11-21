@@ -6,6 +6,8 @@
  *     entry where a texel or a used entry changes, not where an unused
  *     entry does; every time where CRCs are not checked (by the caller or
  *     the game's settings); the CRC kept within one RDP time;
+ *   * the palette's entries where the conversion reads them: in RDRAM,
+ *     in Rice's copy of TLUT, in TMEM; of CI, RGBA and, in a TLUT mode, I;
  *   * textures of addresses in one hash bucket kept apart;
  *   * the texels past those loaded clamped, mirrored or wrapped, each way,
  *     as the tile says, and on the GPU once with them;
@@ -20,7 +22,8 @@
  *     fraction colours, made again only when the colour changes;
  *   * CRCs and the highest palette index of texels in RDRAM over random
  *     texels, each size, pitch and offset, fast and slow, held to what they
- *     gave as C++ in FrameBuffer.cpp; and nothing read out of RDRAM.
+ *     gave as C++ in FrameBuffer.cpp; and nothing read out of RDRAM,
+ *     counted from the first texel read.
  *
  * Built with RICE_CACHE_GOLDEN against the C++ CRCs it prints their hashes
  * instead. */
@@ -763,6 +766,31 @@ static void crc(void)
    CHECK(CalculateRDRAMCRC(ram - 4, 0, 0, 2, 1, G_IM_SIZ_8b, 64) == 0);
    CHECK(CalculateRDRAMCRC(ram, 0, 0, 8, 1, G_IM_SIZ_8b, 64) != 0);   /* RDRAM's first bytes */
    CHECK(CalculateRDRAMCRC(ram, 0, 0, 0xFFFFFFF0u, 1, G_IM_SIZ_8b, 64) == 0);
+   /* the texel at (left, top) counted: past RDRAM's end from there, none */
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 64, 0, 0, 16, 1, G_IM_SIZ_8b, 64) != 0);
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 64, 56, 0, 16, 1, G_IM_SIZ_8b, 64) == 0);
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 128, 0, 1, 16, 1, G_IM_SIZ_8b, 64) != 0);
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 128, 0, 2, 16, 1, G_IM_SIZ_8b, 64) == 0);
+   currentRomOptions.bFastTexCRC = true;
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 4096, 0, 8, 64, 32, G_IM_SIZ_8b, 64) != 0);
+   CHECK(CalculateRDRAMCRC(ram + sizeof(ram) - 4096, 0, 40, 64, 32, G_IM_SIZ_8b, 64) == 0);
+   currentRomOptions.bFastTexCRC = false;
+   /* and the highest index: every one where not all in RDRAM */
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 64, 0, 0, 16, 1, G_IM_SIZ_8b, 64) == 0x5A);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 64, 56, 0, 16, 1, G_IM_SIZ_8b, 64) == 0xFF);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 64, 0, 1, 16, 1, G_IM_SIZ_8b, 64) == 0xFF);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 8, 0, 0, 16, 1, G_IM_SIZ_4b, 8) == 0xA);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 8, 4, 0, 16, 1, G_IM_SIZ_4b, 8) == 0xF);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 8, 2, 0, 16, 1, G_IM_SIZ_4b, 8) == 0xF);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 9, 2, 0, 16, 1, G_IM_SIZ_4b, 8) == 0xA);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 16, 0, 1, 16, 1, G_IM_SIZ_4b, 8) == 0xA);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 16, 0, 2, 16, 1, G_IM_SIZ_4b, 8) == 0xF);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 32, 0, 0, 16, 4, G_IM_SIZ_4b, 8) == 0xA);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) - 31, 0, 0, 16, 5, G_IM_SIZ_4b, 8) == 0xF);
+   /* no rows: none, in RDRAM or not */
+   CHECK(CalculateMaxCI(ram, 0, 0, 16, 0, G_IM_SIZ_8b, 64) == 0);
+   CHECK(CalculateMaxCI(ram + sizeof(ram), 0, 0, 16, 0, G_IM_SIZ_8b, 64) == 0);
+   CHECK(CalculateMaxCI(ram + sizeof(ram) + 1, 0, 0, 16, 0, G_IM_SIZ_8b, 64) == 0xFF);
    /* no rows: none */
    CHECK(CalculateRDRAMCRC(ram, 0, 0, 4, 0, G_IM_SIZ_8b, 64) == 0);
    /* a texel changed: another CRC; one past the width: the same */
@@ -854,20 +882,158 @@ static void more_cache(void)
    status.gRDPTime = 7;
    pal[0x2 ^ 1] = 0x07C1;
    CHECK(TextureManager_GetTexture(&ti, false, true, false) == b && uploads == 6);
-   /* 4-bit: the CRC from the tile's palette of 16 on */
+   /* 4-bit: the entries the conversion reads, from where the caller
+      points (at the tile's palette), not a palette further on */
    info(&ti, 0x2000, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 4, 4);
    ti.Palette = 2;
+   ti.PalAddress = (uint8_t *)&pal[32];
    for (i = 0; i < 16; i++)
       ram[(0x2000 + i) ^ 3] = 0x11;
    a = TextureManager_GetTexture(&ti, false, true, false);
    CHECK(a && a->maxCI == 1 && uploads == 7);
    status.gRDPTime = 8;
-   pal[(32 + 1) ^ 1] = 0x1234;
-   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 8);
+   pal[(32 + 1) ^ 1] = 0xF801;
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 8 && px(a, 0, 0) == C(0xFFFF0000));
    status.gRDPTime = 9;
+   pal[(64 + 1) ^ 1] = 0x1234;
    pal[(16 + 1) ^ 1] = 0x1234;
-   pal[(48 + 1) ^ 1] = 0x1234;
    CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 8);
+   /* the pair of the highest used, in its word: checked too */
+   status.gRDPTime = 10;
+   pal[(32 + 0) ^ 1] = 0x07C1;
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 9);
+
+   /* a palette in Rice's copy of TLUT, not in RDRAM: checked as well */
+   {
+      static uint16_t tlut[0x200];
+      info(&ti, 0x2000, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 4, 8);
+      ti.PalAddress = (uint8_t *)tlut;
+      for (i = 0; i < 32; i++)
+         ram[(0x2000 + i) ^ 3] = 3;
+      tlut[3 ^ 1] = 0xF801;
+      a = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(a && uploads == 10 && px(a, 0, 0) == C(0xFFFF0000));
+      status.gRDPTime = 11;
+      tlut[3 ^ 1] = 0x003F;
+      CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 11 && px(a, 0, 0) == C(0xFF0000FF));
+      status.gRDPTime = 12;
+      tlut[0x10] = 0x1234;                             /* unused */
+      CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 11);
+      /* I through the palette, in a TLUT mode */
+      gRDP.otherMode.text_tlut = 2;
+      ti.Format = G_IM_FMT_I;
+      a = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(a && uploads == 12 && a->maxCI == 3 && px(a, 0, 0) == C(0xFF0000FF));
+      status.gRDPTime = 13;
+      tlut[3 ^ 1] = 0x07C1;
+      CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 13 && px(a, 0, 0) == C(0xFF00FF00));
+      /* not in a TLUT mode: no palette */
+      gRDP.otherMode.text_tlut = 0;
+      a = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(a && a->maxCI == 0 && px(a, 0, 0) == I(3));
+      status.gRDPTime = 14;
+      tlut[3 ^ 1] = 0x003F;
+      CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == 14);
+   }
+
+   /* IA through the palette too, in a TLUT mode */
+   {
+      static uint16_t tlut2[0x200];
+      info(&ti, 0x2000, G_IM_FMT_IA, G_IM_SIZ_8b, 8, 4, 8);
+      ti.PalAddress = (uint8_t *)tlut2;
+      gRDP.otherMode.text_tlut = 3;
+      a = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(a && a->maxCI == 3);
+      status.gRDPTime = 50;
+      b = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(b == a);
+      i = uploads;
+      status.gRDPTime = 51;
+      tlut2[3 ^ 1] ^= 0x7777;
+      CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == (int)i + 1);
+      /* not YUV */
+      ti.Format = G_IM_FMT_YUV;
+      a = TextureManager_GetTexture(&ti, false, true, false);
+      CHECK(a && a->maxCI == 0);
+      gRDP.otherMode.text_tlut = 0;
+   }
+
+   /* a palette at RDRAM's end: to it, and none past it */
+   info(&ti, 0x2000, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 4, 4);
+   for (i = 0; i < 16; i++)
+      ram[(0x2000 + i) ^ 3] = 0x23;                    /* indices 2, 3 */
+   ti.PalAddress = ram + sizeof(ram) - 8;              /* entries 0 to 3 */
+   a = TextureManager_GetTexture(&ti, false, true, false);
+   CHECK(a && a->maxCI == 3);
+   i = uploads;
+   status.gRDPTime = 52;
+   ram[sizeof(ram) - 2] ^= 0x55;                       /* entry 3's swapped pair, 2 */
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == (int)i + 1);
+   ti.PalAddress = ram + sizeof(ram) - 6;              /* entry 3 past the end */
+   for (i = 0; i < 16; i++)
+      ram[(0x2000 + i) ^ 3] = 0x33;                    /* index 3: entry 2 of the word */
+   a = TextureManager_GetTexture(&ti, false, true, false);
+   CHECK(a && a->dwPalCRC == 0);
+   i = uploads;
+   status.gRDPTime = 53;
+   ram[sizeof(ram) - 6] ^= 0x55;
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == (int)i);
+
+   /* from TMEM: its palette, each entry four times over, the tile's of 16 */
+   options.bUseFullTMEM = true;
+   status.bAllowLoadFromTMEM = true;
+   memset(&g_Tmem, 0, sizeof(g_Tmem));
+   gDP.tiles[1].tmem = 0x20;
+   gDP.tiles[1].line = 1;
+   info(&ti, 0x2000, G_IM_FMT_CI, G_IM_SIZ_4b, 8, 4, 4);
+   ti.tileNo = 1;
+   ti.Palette = 3;
+   for (i = 0; i < 16; i++)
+      ram[(0x2000 + i) ^ 3] = 0x22;                    /* the CRC's and maxCI's texels */
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (2 << 2)] = 0x1234;
+   i = uploads;
+   a = TextureManager_GetTexture(&ti, true, true, false);
+   CHECK(a && a->maxCI == 2 && uploads == (int)i + 1);
+   status.gRDPTime = 15;
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (2 << 2)] = 0x4321;
+   CHECK(TextureManager_GetTexture(&ti, true, true, false) == a && uploads == (int)i + 2);
+   status.gRDPTime = 16;
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (2 << 2) + 1] = 0x4321;   /* between entries */
+   g_Tmem.g_Tmem16bit[0x400 + 2 * 0x40 + (2 << 2)] = 0x4321;       /* another palette */
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (4 << 2)] = 0x4321;       /* past the highest */
+   CHECK(TextureManager_GetTexture(&ti, true, true, false) == a && uploads == (int)i + 2);
+   /* not from TMEM, or not allowed: PalAddress's */
+   ti.PalAddress = (uint8_t *)pal;
+   status.gRDPTime = 17;
+   a = TextureManager_GetTexture(&ti, false, true, false);
+   i = uploads;
+   status.gRDPTime = 18;
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (2 << 2)] = 0x1111;
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == (int)i);
+   status.gRDPTime = 19;
+   pal[0x2 ^ 1] ^= 0x0F0F;
+   CHECK(TextureManager_GetTexture(&ti, false, true, false) == a && uploads == (int)i + 1);
+   status.bAllowLoadFromTMEM = false;
+   status.gRDPTime = 20;
+   a = TextureManager_GetTexture(&ti, true, true, false);
+   i = uploads;
+   status.gRDPTime = 21;
+   g_Tmem.g_Tmem16bit[0x400 + 3 * 0x40 + (2 << 2)] = 0x2222;
+   CHECK(TextureManager_GetTexture(&ti, true, true, false) == a && uploads == (int)i);
+   status.bAllowLoadFromTMEM = true;
+   /* 8-bit from TMEM: the first palette, whatever the tile's */
+   info(&ti, 0x2000, G_IM_FMT_CI, G_IM_SIZ_8b, 8, 4, 8);
+   ti.tileNo = 1;
+   ti.Palette = 3;
+   for (i = 0; i < 32; i++)
+      ram[(0x2000 + i) ^ 3] = 1;
+   a = TextureManager_GetTexture(&ti, true, true, false);
+   CHECK(a && a->maxCI == 1);
+   i = uploads;
+   status.gRDPTime = 22;
+   g_Tmem.g_Tmem16bit[0x400 + (1 << 2)] = 0x3333;
+   CHECK(TextureManager_GetTexture(&ti, true, true, false) == a && uploads == (int)i + 1);
+   options.bUseFullTMEM = false;
 
    /* bound in the first and last texture unit: kept */
    reset();
