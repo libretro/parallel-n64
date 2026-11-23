@@ -116,8 +116,41 @@ ifneq ($(GIT_VERSION)," unknown")
    COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
+# Switch 2 dynamic core (libounce)
+ifeq ($(platform), libounce)
+   include $(DEVKITPRO)/libounce/switch2_rules
+   TARGET := $(TARGET_NAME)_libretro_libounce.elf
+   CC := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-gcc
+   CXX := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-g++
+   AR := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar
+   WITH_DYNAREC := aarch64
+   HAVE_PARALLEL := 0
+   HAVE_PARALLEL_RSP := 0
+   override HAVE_GLN64 := 0
+   override HAVE_RICE := 0
+
+   GLES := 1
+   GLES3 := 1
+   GL_LIB :=
+
+   fpic := $(SWITCH2_SHARED_ARCH)
+
+   CPUFLAGS += $(SWITCH2_CPU) -mtp=soft
+   COREFLAGS += -D__SWITCH__ -D__SWITCH2__ -DHAVE_LIBNX
+
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/portlibs/switch2/include
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/portlibs/switch/include
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/libounce/include
+
+   LDFLAGS += -shared
+   LDFLAGS += -Wl,-soname,$(TARGET:.elf=.nro)
+   LDFLAGS += -Wl,--version-script=$(abspath $(LIBRETRO_DIR)/link.T)
+
+   LIBS += -lnx
+   LIBS += -lEGL -lGLESv2
+
 # Unix
-ifneq (,$(findstring unix,$(platform)))
+else ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--no-undefined
    ifeq ($(DEBUG_JIT),)
@@ -1115,6 +1148,10 @@ ifeq (,$(findstring msvc,$(platform)))
 endif
 endif
 
+ifeq ($(platform), libounce)
+LDFLAGS := $(filter-out -lm -lpthread -ldl -lrt,$(LDFLAGS))
+GL_LIB :=
+endif
 LDFLAGS    += $(fpic) $(CPUFLAGS)
 
 ifeq ($(platform), theos_ios)
@@ -1135,6 +1172,14 @@ else
 	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
 endif
 
+ifeq ($(platform), libounce)
+TARGET_NRO := $(TARGET:.elf=.nro)
+
+all: $(TARGET_NRO)
+
+$(TARGET_NRO): $(TARGET)
+	$(DEVKITPRO)/tools/bin/elf2nro $< $@
+endif
 
 %.o: %.S
 ifneq (,$(findstring msvc,$(platform)))
@@ -1222,7 +1267,7 @@ $(PARALLEL_RDP_NOEXCEPT_OBJECTS): CXXFLAGS += -fno-exceptions
 endif
 
 clean: clean-tools
-	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
+	rm -f $(OBJECTS) $(TARGET) $(if $(filter libounce,$(platform)),$(TARGET:.elf=.nro)) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
 	rm -f test_gliden64_spirv$(EXE_EXT) $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \

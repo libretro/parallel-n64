@@ -269,7 +269,9 @@ static uintptr_t jump_table_symbols[] = {
 
 static void cache_flush(char* start, char* end)
 {
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__SWITCH2__)
+    switch2_jit_publish(start, end);
+#elif defined(__APPLE__) && defined(__aarch64__)
     /* Apple-documented MAP_JIT pattern: switch to executable, then
        invalidate the icache. Restore the caller's W^X mode afterwards
        rather than unconditionally re-enabling writes: when called outside
@@ -4594,17 +4596,15 @@ static void do_clear_cache(void)
       {
         if(bitmap&(1<<j)) {
           start=(intptr_t)base_addr_rx+i*131072+j*4096;
-          end=start+4095;
+          end=start+4096;
           j++;
           while(j<32) {
             if(bitmap&(1<<j)) {
               end+=4096;
               j++;
-            }else{
-              cache_flush((char *)start,(char *)end);
-              break;
-            }
+            }else break;
           }
+          cache_flush((char *)start,(char *)end);
         }
       }
       needs_clear_cache[i]=0;
@@ -4671,5 +4671,5 @@ static void arch_init(void) {
   jit_write_disable();
 
   // Flush icache for the RX mapping where code will actually execute
-  __clear_cache((char *)base_addr_rx+(1<<TARGET_SIZE_2)-JUMP_TABLE_SIZE,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
+  cache_flush((char *)base_addr_rx+(1<<TARGET_SIZE_2)-JUMP_TABLE_SIZE,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
 }

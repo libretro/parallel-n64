@@ -49,3 +49,5 @@ new_dynarec_disasm.txt
 /savestate_latch_check.tmp/
 /cpu_fallback_test
 /cpu_fallback_check.tmp/
+
+/parallel_n64_libretro_libounce.nro
