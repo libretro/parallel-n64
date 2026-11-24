@@ -9,7 +9,9 @@
  * become programs, the VI's vertex and fragment shaders stay shaders;
  * a shader has as many variants as its defines make; and what is
  * picked is exactly what slangmosh's selection picks (a hash of all of
- * it, taken from the C++ it replaced). */
+ * it, taken from the C++ it replaced). NO_STORAGE_16BIT, asked within
+ * NO_STORAGE_8BIT, picks for each shader that has an 8-bit fallback as many
+ * binaries again, none of them another answer's, and changes nothing else. */
 #include <stdio.h>
 #include <string.h>
 #include <boolean.h>
@@ -107,6 +109,12 @@ static int resolve(void *user, const char *name, const char *define)
 		bad_names++;
 	if (!strcmp(define, "NO_STORAGE_8BIT"))
 		return config & 1;
+	if (!strcmp(define, "NO_STORAGE_16BIT"))
+	{
+		if (!(config & 1))
+			bad_names++;   /* only within NO_STORAGE_8BIT */
+		return (config >> 4) & 1;
+	}
 	if (!strcmp(define, "SUBGROUP"))
 		return (config >> 1) & 1;
 	if (!strcmp(define, "UBERSHADER"))
@@ -190,6 +198,73 @@ int main(void)
 			fprintf(stderr, "test_shader_bank: slot %u has %u variants, wanted %u\n", slot, num_seen[slot], variants[slot]);
 			failures++;
 		}
+	/* NO_STORAGE_16BIT: the 8-bit fallbacks' answers again, with it */
+	{
+		static const uint32_t *no8[SLOTS][16], *no16[SLOTS][16];
+		static unsigned num_no8[SLOTS], num_no16[SLOTS];
+		unsigned fallbacks = 0, j;
+		bool fresh = true, same = true;
+		uint64_t kept = hash;     /* what the 16 answers picked: not these */
+
+		for (config = 1; config < 32; config += 2)
+		{
+			bool filled = true;
+			memset(&bank, 0x55, sizeof(bank));
+			num_shaders = 0;
+			num_programs = 0;
+			layouts_read = 0;
+			rdp_shader_bank_init(&bank, &device, resolve, &config);
+			for (slot = 0; slot < SLOTS; slot++)
+			{
+				const uint32_t *code = code_of(&bank, slot);
+				const uint32_t **set = config & 16 ? no16[slot] : no8[slot];
+				unsigned *num = config & 16 ? &num_no16[slot] : &num_no8[slot];
+				if (!((const void *const *)&bank)[slot])
+					filled = false;
+				for (i = 0; i < *num; i++)
+					if (set[i] == code)
+						break;
+				if (i == *num)
+					set[(*num)++] = code;
+			}
+			CHECK(filled && num_shaders == SLOTS, "every slot filled, with NO_STORAGE_16BIT too");
+		}
+		for (slot = 0; slot < SLOTS; slot++)
+		{
+			bool has_fallback = true;
+			/* a slot has an 8-bit fallback where no NO_STORAGE_8BIT binary is
+			   picked without it: bit 0 of the 16 answers split them */
+			for (config = 0; config < 16 && has_fallback; config += 2)
+			{
+				memset(&bank, 0x55, sizeof(bank));
+				num_shaders = 0;
+				num_programs = 0;
+				layouts_read = 0;
+				rdp_shader_bank_init(&bank, &device, resolve, &config);
+				for (i = 0; i < num_no8[slot]; i++)
+					if (no8[slot][i] == code_of(&bank, slot))
+						has_fallback = false;
+			}
+			if (has_fallback)
+			{
+				fallbacks++;
+				if (num_no16[slot] != num_no8[slot])
+					fresh = false;
+				for (i = 0; i < num_no16[slot]; i++)
+					for (j = 0; j < num_seen[slot]; j++)
+						if (no16[slot][i] == seen[slot][j])
+							fresh = false;
+			}
+			else if (num_no16[slot] != num_no8[slot] || memcmp(no16[slot], no8[slot], sizeof(no8[slot])) != 0)
+				same = false;
+		}
+		CHECK(fallbacks == 10, "ten shaders have the fallbacks");
+		CHECK(fresh, "each as many NO_STORAGE_16BIT binaries as NO_STORAGE_8BIT ones, none another answer's");
+		CHECK(same, "the others the same with it");
+		CHECK(bad_names == 0, "NO_STORAGE_16BIT asked only within NO_STORAGE_8BIT");
+		hash = kept;
+	}
+
 	if (hash != (((uint64_t)EXPECTED_HASH_HI << 32) | EXPECTED_HASH_LO))
 	{
 		fprintf(stderr, "test_shader_bank: what the bank picks hashes to 0x%08xu, 0x%08xu: not slangmosh's selection\n",

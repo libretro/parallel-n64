@@ -233,8 +233,10 @@ bool rdp_renderer_buffers_init(rdp_renderer_buffers_t *b, granite_device_t *devi
 		b->per_tile_shaded_depth = storage(device, sizeof(uint32_t) * tile_pixels);
 		b->per_tile_shaded_alpha = storage(device, tile_pixels);
 		/* Without 8-bit storage, coverage and shade alpha share one 16-bit
-		 * element in the coverage buffer (rasterizer.comp). */
-		b->per_tile_shaded_coverage = storage(device, tile_pixels * (caps->no_storage_8bit ? sizeof(uint16_t) : 1));
+		 * element in the coverage buffer (rasterizer.comp), and without
+		 * 16-bit storage one 32-bit element. */
+		b->per_tile_shaded_coverage = storage(device, tile_pixels * (caps->no_storage_16bit ? sizeof(uint32_t)
+				: caps->no_storage_8bit ? sizeof(uint16_t) : 1));
 		if (!b->indirect_dispatch || !b->per_tile_offsets || !b->tile_work_list || !b->per_tile_shaded_color ||
 		    !b->per_tile_shaded_depth || !b->per_tile_shaded_alpha || !b->per_tile_shaded_coverage)
 			goto fail;

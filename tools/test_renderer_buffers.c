@@ -220,6 +220,11 @@ static void test_fixed(void)
 	caps.no_storage_8bit = true;
 	CHECK(rdp_renderer_buffers_init(&b, &dev, &caps, 4096, 1000, lut, sizeof(lut)), "1x, 16-bit");
 	CHECK(size_of(b.per_tile_shaded_coverage) == (VkDeviceSize)2 * 0x8000 * 64, "coverage, 16-bit");
+	/* and without 16-bit storage, a 32-bit one */
+	caps.no_storage_16bit = true;
+	CHECK(rdp_renderer_buffers_init(&b, &dev, &caps, 4096, 1000, lut, sizeof(lut)), "1x, 32-bit");
+	CHECK(size_of(b.per_tile_shaded_coverage) == (VkDeviceSize)4 * 0x8000 * 64, "coverage, 32-bit");
+	caps.no_storage_16bit = false;
 	caps.no_storage_8bit = false;
 
 	/* the ubershader: none of the split rasterizer's */

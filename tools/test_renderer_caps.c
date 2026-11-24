@@ -166,6 +166,19 @@ static void test_features(void)
 	full_device(&f);
 	f.storage_16bit_features.storageBuffer16BitAccess = VK_FALSE;
 	CHECK(!caps_for(&caps, &f, false, true), "16-bit storage required");
+	rdp_caps_init(&caps);
+	caps.no_storage_8bit = caps.no_storage_16bit = true;
+	CHECK(rdp_caps_init_features(&caps, &f), "unless not used");
+	CHECK(!caps.supports_small_integer_arithmetic, "no small types without it");
+	f.storage_8bit_features.storageBuffer8BitAccess = VK_FALSE;
+	CHECK(rdp_caps_init_features(&caps, &f), "nor 8-bit storage");
+	rdp_caps_init(&caps);
+	caps.no_storage_16bit = true;
+	CHECK(!rdp_caps_init_features(&caps, &f), "not without the 8-bit fallback");
+	full_device(&f);
+	rdp_caps_init(&caps);
+	caps.no_storage_8bit = caps.no_storage_16bit = true;
+	CHECK(rdp_caps_init_features(&caps, &f), "where the device has it");
 
 	full_device(&f);
 	f.storage_8bit_features.storageBuffer8BitAccess = VK_FALSE;
@@ -294,6 +307,10 @@ static void test_defines(void)
 	CHECK(rdp_caps_resolve_shader_define(&caps, "rasterizer", "UBERSHADER") == 1, "UBERSHADER");
 	CHECK(rdp_caps_resolve_shader_define(&caps, "rasterizer", "SMALL_TYPES") == 0, "SMALL_TYPES");
 	CHECK(rdp_caps_resolve_shader_define(&caps, "rasterizer", "NO_STORAGE_8BIT") == 1, "NO_STORAGE_8BIT");
+	CHECK(rdp_caps_resolve_shader_define(&caps, "rasterizer", "NO_STORAGE_16BIT") == 0, "not NO_STORAGE_16BIT");
+	caps.no_storage_16bit = true;
+	CHECK(rdp_caps_resolve_shader_define(&caps, "rasterizer", "NO_STORAGE_16BIT") == 1, "NO_STORAGE_16BIT");
+	caps.no_storage_16bit = false;
 	CHECK(rdp_caps_resolve_shader_define(&caps, "tile_binning_combined", "SUBGROUP") == 1, "tile binning's");
 	CHECK(rdp_caps_resolve_shader_define(&caps, "depth_blend", "SUBGROUP") == 0, "depth blend's");
 	caps.subgroup_tile_binning = false;

@@ -27,6 +27,21 @@ TriangleSetup load_triangle_setup(uint index)
 {
 #if SMALL_TYPES
 	return triangle_setup.elems[index];
+#elif NO_STORAGE_16BIT
+	uint yh_ym = triangle_setup.elems[index].yh_ym;
+	uint yl_flags_tile = triangle_setup.elems[index].yl_flags_tile;
+	return TriangleSetup(
+			triangle_setup.elems[index].xh,
+			triangle_setup.elems[index].xm,
+			triangle_setup.elems[index].xl,
+			bitfieldExtract(int(yh_ym), 0, 16),
+			bitfieldExtract(int(yh_ym), 16, 16),
+			triangle_setup.elems[index].dxhdy,
+			triangle_setup.elems[index].dxmdy,
+			triangle_setup.elems[index].dxldy,
+			bitfieldExtract(int(yl_flags_tile), 0, 16),
+			unpack_mem_u8(yl_flags_tile, 2),
+			unpack_mem_u8(yl_flags_tile, 3));
 #else
 	return TriangleSetup(
 			triangle_setup.elems[index].xh,

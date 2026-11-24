@@ -271,7 +271,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	// A very awkward mechanism where we peek into the next pixel, or in some cases, the next scanline's first pixel.
 	if (uses_pipelined_texel1)
 	{
-		bool valid_line = uint(span_setups.elems[SCALING_FACTOR * span_offsets.offset + (y - SCALING_FACTOR * span_offsets.ylo + 1)].valid_line) != 0u;
+		bool valid_line = span_setup_valid_line(span_setups.elems[SCALING_FACTOR * span_offsets.offset + (y - SCALING_FACTOR * span_offsets.ylo + 1)]) != 0u;
 		bool long_span = span_setup.lodlength >= 8;
 		bool end_span = x == (flip ? span_setup.end_x : span_setup.start_x);
 

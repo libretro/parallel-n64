@@ -27,6 +27,15 @@ void store_span_setup(uint index, SpanSetup setup)
 {
 #if SMALL_TYPES
 	span_setups.elems[index] = setup;
+#elif NO_STORAGE_16BIT
+	span_setups.elems[index].rgba = setup.rgba;
+	span_setups.elems[index].stzw = setup.stzw;
+	span_setups.elems[index].xleft = uvec2(pack_u16x2(setup.xleft.x, setup.xleft.y), pack_u16x2(setup.xleft.z, setup.xleft.w));
+	span_setups.elems[index].xright = uvec2(pack_u16x2(setup.xright.x, setup.xright.y), pack_u16x2(setup.xright.z, setup.xright.w));
+	span_setups.elems[index].interpolation_base_x = setup.interpolation_base_x;
+	span_setups.elems[index].start_x = setup.start_x;
+	span_setups.elems[index].end_x = setup.end_x;
+	span_setups.elems[index].lodlength_valid_line = pack_u16x2(setup.lodlength, setup.valid_line);
 #else
 	span_setups.elems[index].rgba = setup.rgba;
 	span_setups.elems[index].stzw = setup.stzw;

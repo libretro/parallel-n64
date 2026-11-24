@@ -143,6 +143,7 @@ bool rdp_renderer_init_renderer(rdp_renderer_t *r, const rdp_renderer_options_t 
 	if (!rdp_caps_init_limits(&r->caps, options->upscaling_factor, options->no_storage_8bit,
 			device_range(r->device)))
 		return false;
+	r->caps.no_storage_16bit = options->no_storage_16bit;
 	if (!rdp_caps_init_features(&r->caps, &r->device->ext))
 		return false;
 

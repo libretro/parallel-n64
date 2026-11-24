@@ -391,7 +391,7 @@ static const uint32_t upscaler_motion_frag[] = {
 };
 
 #ifndef UPSCALER_SHADERS_MOTION_ONLY
-/* vi_scale_fold.frag sha256 08ec08b4756db3e474361005fcdbc3f7a9a585fcebe695d9a9c4b60d8882b4e4 */
+/* vi_scale_fold.frag sha256 4c986d82f16b29c8c293fe0ecd75737bdde737ddf42d820fed689413678d5f4f */
 static const uint32_t vi_scale_fold_frag[] = {
 	0x07230203u, 0x00010300u, 0x0008000bu, 0x00000349u, 0x00000000u, 0x00020011u, 0x00000001u, 0x00020011u,
 	0x0000002eu, 0x0006000bu, 0x00000001u, 0x4c534c47u, 0x6474732eu, 0x3035342eu, 0x00000000u, 0x0003000eu,

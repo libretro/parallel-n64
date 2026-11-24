@@ -48,7 +48,7 @@ layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled8
 
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled16
 {
-    uint16_t elems[];
+    mem16_t elems[];
 } vram16;
 
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled32
@@ -65,7 +65,7 @@ layout(set = 0, binding = 2) buffer RDRAMUpscalingReference8
 
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference16
 {
-    uint16_t elems[];
+    mem16_t elems[];
 } vram_reference16;
 
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference32
@@ -89,8 +89,8 @@ void copy_rdram_8(uint index)
 void copy_rdram_16(uint index)
 {
     index &= RDRAM_MASK_16;
-    uint real_word = uint(vram16.elems[index]);
-    vram_reference16.elems[index] = uint16_t(real_word);
+    uint real_word = load_mem16(vram16.elems, index);
+    store_mem16(vram_reference16.elems, index, real_word);
 }
 
 void copy_rdram_32(uint index)

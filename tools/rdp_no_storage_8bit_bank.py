@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""parallel-RDP shader variants for devices without 8-bit SSBO storage.
+"""parallel-RDP shader variants for devices without 8-bit or 16-bit SSBO storage.
 
 slangmosh's header holds upstream's shaders, which need
-storageBuffer8BitAccess. The core keeps that header as C (shaders/slangmosh.h
-and shader_bank.[ch], see tools/slangmosh_to_c.py); this tool reads and
-writes it through that. It appends a NO_STORAGE_8BIT build of the
-shaders that use it, leaving every original SPIR-V word and reflection byte
-where it was, so devices that have the feature run exactly the old binaries.
+storageBuffer8BitAccess and storageBuffer16BitAccess. The core keeps that
+header as C (shaders/slangmosh.h and shader_bank.[ch], see
+tools/slangmosh_to_c.py); this tool reads and writes it through that. It
+appends a NO_STORAGE_8BIT build of the shaders that use 8-bit storage, and
+within it a NO_STORAGE_16BIT build (neither 8- nor 16-bit storage), leaving
+every original SPIR-V word and reflection byte where it was, so devices that
+have the features run exactly the old binaries.
 
   check:       rdp_no_storage_8bit_bank.py --check
-               Every shader that needs 8-bit storage has a fallback, no
-               fallback declares an 8-bit capability, each passes spirv-val
-               (when installed), each uses only bindings its reflection record
-               declares, and unmerging gives back a bank of 8-bit binaries
-               only. Used by CI.
+               Every shader that needs 8-bit storage has both fallbacks, no
+               NO_STORAGE_8BIT binary declares an 8-bit capability and no
+               NO_STORAGE_16BIT one an 8- or 16-bit capability, each passes
+               spirv-val (when installed), each uses only bindings its
+               reflection record declares, and unmerging gives back a bank of
+               the original binaries only. Used by CI.
 
   regenerate:  rdp_no_storage_8bit_bank.py
                After a shader change. Needs glslangValidator and spirv-opt
@@ -32,9 +35,13 @@ import slangmosh_to_c
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SHADERS = os.path.join(ROOT, "mupen64plus-video-paraLLEl", "parallel-rdp", "parallel-rdp", "shaders")
 DEFINE = "NO_STORAGE_8BIT"
+DEFINE16 = "NO_STORAGE_16BIT"
 # OpCapability values that need 8-bit storage or arithmetic
 CAPS_8BIT = {39: "Int8", 4448: "StorageBuffer8BitAccess", 4449: "UniformAndStorageBuffer8BitAccess",
              4450: "StoragePushConstant8"}
+# OpCapability values that need 16-bit storage or arithmetic
+CAPS_16BIT = {22: "Int16", 4433: "StorageBuffer16BitAccess", 4434: "UniformAndStorageBuffer16BitAccess",
+              4435: "StoragePushConstant16", 4436: "StorageInputOutput16"}
 # ResourceLayout version 3 (GRANITE_RESOURCE_LAYOUT_VERSION, vulkan/shader.h): 8-byte magic, then four
 # DescriptorSetLayouts of 80 bytes whose first nine words are binding masks.
 REFL_SETS, REFL_SET_SIZE, REFL_MASKS = 4, 80, 9
@@ -110,6 +117,21 @@ def unmerge(bank):
     return dict(bank, spirv=spirv, body=body), fallback
 
 
+def split16(text):
+    """A fallback's NO_STORAGE_8BIT and NO_STORAGE_16BIT ctor texts (None: no 16-bit one)."""
+    first = text.splitlines(keepends=True)[0] if text else ""
+    if not first.startswith('\t\tif (resolver("') or ('"%s") == 0)' % DEFINE16) not in first:
+        return text, None
+    lines = text.splitlines(keepends=True)
+    e = lines.index("\t\telse\n")
+    return dedent("".join(lines[2:e - 1])), dedent("".join(lines[e + 2:-1]))
+
+
+def nest16(name, text8, text16):
+    return ('\t\tif (resolver("%s", "%s") == 0)\n\t\t{\n' % (name, DEFINE16) + indent(text8) +
+            "\t\t}\n\t\telse\n\t\t{\n" + indent(text16) + "\t\t}\n")
+
+
 def with_fallback(base, spirv, fallback):
     """base with the fallback ctor text wrapped in around its shaders."""
     body = ""
@@ -139,7 +161,8 @@ def entries(bank, body):
     for name, text in units(body):
         for m in re.finditer(r"((?:if \([^{]*\{\s*)?)layout\.unserialize\(reflection_bank \+ (\d+), \d+\);\s*"
                              r"this->(\w+)(?:\[\d+\])? = device\.request_\w+\(spirv_bank \+ (\d+), (\d+)", text):
-            cond = dict((k, int(v)) for k, v in re.findall(r'"(\w+)"\) == (\d)', m.group(1)) if k != DEFINE)
+            cond = dict((k, int(v)) for k, v in re.findall(r'"(\w+)"\) == (\d)', m.group(1))
+                        if k not in (DEFINE, DEFINE16))
             off, size = int(m.group(4)), int(m.group(5))
             yield m.group(3), cond, int(m.group(2)), bank["spirv"][off:off + size // 4]
 
@@ -200,18 +223,22 @@ def check(src):
         errors.append("%s needs 8-bit storage and has no %s variant" % (name, DEFINE))
     validate = shutil.which("spirv-val")
     for name, text in fallback.items():
-        for prog, cond, refl, words in entries(bank, text):
-            count += 1
-            what = "%s variant of %s %s" % (DEFINE, prog, cond or "")
-            bad = sorted(CAPS_8BIT[c] for c in capabilities(words) & set(CAPS_8BIT))
-            if bad:
-                errors.append("%s declares %s" % (what, ", ".join(bad)))
-            extra = sorted(bindings(words) - declared(bank["refl"], refl))
-            if extra:
-                errors.append("%s uses bindings %s its reflection record lacks" % (what, extra))
-            complaint = spirv_val(words) if validate else None
-            if complaint:
-                errors.append("%s fails spirv-val: %s" % (what, complaint))
+        text8, text16 = split16(text)
+        if text16 is None:
+            errors.append("%s has no %s variant" % (name, DEFINE16))
+        for define, part, caps in ((DEFINE, text8, CAPS_8BIT), (DEFINE16, text16 or "", {**CAPS_8BIT, **CAPS_16BIT})):
+            for prog, cond, refl, words in entries(bank, part):
+                count += 1
+                what = "%s variant of %s %s" % (define, prog, cond or "")
+                bad = sorted(caps[c] for c in capabilities(words) & set(caps))
+                if bad:
+                    errors.append("%s declares %s" % (what, ", ".join(bad)))
+                extra = sorted(bindings(words) - declared(bank["refl"], refl))
+                if extra:
+                    errors.append("%s uses bindings %s its reflection record lacks" % (what, extra))
+                complaint = spirv_val(words) if validate else None
+                if complaint:
+                    errors.append("%s fails spirv-val: %s" % (what, complaint))
     if emit(with_fallback(base, bank["spirv"], fallback)) != src:
         errors.append("unmerging and merging again does not give back slangmosh's header")
     if not validate:
@@ -231,6 +258,15 @@ def compile_variant(tmp, path, defines):
     return list(struct.unpack("<%dI" % (len(data) // 4), data))
 
 
+def combos_of(shader):
+    """A shader's variants but SMALL_TYPES, the first define varying fastest, as slangmosh orders them."""
+    axes = [(v["define"], v["count"]) for v in shader.get("variants", []) if v["define"] != "SMALL_TYPES"]
+    combos = [[]]
+    for define, count in axes:
+        combos = [c + [(define, v)] for v in range(count) for c in combos]
+    return combos
+
+
 def regenerate():
     base, _ = unmerge(parse(slangmosh_to_c.read_hpp()))
     refl_of = {}
@@ -248,27 +284,27 @@ def regenerate():
                 text = re.sub(r"^(#version[^\n]*\n)", r"\1#extension GL_GOOGLE_include_directive : require\n",
                               text, count=1)
                 open(os.path.join(tmp, f), "w").write(text)
-        for s in spec["shaders"]:
-            if s["name"] not in needs:
-                continue
-            axes = [(v["define"], v["count"]) for v in s.get("variants", []) if v["define"] != "SMALL_TYPES"]
-            combos = [[]]
-            for define, count in axes:  # the first define varies fastest, as slangmosh orders them
-                combos = [c + [(define, v)] for v in range(count) for c in combos]
-            text = ""
-            for combo in combos:
-                words = compile_variant(tmp, s["path"], combo)
-                refl = refl_of[(s["name"], tuple(sorted(combo)))]
-                req = ("layout.unserialize(reflection_bank + %d, %d);\n"
-                       "this->%s = device.request_program(spirv_bank + %d, %d, &layout);\n"
-                       % (refl, 348, s["name"], len(spirv), 4 * len(words)))
-                spirv += words
-                if combo:
-                    conds = " &&\n\t\t    ".join('resolver("%s", "%s") == %d' % (s["name"], d, v) for d, v in combo)
-                    text += "\t\tif (%s)\n\t\t{\n%s\t\t}\n" % (conds, indent(indent(indent(req))))
-                else:
-                    text += indent(indent(req))
-            fallback[s["name"]] = text
+        # every NO_STORAGE_8BIT binary first, where they were, then the NO_STORAGE_16BIT ones
+        shaders = [s for s in spec["shaders"] if s["name"] in needs]
+        texts = {}
+        for extra in ([], [(DEFINE16, 1)]):
+            for s in shaders:
+                text = ""
+                for combo in combos_of(s):
+                    words = compile_variant(tmp, s["path"], extra + combo)
+                    refl = refl_of[(s["name"], tuple(sorted(combo)))]
+                    req = ("layout.unserialize(reflection_bank + %d, %d);\n"
+                           "this->%s = device.request_program(spirv_bank + %d, %d, &layout);\n"
+                           % (refl, 348, s["name"], len(spirv), 4 * len(words)))
+                    spirv += words
+                    if combo:
+                        conds = " &&\n\t\t    ".join('resolver("%s", "%s") == %d' % (s["name"], d, v) for d, v in combo)
+                        text += "\t\tif (%s)\n\t\t{\n%s\t\t}\n" % (conds, indent(indent(indent(req))))
+                    else:
+                        text += indent(indent(req))
+                texts.setdefault(s["name"], []).append(text)
+        for name, (text8, text16) in texts.items():
+            fallback[name] = nest16(name, text8, text16)
     finally:
         shutil.rmtree(tmp)
     slangmosh_to_c.write(emit(with_fallback(base, spirv, fallback)))
@@ -283,7 +319,7 @@ def main():
         regenerate()
         return 0
     errors, needs, variants = check(slangmosh_to_c.read_hpp())
-    print("%d shaders need 8-bit storage, %d %s binaries" % (needs, variants, DEFINE))
+    print("%d shaders need 8-bit storage, %d %s and %s binaries" % (needs, variants, DEFINE, DEFINE16))
     if errors:
         print("\n".join(errors))
         return 1

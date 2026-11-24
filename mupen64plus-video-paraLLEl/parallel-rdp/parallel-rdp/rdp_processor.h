@@ -88,6 +88,8 @@ typedef struct rdp_processor
 	bool super_sampled_readback;
 	/* hidden RDRAM is 16 bits per entry */
 	bool no_storage_8bit;
+	/* the shaders read and write 16-bit elements as 32-bit words */
+	bool no_storage_16bit;
 	bool single_threaded;
 
 	/* outlives the renderer, whose pipeline worker reads it */

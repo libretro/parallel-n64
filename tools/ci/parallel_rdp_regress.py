@@ -67,6 +67,8 @@ MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMA
          "negotiation-v1": {"LRHOST_VK_NEGOTIATION": "1"},
          # the shader variants for devices without 8-bit SSBO storage
          "no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"},
+         # and for those without 16-bit SSBO storage either
+         "no-16bit-storage": {"PARALLEL_RDP_NO_STORAGE_16BIT": "1"},
          # a device whose storage buffer bindings hold two static raster
          # states' work lists: the renderer flushes every two
          "two-states-per-flush": {"PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE": str(1 << 20)},
@@ -76,7 +78,8 @@ MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMA
 # Rendered at 2x, which adds the upscaling domain passes: both must agree and
 # match the "<rom>@2x" expectations.
 UPSCALED_OPTIONS = ["parallel-n64-upscaling=2x"]
-UPSCALED_MODES = {"2x": {}, "2x-no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"}}
+UPSCALED_MODES = {"2x": {}, "2x-no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"},
+                  "2x-no-16bit-storage": {"PARALLEL_RDP_NO_STORAGE_16BIT": "1"}}
 # For a temporal upscaler asking for 640x480: a 320x240 framebuffer at 2x.
 # Consecutive frames, for the motion vector check; True for the ROMs
 # that move every frame (not rottri32aa: its blended edge pixels have no

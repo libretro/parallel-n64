@@ -149,7 +149,11 @@ layout(set = 0, binding = 10, std430) writeonly buffer DepthBuffer
 // element: the same 2 bytes per pixel as the two 8-bit buffers, one store.
 layout(set = 0, binding = 12, std430) writeonly buffer CoverageShadeAlpha
 {
+#if NO_STORAGE_16BIT
+    uint elems[];   // a word a pixel, the same low halfword
+#else
     mem_u16 elems[];
+#endif
 } coverage_shade_alpha;
 #else
 layout(set = 0, binding = 11, std430) writeonly buffer ShadeAlpha
@@ -210,7 +214,11 @@ void main()
         coverage_value = I8_C(-1);
 
 #if NO_STORAGE_8BIT
+#if NO_STORAGE_16BIT
+    coverage_shade_alpha.elems[index] = (packed_shade_alpha << 8u) | (uint(coverage_value) & 0xffu);
+#else
     coverage_shade_alpha.elems[index] = mem_u16((packed_shade_alpha << 8u) | (uint(coverage_value) & 0xffu));
+#endif
 #else
     coverage.elems[index] = mem_i8(coverage_value);
 #endif

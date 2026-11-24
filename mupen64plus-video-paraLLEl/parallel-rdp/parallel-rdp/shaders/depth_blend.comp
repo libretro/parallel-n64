@@ -57,7 +57,11 @@ layout(set = 0, binding = 4, std430) readonly buffer DepthBuffer
 // See rasterizer.comp: coverage low byte, shade alpha high byte.
 layout(set = 0, binding = 6, std430) readonly buffer CoverageShadeAlpha
 {
+#if NO_STORAGE_16BIT
+    uint elems[];
+#else
     mem_u16 elems[];
+#endif
 } coverage_shade_alpha;
 #else
 layout(set = 0, binding = 5, std430) readonly buffer ShadeAlpha

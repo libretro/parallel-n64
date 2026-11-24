@@ -198,6 +198,7 @@ static void init_renderer(rdp_processor_t *p)
 	options.super_sampled_readback_dither = p->super_sampled_readback
 			&& (p->flags & RDP_PROCESSOR_SUPER_SAMPLED_DITHER) != 0;
 	options.no_storage_8bit = p->no_storage_8bit;
+	options.no_storage_16bit = p->no_storage_16bit;
 	p->is_supported = rdp_renderer_init_renderer(&p->renderer, &options);
 
 	rdp_vi_set_device(&p->vi, p->device);
@@ -271,6 +272,16 @@ void rdp_processor_init(rdp_processor_t *p, granite_device_t *device, void *rdra
 		p->no_storage_8bit = env_flag("PARALLEL_RDP_NO_STORAGE_8BIT", false);
 		LOGI("Overriding no 8-bit storage = %d.\n", (int)p->no_storage_8bit);
 	}
+	/* Without 16-bit SSBO access either, the NO_STORAGE_16BIT variants: the
+	 * same buffers, hidden RDRAM's layout too, through 32-bit words */
+	p->no_storage_16bit = !device->ext.storage_16bit_features.storageBuffer16BitAccess;
+	if (getenv("PARALLEL_RDP_NO_STORAGE_16BIT"))
+	{
+		p->no_storage_16bit = env_flag("PARALLEL_RDP_NO_STORAGE_16BIT", false);
+		LOGI("Overriding no 16-bit storage = %d.\n", (int)p->no_storage_16bit);
+	}
+	if (p->no_storage_16bit)
+		p->no_storage_8bit = true;
 
 	/* Should be cached host, but some incoherent Arm systems misbehave with
 	 * it, so it is coherent memory for the time being */

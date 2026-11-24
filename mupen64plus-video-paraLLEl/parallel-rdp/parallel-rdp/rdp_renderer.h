@@ -89,6 +89,9 @@ typedef struct rdp_renderer_options
 	/* the device has no storageBuffer8BitAccess: the NO_STORAGE_8BIT
 	 * shader variants, whose hidden RDRAM is 16 bits per entry */
 	bool no_storage_8bit;
+	/* nor storageBuffer16BitAccess: the NO_STORAGE_16BIT variants
+	 * (no_storage_8bit too) */
+	bool no_storage_16bit;
 } rdp_renderer_options_t;
 
 /* The framebuffer the primitives are drawn into */

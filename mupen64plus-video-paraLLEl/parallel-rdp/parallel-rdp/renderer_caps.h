@@ -54,6 +54,9 @@ typedef struct rdp_renderer_caps
 	bool ubershader;
 	bool supports_small_integer_arithmetic;
 	bool no_storage_8bit;
+	/* nor storageBuffer16BitAccess: the NO_STORAGE_16BIT variants (the
+	 * buffers as for NO_STORAGE_8BIT, read and written as 32-bit words) */
+	bool no_storage_16bit;
 	bool subgroup_tile_binning;
 	bool subgroup_depth_blend;
 	bool super_sample_readback;

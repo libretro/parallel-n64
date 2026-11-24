@@ -90,7 +90,7 @@ void load_vram_color(uint index, uint slice)
 		index &= RDRAM_MASK_8;
 		index += slice * RDRAM_SIZE;
 		u8 word = u8(vram_load_u8(index ^ 3u));
-		current_color = u8x4(word, word, word, u8(hidden_vram.data[index >> 1]));
+		current_color = u8x4(word, word, word, u8(HIDDEN(index >> 1)));
 		break;
 	}
 
@@ -98,9 +98,9 @@ void load_vram_color(uint index, uint slice)
 	{
 		index &= RDRAM_MASK_16;
 		index += slice * (RDRAM_SIZE >> 1);
-		uint word = uint(vram16.data[index ^ 1u]);
+		uint word = uint(VRAM16(index ^ 1u));
 		uvec3 rgb = uvec3(word >> 8u, word >> 3u, word << 2u) & 0xf8u;
-		current_color = u8x4(rgb, (u8(hidden_vram.data[index]) << U8_C(5)) | u8((word & 1) << 7));
+		current_color = u8x4(rgb, (u8(HIDDEN(index)) << U8_C(5)) | u8((word & 1) << 7));
 		break;
 	}
 
@@ -108,7 +108,7 @@ void load_vram_color(uint index, uint slice)
 	{
 		index &= RDRAM_MASK_16;
 		index += slice * (RDRAM_SIZE >> 1);
-		uint word = uint(vram16.data[index ^ 1u]);
+		uint word = uint(VRAM16(index ^ 1u));
 		current_color = u8x4(u8x3(word >> 8u), word & 0xff);
 		break;
 	}
@@ -181,9 +181,9 @@ void load_vram_depth(uint index, uint slice)
 {
 	index &= RDRAM_MASK_16;
 	index += slice * (RDRAM_SIZE >> 1);
-	u16 word = u16(vram16.data[index ^ 1u]);
+	u16 word = u16(VRAM16(index ^ 1u));
 	current_depth = word >> U16_C(2);
-	current_dz = u8(hidden_vram.data[index]) | u8((word & U16_C(3)) << U16_C(2));
+	current_dz = u8(HIDDEN(index)) | u8((word & U16_C(3)) << U16_C(2));
 }
 
 void store_unscaled_write_mask(uint index)
@@ -199,7 +199,7 @@ void store_unscaled_write_mask(uint index)
 
 		case FB_FMT_RGBA5551:
 		case FB_FMT_IA88:
-			vram16.data[(index ^ 1u) + (RDRAM_SIZE >> 1u)] = mem_u16_ones(index);
+			VRAM16_SET((index ^ 1u) + (RDRAM_SIZE >> 1u), index);
 			break;
 
 		case FB_FMT_RGBA8888:
@@ -221,7 +221,7 @@ void store_vram_color(uint index, uint slice)
 			index += slice * RDRAM_SIZE;
 			vram_store_u8(index ^ 3u, 0);
 			if ((index & 1u) != 0u)
-				hidden_vram.data[index >> 1u] = mem_hidden(current_color.a);
+				HIDDEN_STORE(index >> 1u, current_color.a);
 			break;
 		}
 
@@ -232,7 +232,7 @@ void store_vram_color(uint index, uint slice)
 			uint col = (index & 1) != 0 ? current_color.g : current_color.r;
 			vram_store_u8(index ^ 3u, col);
 			if ((index & 1u) != 0u)
-				hidden_vram.data[index >> 1u] = mem_hidden((col & 1) * 3);
+				HIDDEN_STORE(index >> 1u, (col & 1) * 3);
 			break;
 		}
 
@@ -244,8 +244,8 @@ void store_vram_color(uint index, uint slice)
 			c.rgb &= 0xf8u;
 			uint cov = c.w >> 5u;
 			uint word = (c.x << 8u) | (c.y << 3u) | (c.z >> 2u) | (cov >> 2u);
-			vram16.data[index ^ 1u] = mem_u16(word);
-			hidden_vram.data[index] = mem_hidden(cov & U8_C(3));
+			VRAM16_STORE(index ^ 1u, word);
+			HIDDEN_STORE(index, cov & U8_C(3));
 			break;
 		}
 
@@ -255,8 +255,8 @@ void store_vram_color(uint index, uint slice)
 			index += slice * (RDRAM_SIZE >> 1);
 			uvec2 col = current_color.ra;
 			uint word = (col.x << 8u) | col.y;
-			vram16.data[index ^ 1u] = mem_u16(word);
-			hidden_vram.data[index] = mem_hidden((col.y & 1) * 3);
+			VRAM16_STORE(index ^ 1u, word);
+			HIDDEN_STORE(index, (col.y & 1) * 3);
 			break;
 		}
 
@@ -267,8 +267,8 @@ void store_vram_color(uint index, uint slice)
 			uvec4 col = current_color;
 			uint word = (col.r << 24u) | (col.g << 16u) | (col.b << 8u) | (col.a << 0u);
 			vram32.data[index] = word;
-			hidden_vram.data[2u * index] = mem_hidden((current_color.g & 1) * 3);
-			hidden_vram.data[2u * index + 1u] = mem_hidden((current_color.a & 1) * 3);
+			HIDDEN_STORE(2u * index, (current_color.g & 1) * 3);
+			HIDDEN_STORE(2u * index + 1u, (current_color.a & 1) * 3);
 			break;
 		}
 		}
@@ -292,8 +292,8 @@ void store_vram_depth(uint index, uint slice)
 		{
 			index &= RDRAM_MASK_16;
 			index += slice * (RDRAM_SIZE >> 1);
-			vram16.data[index ^ 1u] = mem_u16((current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
-			hidden_vram.data[index] = mem_hidden(current_dz & U16_C(3));
+			VRAM16_STORE(index ^ 1u, (current_depth << U16_C(2)) | (current_dz >> U16_C(2)));
+			HIDDEN_STORE(index, current_dz & U16_C(3));
 		}
 
 		if (RDRAM_UNSCALED_WRITE_MASK)
@@ -303,7 +303,7 @@ void store_vram_depth(uint index, uint slice)
 			// also coherent.
 			memoryBarrierBuffer();
 			if (current_depth_dirty)
-				vram16.data[(index ^ 1) + (RDRAM_SIZE >> 1u)] = mem_u16_ones(index);
+				VRAM16_SET((index ^ 1) + (RDRAM_SIZE >> 1u), index);
 		}
 	}
 }

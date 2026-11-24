@@ -25,10 +25,16 @@
 
 // One byte of a TMEM instance. Without 8-bit storage it is read out of the
 // 16-bit alias of the same memory.
-#if NO_STORAGE_8BIT
+// Without 16-bit storage both are read out of its 32-bit words.
+#if NO_STORAGE_16BIT
+#define tmem_u8(instance, idx) ((tmem16.instances[instance].elems[uint(idx) >> 2u] >> ((uint(idx) & 3u) * 8u)) & 0xffu)
+#define TMEM16(instance, idx) load_u16_from_u32(tmem16.instances[instance].elems, idx)
+#elif NO_STORAGE_8BIT
 #define tmem_u8(instance, idx) ((uint(tmem16.instances[instance].elems[uint(idx) >> 1u]) >> ((uint(idx) & 1u) * 8u)) & 0xffu)
+#define TMEM16(instance, idx) tmem16.instances[instance].elems[idx]
 #else
 #define tmem_u8(instance, idx) tmem8.instances[instance].elems[idx]
+#define TMEM16(instance, idx) tmem16.instances[instance].elems[idx]
 #endif
 
 #include "data_structures.h"
@@ -170,7 +176,7 @@ i16x4 sample_texel_ci4_tlut(TileInfo tile, uint tmem_instance, uvec2 st, uint pa
 	uint lut_entry = (word << 2) + lut_offset;
 	lut_entry ^= addr_xor;
 
-	word = uint(tmem16.instances[tmem_instance].elems[0x400 | lut_entry]);
+	word = uint(TMEM16(tmem_instance, 0x400 | lut_entry));
 	return tlut_type ? convert_ia16(word) : convert_rgba16(word);
 }
 
@@ -188,7 +194,7 @@ i16x4 sample_texel_ci8_tlut(TileInfo tile, uint tmem_instance, uvec2 st, uint lu
 	uint lut_entry = (word << 2) + lut_offset;
 	lut_entry ^= addr_xor;
 
-	word = uint(tmem16.instances[tmem_instance].elems[0x400 | lut_entry]);
+	word = uint(TMEM16(tmem_instance, 0x400 | lut_entry));
 	return tlut_type ? convert_ia16(word) : convert_rgba16(word);
 }
 
@@ -202,7 +208,7 @@ i16x4 sample_texel_ci32(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 1;
 	index ^= 1;
 
-	uint word = uint(tmem16.instances[tmem_instance].elems[index]);
+	uint word = uint(TMEM16(tmem_instance, index));
 	return i16x2(word >> 8, word & 0xff).xyxy;
 }
 
@@ -216,10 +222,10 @@ i16x4 sample_texel_ci32_tlut(TileInfo tile, uint tmem_instance, uvec2 st, uint l
 	index ^= (st.y & 1) << 1;
 	index ^= 1;
 
-	uint word = uint(tmem16.instances[tmem_instance].elems[index]);
+	uint word = uint(TMEM16(tmem_instance, index));
 	uint lut_entry = ((word >> 6) & ~3) + lut_offset;
 	lut_entry ^= addr_xor;
-	word = uint(tmem16.instances[tmem_instance].elems[0x400 | lut_entry]);
+	word = uint(TMEM16(tmem_instance, 0x400 | lut_entry));
 	return tlut_type ? convert_ia16(word) : convert_rgba16(word);
 }
 
@@ -273,7 +279,7 @@ i16x4 sample_texel_yuv16(TileInfo tile, uint tmem_instance, uvec2 st, uint chrom
 	index_chroma ^= 1;
 
 	u8 luma = u8(tmem_u8(tmem_instance, index_luma | 0x800));
-	u16 chroma = u16(tmem16.instances[tmem_instance].elems[index_chroma]);
+	u16 chroma = u16(TMEM16(tmem_instance, index_chroma));
 	u8 u = u8((chroma >> U16_C(8)) & U16_C(0xff));
 	u8 v = u8((chroma >> U16_C(0)) & U16_C(0xff));
 	return i16x4(i16(u) - I16_C(0x80), i16(v) - I16_C(0x80), luma, luma);
@@ -289,7 +295,7 @@ i16x4 sample_texel_rgba16(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 1;
 	index ^= 1;
 
-	uint word = uint(tmem16.instances[tmem_instance].elems[index]);
+	uint word = uint(TMEM16(tmem_instance, index));
 	return convert_rgba16(word);
 }
 
@@ -303,7 +309,7 @@ i16x4 sample_texel_ia16(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 1;
 	index ^= 1;
 
-	uint word = uint(tmem16.instances[tmem_instance].elems[index]);
+	uint word = uint(TMEM16(tmem_instance, index));
 	return convert_ia16(word);
 }
 
@@ -317,8 +323,8 @@ i16x4 sample_texel_rgba32(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 1;
 	index ^= 1;
 
-	uint lower_word = uint(tmem16.instances[tmem_instance].elems[index]);
-	uint upper_word = uint(tmem16.instances[tmem_instance].elems[index | 0x400]);
+	uint lower_word = uint(TMEM16(tmem_instance, index));
+	uint upper_word = uint(TMEM16(tmem_instance, index | 0x400));
 	return i16x4(lower_word >> 8, lower_word & 0xff, upper_word >> 8, upper_word & 0xff);
 }
 
@@ -391,8 +397,8 @@ int sample_texture_copy_word(TileInfo tile, uint tmem_instance, ivec2 st, int s_
 		uvec2 index = nibble_offset >> 2u;
 
 		index &= idx_mask;
-		int samp0 = int(tmem16.instances[tmem_instance].elems[index.x ^ 1]);
-		int samp1 = int(tmem16.instances[tmem_instance].elems[index.y ^ 1]);
+		int samp0 = int(TMEM16(tmem_instance, index.x ^ 1));
+		int samp1 = int(TMEM16(tmem_instance, index.y ^ 1));
 
 		if (tile.size == 1)
 		{
@@ -428,7 +434,7 @@ int sample_texture_copy_word(TileInfo tile, uint tmem_instance, ivec2 st, int s_
 
 		uint index = nibble_offset >> 2u;
 		index &= idx_mask;
-		samp = int(tmem16.instances[tmem_instance].elems[index ^ 1]);
+		samp = int(TMEM16(tmem_instance, index ^ 1));
 
 		if (tlut)
 		{
@@ -447,7 +453,7 @@ int sample_texture_copy_word(TileInfo tile, uint tmem_instance, ivec2 st, int s_
 				samp <<= 2;
 				samp += s_offset;
 			}
-			samp = int(tmem16.instances[tmem_instance].elems[(samp | 0x400) ^ 1]);
+			samp = int(TMEM16(tmem_instance, (samp | 0x400) ^ 1));
 		}
 	}
 

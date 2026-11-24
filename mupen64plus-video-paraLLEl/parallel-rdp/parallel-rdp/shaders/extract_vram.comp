@@ -26,10 +26,12 @@ layout(local_size_x = 16, local_size_y = 8) in;
 // Copies VRAM into a texture which is then consumed by VI scanout.
 
 layout(set = 0, binding = 0, rgba8ui) uniform writeonly uimage2D uAAInput;
+#if !NO_STORAGE_16BIT
 layout(set = 0, binding = 1, std430) readonly buffer RDRAM16
 {
 	mem_u16 elems[];
 } vram16;
+#endif
 
 layout(set = 0, binding = 1, std430) readonly buffer RDRAM32
 {
@@ -78,8 +80,13 @@ uvec4 fetch_color(ivec2 coord)
 		int linear_coord = coord.y * registers.fb_width + coord.x + registers.fb_offset;
 		linear_coord &= RDRAM_MASK_16;
 		linear_coord += slice * (RDRAM_SIZE >> 1);
+#if NO_STORAGE_16BIT
+		uint word = load_u16_from_u32(vram32.elems, linear_coord ^ 1);
+		uint hidden_word = load_u16_from_u32(hidden_vram.elems, linear_coord);
+#else
 		uint word = uint(vram16.elems[linear_coord ^ 1]);
 		uint hidden_word = uint(hidden_vram.elems[linear_coord]);
+#endif
 
 		uint r = (word >> 8u) & 0xf8u;
 		uint g = (word >> 3u) & 0xf8u;

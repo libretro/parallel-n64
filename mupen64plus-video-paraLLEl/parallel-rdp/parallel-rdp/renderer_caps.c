@@ -172,9 +172,18 @@ bool rdp_caps_init_features(rdp_renderer_caps_t *caps, const granite_device_feat
 		LOGI("Allow small types = %d.\n", value);
 	}
 
-	if (!features->storage_16bit_features.storageBuffer16BitAccess)
+	if (caps->no_storage_16bit)
 	{
-		LOGE("VK_KHR_16bit_storage for SSBOs is not supported! This is a minimum requirement for paraLLEl-RDP.\n");
+		if (!caps->no_storage_8bit)
+		{
+			LOGE("No 16-bit storage needs no 8-bit storage too.\n");
+			return false;
+		}
+		LOGI("VK_KHR_16bit_storage for SSBOs is not used, falling back to 32-bit storage.\n");
+	}
+	else if (!features->storage_16bit_features.storageBuffer16BitAccess)
+	{
+		LOGE("VK_KHR_16bit_storage for SSBOs is not supported, and the 32-bit fallback was not asked for.\n");
 		return false;
 	}
 
@@ -252,6 +261,8 @@ int rdp_caps_resolve_shader_define(const rdp_renderer_caps_t *caps, const char *
 		return caps->supports_small_integer_arithmetic;
 	if (strcmp(define, "NO_STORAGE_8BIT") == 0)
 		return caps->no_storage_8bit;
+	if (strcmp(define, "NO_STORAGE_16BIT") == 0)
+		return caps->no_storage_16bit;
 	if (strcmp(define, "SUBGROUP") == 0)
 	{
 		if (strcmp(name, "tile_binning_combined") == 0)

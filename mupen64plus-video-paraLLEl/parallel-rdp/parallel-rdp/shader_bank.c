@@ -47,8 +47,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 0, 348);
-		bank->tmem_update = compute_program(device, spirv_bank + 404434, 16944, &layout);
+		if (resolver(user, "tmem_update", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 0, 348);
+			bank->tmem_update = compute_program(device, spirv_bank + 404434, 16944, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 0, 348);
+			bank->tmem_update = compute_program(device, spirv_bank + 611802, 17404, &layout);
+		}
 	}
 	if (resolver(user, "span_setup", "NO_STORAGE_8BIT") == 0)
 	{
@@ -57,8 +65,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 348, 348);
-		bank->span_setup = compute_program(device, spirv_bank + 408670, 9192, &layout);
+		if (resolver(user, "span_setup", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 348, 348);
+			bank->span_setup = compute_program(device, spirv_bank + 408670, 9192, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 348, 348);
+			bank->span_setup = compute_program(device, spirv_bank + 616153, 9556, &layout);
+		}
 	}
 	granite_resource_layout_unserialize(&layout, reflection_bank + 696, 348);
 	bank->clear_indirect_buffer = compute_program(device, spirv_bank + 6531, 684, &layout);
@@ -123,29 +139,59 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
-		    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+		if (resolver(user, "tile_binning_combined", "NO_STORAGE_16BIT") == 0)
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 1044, 348);
-			bank->tile_binning_combined = compute_program(device, spirv_bank + 410968, 14444, &layout);
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1044, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 410968, 14444, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1392, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 414579, 15248, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1740, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 418391, 12440, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 2088, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 421501, 12664, &layout);
+			}
 		}
-		if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
-		    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+		else
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 1392, 348);
-			bank->tile_binning_combined = compute_program(device, spirv_bank + 414579, 15248, &layout);
-		}
-		if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
-		    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
-		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 1740, 348);
-			bank->tile_binning_combined = compute_program(device, spirv_bank + 418391, 12440, &layout);
-		}
-		if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
-		    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
-		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 2088, 348);
-			bank->tile_binning_combined = compute_program(device, spirv_bank + 421501, 12664, &layout);
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1044, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 618542, 14228, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1392, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 622099, 15032, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 0 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 1740, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 625857, 12240, &layout);
+			}
+			if (resolver(user, "tile_binning_combined", "SUBGROUP") == 1 &&
+			    resolver(user, "tile_binning_combined", "UBERSHADER") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 2088, 348);
+				bank->tile_binning_combined = compute_program(device, spirv_bank + 628917, 12464, &layout);
+			}
 		}
 	}
 	if (resolver(user, "ubershader", "NO_STORAGE_8BIT") == 0)
@@ -177,15 +223,31 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		if (resolver(user, "ubershader", "SUBGROUP") == 0)
+		if (resolver(user, "ubershader", "NO_STORAGE_16BIT") == 0)
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 3828, 348);
-			bank->ubershader = compute_program(device, spirv_bank + 424667, 229364, &layout);
+			if (resolver(user, "ubershader", "SUBGROUP") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 3828, 348);
+				bank->ubershader = compute_program(device, spirv_bank + 424667, 229364, &layout);
+			}
+			if (resolver(user, "ubershader", "SUBGROUP") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 4176, 348);
+				bank->ubershader = compute_program(device, spirv_bank + 482008, 229640, &layout);
+			}
 		}
-		if (resolver(user, "ubershader", "SUBGROUP") == 1)
+		else
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 4176, 348);
-			bank->ubershader = compute_program(device, spirv_bank + 482008, 229640, &layout);
+			if (resolver(user, "ubershader", "SUBGROUP") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 3828, 348);
+				bank->ubershader = compute_program(device, spirv_bank + 632033, 239640, &layout);
+			}
+			if (resolver(user, "ubershader", "SUBGROUP") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 4176, 348);
+				bank->ubershader = compute_program(device, spirv_bank + 691943, 239916, &layout);
+			}
 		}
 	}
 	if (resolver(user, "depth_blend", "NO_STORAGE_8BIT") == 0)
@@ -217,15 +279,31 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		if (resolver(user, "depth_blend", "SUBGROUP") == 0)
+		if (resolver(user, "depth_blend", "NO_STORAGE_16BIT") == 0)
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 5220, 348);
-			bank->depth_blend = compute_program(device, spirv_bank + 539418, 34908, &layout);
+			if (resolver(user, "depth_blend", "SUBGROUP") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 5220, 348);
+				bank->depth_blend = compute_program(device, spirv_bank + 539418, 34908, &layout);
+			}
+			if (resolver(user, "depth_blend", "SUBGROUP") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 5568, 348);
+				bank->depth_blend = compute_program(device, spirv_bank + 548145, 35184, &layout);
+			}
 		}
-		if (resolver(user, "depth_blend", "SUBGROUP") == 1)
+		else
 		{
-			granite_resource_layout_unserialize(&layout, reflection_bank + 5568, 348);
-			bank->depth_blend = compute_program(device, spirv_bank + 548145, 35184, &layout);
+			if (resolver(user, "depth_blend", "SUBGROUP") == 0)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 5220, 348);
+				bank->depth_blend = compute_program(device, spirv_bank + 751922, 37580, &layout);
+			}
+			if (resolver(user, "depth_blend", "SUBGROUP") == 1)
+			{
+				granite_resource_layout_unserialize(&layout, reflection_bank + 5568, 348);
+				bank->depth_blend = compute_program(device, spirv_bank + 761317, 37856, &layout);
+			}
 		}
 	}
 	if (resolver(user, "rasterizer", "NO_STORAGE_8BIT") == 0)
@@ -243,8 +321,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 6612, 348);
-		bank->rasterizer = compute_program(device, spirv_bank + 556941, 198732, &layout);
+		if (resolver(user, "rasterizer", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 6612, 348);
+			bank->rasterizer = compute_program(device, spirv_bank + 556941, 198732, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 6612, 348);
+			bank->rasterizer = compute_program(device, spirv_bank + 770781, 206208, &layout);
+		}
 	}
 	granite_resource_layout_unserialize(&layout, reflection_bank + 7308, 348);
 	bank->fullscreen = granite_program_cache_shader(&device->program_cache, spirv_bank + 391286, 928, &layout);
@@ -267,8 +353,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 9744, 348);
-		bank->extract_vram = compute_program(device, spirv_bank + 606624, 3688, &layout);
+		if (resolver(user, "extract_vram", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 9744, 348);
+			bank->extract_vram = compute_program(device, spirv_bank + 606624, 3688, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 9744, 348);
+			bank->extract_vram = compute_program(device, spirv_bank + 822333, 3700, &layout);
+		}
 	}
 	granite_resource_layout_unserialize(&layout, reflection_bank + 10092, 348);
 	bank->masked_rdram_resolve = compute_program(device, spirv_bank + 398875, 1876, &layout);
@@ -281,8 +375,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 10788, 348);
-		bank->update_upscaled_domain_post = compute_program(device, spirv_bank + 607546, 2880, &layout);
+		if (resolver(user, "update_upscaled_domain_post", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 10788, 348);
+			bank->update_upscaled_domain_post = compute_program(device, spirv_bank + 607546, 2880, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 10788, 348);
+			bank->update_upscaled_domain_post = compute_program(device, spirv_bank + 823258, 3360, &layout);
+		}
 	}
 	if (resolver(user, "update_upscaled_domain_pre", "NO_STORAGE_8BIT") == 0)
 	{
@@ -291,8 +393,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 11136, 348);
-		bank->update_upscaled_domain_pre = compute_program(device, spirv_bank + 608266, 6168, &layout);
+		if (resolver(user, "update_upscaled_domain_pre", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 11136, 348);
+			bank->update_upscaled_domain_pre = compute_program(device, spirv_bank + 608266, 6168, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 11136, 348);
+			bank->update_upscaled_domain_pre = compute_program(device, spirv_bank + 824098, 10036, &layout);
+		}
 	}
 	if (resolver(user, "update_upscaled_domain_resolve", "NO_STORAGE_8BIT") == 0)
 	{
@@ -301,8 +411,16 @@ void rdp_shader_bank_init(rdp_shader_bank_t *bank, granite_device_t *device, rdp
 	}
 	else
 	{
-		granite_resource_layout_unserialize(&layout, reflection_bank + 11484, 348);
-		bank->update_upscaled_domain_resolve = compute_program(device, spirv_bank + 609808, 7976, &layout);
+		if (resolver(user, "update_upscaled_domain_resolve", "NO_STORAGE_16BIT") == 0)
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 11484, 348);
+			bank->update_upscaled_domain_resolve = compute_program(device, spirv_bank + 609808, 7976, &layout);
+		}
+		else
+		{
+			granite_resource_layout_unserialize(&layout, reflection_bank + 11484, 348);
+			bank->update_upscaled_domain_resolve = compute_program(device, spirv_bank + 826607, 9020, &layout);
+		}
 	}
 	granite_resource_layout_unserialize(&layout, reflection_bank + 11832, 348);
 	bank->clear_super_sampled_write_mask = compute_program(device, spirv_bank + 403807, 640, &layout);

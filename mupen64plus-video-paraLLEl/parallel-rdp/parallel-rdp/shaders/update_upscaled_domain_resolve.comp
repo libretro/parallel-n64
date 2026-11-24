@@ -50,7 +50,7 @@ layout(set = 0, binding = 0) writeonly buffer RDRAMSingleSampled8
 
 layout(set = 0, binding = 0) writeonly buffer RDRAMSingleSampled16
 {
-    uint16_t elems[];
+    mem16_t elems[];
 } vram16;
 
 #if NO_STORAGE_8BIT
@@ -75,7 +75,7 @@ layout(set = 0, binding = 2) writeonly buffer RDRAMUpscalingReference8
 
 layout(set = 0, binding = 2) writeonly buffer RDRAMUpscalingReference16
 {
-    uint16_t elems[];
+    mem16_t elems[];
 } vram_reference16;
 
 #if NO_STORAGE_8BIT
@@ -100,7 +100,7 @@ layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling8
 
 layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling16
 {
-    uint16_t elems[];
+    mem16_t elems[];
 } vram_upscaled16;
 
 layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling32
@@ -157,7 +157,7 @@ void copy_rdram_16(uint index, uint x, uint y)
     uvec4 rgba = uvec4(0u);
     for (int i = 0; i < NUM_SAMPLES; i++)
     {
-        uint real_word = uint(vram_upscaled16.elems[index + i * (RDRAM_SIZE >> 1)]);
+        uint real_word = load_mem16(vram_upscaled16.elems, index + i * (RDRAM_SIZE >> 1));
         rgba += decode_rgba5551(real_word);
     }
 
@@ -172,8 +172,8 @@ void copy_rdram_16(uint index, uint x, uint y)
     }
 
     uint encoded = encode_rgba5551(rgba);
-    vram16.elems[index] = uint16_t(encoded);
-    vram_reference16.elems[index] = uint16_t(encoded);
+    store_mem16(vram16.elems, index, encoded);
+    store_mem16(vram_reference16.elems, index, encoded);
 }
 
 void copy_rdram_16_single_sample(uint index)
@@ -181,9 +181,9 @@ void copy_rdram_16_single_sample(uint index)
     // Copies the first sample. We cannot meaningfully filter depth samples.
     // The first sample should overlap exactly with the single-sampled version.
     // Coverage clipping might slightly change the result, but shouldn't be different enough to break things.
-    uint upscaled_word = uint(vram_upscaled16.elems[index]);
-    vram16.elems[index] = uint16_t(upscaled_word);
-    vram_reference16.elems[index] = uint16_t(upscaled_word);
+    uint upscaled_word = load_mem16(vram_upscaled16.elems, index);
+    store_mem16(vram16.elems, index, upscaled_word);
+    store_mem16(vram_reference16.elems, index, upscaled_word);
 }
 
 uvec4 decode_rgba8(uint word)
@@ -276,7 +276,7 @@ void main()
                     break;
 
                 case 1:
-                    vram16.elems[color_index + (RDRAM_SIZE >> 1)] = mem_u16_ones(color_index);
+                    set_mem16_ones(vram16.elems, color_index + (RDRAM_SIZE >> 1), color_index);
                     break;
 
                 case 2:
@@ -306,7 +306,7 @@ void main()
             // also coherent.
             memoryBarrierBuffer();
             if (depth_write_mask)
-                vram16.elems[depth_index + (RDRAM_SIZE >> 1u)] = mem_u16_ones(depth_index);
+                set_mem16_ones(vram16.elems, depth_index + (RDRAM_SIZE >> 1u), depth_index);
         }
     }
 }

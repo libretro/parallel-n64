@@ -30,10 +30,24 @@ layout(set = 0, binding = 0, std430) buffer VRAM32
 	uint data[];
 } vram32;
 
+#if NO_STORAGE_16BIT
+// RDRAM's halfwords through the 32-bit view
+#define VRAM16(i) load_u16_from_u32(vram32.data, i)
+#define VRAM16_STORE(i, v) store_u16_to_u32(vram32.data, i, v)
+#define VRAM16_SET(i, runtime) set_u16_in_u32(vram32.data, i)
+#define HIDDEN(i) load_u16_from_u32(hidden_vram.data, i)
+#define HIDDEN_STORE(i, v) store_u16_to_u32(hidden_vram.data, i, v)
+#else
 layout(set = 0, binding = 0, std430) buffer VRAM16
 {
 	mem_u16 data[];
 } vram16;
+#define VRAM16(i) vram16.data[i]
+#define VRAM16_STORE(i, v) vram16.data[i] = mem_u16(v)
+#define VRAM16_SET(i, runtime) vram16.data[i] = mem_u16_ones(runtime)
+#define HIDDEN(i) hidden_vram.data[i]
+#define HIDDEN_STORE(i, v) hidden_vram.data[i] = mem_hidden(v)
+#endif
 
 #if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0, std430) buffer VRAM8

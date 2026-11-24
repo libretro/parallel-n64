@@ -31,10 +31,12 @@ layout(set = 0, binding = 0, std430) readonly buffer VRAM8Buffer
 } vram8;
 #endif
 
+#if !NO_STORAGE_16BIT
 layout(set = 0, binding = 0, std430) readonly buffer VRAM16Buffer
 {
     mem_u16 data[];
 } vram16;
+#endif
 
 layout(set = 0, binding = 0, std430) readonly buffer VRAM32Buffer
 {
@@ -48,6 +50,28 @@ layout(set = 0, binding = 0, std430) readonly buffer VRAM32Buffer
 #define vram_load_u8(byte_index) vram8.data[byte_index]
 #endif
 
+#if NO_STORAGE_16BIT
+// TMEM and its instances a halfword an invocation, read and written through
+// 32-bit words (a halfword's neighbour is another invocation's).
+layout(set = 0, binding = 1, std430) buffer TMEM16Buffer
+{
+    uint data[1024];
+} tmem16;
+
+struct TileInstance
+{
+    uint data[1024];
+};
+
+layout(set = 0, binding = 2, std430) buffer TMEMInstances
+{
+    TileInstance instances[];
+} tile_instances;
+#define vram_load_u16(index) load_u16_from_u32(vram32.data, index)
+#define TMEM_LOAD(i) load_u16_from_u32(tmem16.data, i)
+#define TMEM_STORE(i, v) store_u16_to_u32(tmem16.data, i, v)
+#define INSTANCE_STORE(n, i, v) store_u16_to_u32(tile_instances.instances[n].data, i, v)
+#else
 layout(set = 0, binding = 1, std430) buffer TMEM16Buffer
 {
     mem_u16 data[2048];
@@ -62,6 +86,11 @@ layout(set = 0, binding = 2, std430) writeonly buffer TMEMInstances
 {
     TileInstance instances[];
 } tile_instances;
+#define vram_load_u16(index) vram16.data[index]
+#define TMEM_LOAD(i) tmem16.data[i]
+#define TMEM_STORE(i, v) tmem16.data[i] = mem_u16(v)
+#define INSTANCE_STORE(n, i, v) tile_instances.instances[n].data[i] = mem_u16(v)
+#endif
 
 layout(push_constant, std430) uniform Registers
 {
@@ -468,7 +497,7 @@ void update_tmem_16(UploadInfo info, int tmem16_index)
 
     uint word;
     if ((rdram_addr & 1) == 0)
-        word = uint(vram16.data[(rdram_addr >> 1) ^ 1]);
+        word = uint(vram_load_u16((rdram_addr >> 1) ^ 1));
     else
         word = (uint(vram_load_u8(rdram_addr ^ 3)) << 8) | uint(vram_load_u8((rdram_addr + 1) ^ 3));
 
@@ -553,7 +582,7 @@ void update_tmem_lut(UploadInfo info, int tmem16_index)
 
     uint word;
     if ((rdram_addr & 1) == 0)
-        word = uint(vram16.data[(rdram_addr >> 1) ^ 1]);
+        word = uint(vram_load_u16((rdram_addr >> 1) ^ 1));
     else
         word = (uint(vram_load_u8(rdram_addr ^ 3)) << 8) | uint(vram_load_u8((rdram_addr + 1) ^ 3));
 
@@ -564,11 +593,11 @@ void update_tmem_lut(UploadInfo info, int tmem16_index)
 void main()
 {
     tmem_dirty = false;
-    current_tmem_value = uint(tmem16.data[gl_GlobalInvocationID.x]);
+    current_tmem_value = uint(TMEM_LOAD(gl_GlobalInvocationID.x));
     int tmem16_index = int(gl_GlobalInvocationID.x) ^ 1;
     bool upper_tmem = tmem16_index >= 0x400;
 
-    tile_instances.instances[0].data[gl_GlobalInvocationID.x] = mem_u16(current_tmem_value);
+    INSTANCE_STORE(0, gl_GlobalInvocationID.x, current_tmem_value);
 
     int num_uploads = registers.num_uploads;
     for (int i = 0; i < num_uploads; i++)
@@ -587,9 +616,9 @@ void main()
                 update_tmem_16(info, tmem16_index);
         }
 
-        tile_instances.instances[i + 1].data[gl_GlobalInvocationID.x] = mem_u16(current_tmem_value);
+        INSTANCE_STORE(i + 1, gl_GlobalInvocationID.x, current_tmem_value);
     }
 
     if (tmem_dirty)
-        tmem16.data[gl_GlobalInvocationID.x] = mem_u16(current_tmem_value);
+        TMEM_STORE(gl_GlobalInvocationID.x, current_tmem_value);
 }

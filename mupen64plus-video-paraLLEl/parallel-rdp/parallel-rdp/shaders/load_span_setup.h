@@ -27,6 +27,20 @@ SpanSetup load_span_setup(uint index)
 {
 #if SMALL_TYPES
 	return span_setups.elems[index];
+#elif NO_STORAGE_16BIT
+	uvec2 xleft = span_setups.elems[index].xleft;
+	uvec2 xright = span_setups.elems[index].xright;
+	uint lodlength_valid_line = span_setups.elems[index].lodlength_valid_line;
+	return SpanSetup(
+			span_setups.elems[index].rgba,
+			span_setups.elems[index].stzw,
+			ivec4((uvec4(xleft.xx, xleft.yy) >> uvec4(0u, 16u, 0u, 16u)) & 0xffffu),
+			ivec4((uvec4(xright.xx, xright.yy) >> uvec4(0u, 16u, 0u, 16u)) & 0xffffu),
+			span_setups.elems[index].interpolation_base_x,
+			span_setups.elems[index].start_x,
+			span_setups.elems[index].end_x,
+			bitfieldExtract(int(lodlength_valid_line), 0, 16),
+			int(lodlength_valid_line >> 16u));
 #else
 	return SpanSetup(
 			span_setups.elems[index].rgba,

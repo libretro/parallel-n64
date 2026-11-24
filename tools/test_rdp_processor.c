@@ -162,6 +162,9 @@ static void test_processor(void *rdram_ptr, size_t offset)
 		CHECK(!p.is_host_coherent && p.rdram && p.rdram->info.size == 2 * RDRAM_SIZE && p.rdram_offset == 0
 				&& p.host_rdram == (uint8_t *)rdram_ptr + offset,
 				"the host's RDRAM, not importable, kept in step: the GPU's twice the size, for the write mask");
+	CHECK(p.no_storage_16bit == (getenv("PARALLEL_RDP_NO_STORAGE_16BIT") != NULL)
+			&& p.no_storage_8bit == (p.no_storage_16bit || getenv("PARALLEL_RDP_NO_STORAGE_8BIT") != NULL),
+			"no 16-bit storage when asked, and with it no 8-bit storage");
 	CHECK(p.hidden_rdram && p.hidden_rdram->info.size == HIDDEN_SIZE * (p.no_storage_8bit ? 2 : 1),
 			"hidden RDRAM, 8 bits an entry, 16 without 8-bit storage");
 	CHECK(p.no_storage_8bit ? hidden_wide(&p) : all_bytes(&p, p.hidden_rdram, 0x03),
@@ -279,6 +282,7 @@ int main(void)
 	setenv("PARALLEL_RDP_NO_KNOWN_PIPELINES", "1", 1);
 	unsetenv("PARALLEL_RDP_SINGLE_THREADED_COMMAND");
 	unsetenv("PARALLEL_RDP_NO_STORAGE_8BIT");
+	unsetenv("PARALLEL_RDP_NO_STORAGE_16BIT");
 	open_device();
 	/* (new memory is not zero: what is cleared is) */
 	memory_fill_byte = 0xcd;
@@ -287,6 +291,10 @@ int main(void)
 	setenv("PARALLEL_RDP_SINGLE_THREADED_COMMAND", "1", 1);
 	setenv("PARALLEL_RDP_NO_STORAGE_8BIT", "1", 1);
 	test_processor(NULL, 0);
+	unsetenv("PARALLEL_RDP_NO_STORAGE_8BIT");
+	setenv("PARALLEL_RDP_NO_STORAGE_16BIT", "1", 1);
+	test_processor(NULL, 0);
+	unsetenv("PARALLEL_RDP_NO_STORAGE_16BIT");
 	close_device();
 	CHECK(images_destroyed == num_images, "every image went back");
 	CHECK(unmade == made + num_pipelines, "and every buffer, view and pipeline");
