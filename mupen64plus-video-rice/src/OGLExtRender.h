@@ -36,7 +36,6 @@ public:
     void SetTexWrapT(int unitno,GLuint flag);
     void ApplyTextureFilter();
 
-    void SetTextureToTextureUnitMap(int tex, int unit);
 
 protected:
     friend class OGLDeviceBuilder;

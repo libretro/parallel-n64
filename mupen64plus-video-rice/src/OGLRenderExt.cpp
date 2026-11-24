@@ -25,10 +25,6 @@ extern uObjMtxReal gObjMtxReal;
 
 //========================================================================
 
-void OGLRender::DrawText(const char* str, M64P_RECT *rect)
-{
-}
-
 void OGLRender::DrawSpriteR_Render()    // With Rotation
 {
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
@@ -96,19 +92,5 @@ void OGLRender::DrawSpriteR_Render()    // With Rotation
     if( cullface ) glEnable(GL_CULL_FACE);
 }
 
-
-void OGLRender::DrawObjBGCopy(uObjBg &info)
-{
-    if( IsUsedAsDI(g_CI.dwAddr) )
-    {
-        DebugMessage(M64MSG_WARNING, "Unimplemented: write into Z buffer.  Was mostly commented out in Rice Video 6.1.0");
-        return;
-    }
-    else
-    {
-        CRender::LoadObjBGCopy(info);
-        CRender::DrawObjBGCopy(info);
-    }
-}
 
 

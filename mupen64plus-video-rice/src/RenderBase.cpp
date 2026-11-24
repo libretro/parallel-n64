@@ -172,14 +172,6 @@ void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)=NULL;
 float real255 = 255.0f;
 float real128 = 128.0f;
 
-void NormalizeNormalVec()
-{
-    float w = 1/sqrtf(g_normal.x*g_normal.x + g_normal.y*g_normal.y + g_normal.z*g_normal.z);
-    g_normal.x *= w;
-    g_normal.y *= w;
-    g_normal.z *= w;
-}
-
 
 void InitRenderBase()
 {
@@ -593,33 +585,6 @@ uint32_t LightVert(XVECTOR4 *pnorm, int vidx)
                     b += gRSPlights[l].fb * fCosT;
                 }
             }
-        }
-    }
-
-    if (r > 255) r = 255;
-    if (g > 255) g = 255;
-    if (b > 255) b = 255;
-    return ((0xff000000)|(((uint32_t)r)<<16)|(((uint32_t)g)<<8)|((uint32_t)b));
-}
-
-uint32_t LightVertNew(XVECTOR4 & norm)
-{
-    unsigned int l;
-    /* Do ambient */
-    float r = gRSP.fAmbientLightR;
-    float g = gRSP.fAmbientLightG;
-    float b = gRSP.fAmbientLightB;
-
-
-    for (l=0; l < gSP.numLights; l++)
-    {
-        float fCosT = norm.x*gRSPlights[l].tx + norm.y*gRSPlights[l].ty + norm.z*gRSPlights[l].tz; 
-
-        if (fCosT > 0 )
-        {
-            r += gRSPlights[l].fr * fCosT;
-            g += gRSPlights[l].fg * fCosT;
-            b += gRSPlights[l].fb * fCosT;
         }
     }
 
@@ -1221,44 +1186,6 @@ static float maxS1, maxT1;
 static bool validS0, validT0;
 static bool validS1, validT1;
 
-void LogTextureCoords(float fTex0S, float fTex0T, float fTex1S, float fTex1T)
-{
-    if( validS0 )
-    {
-        if( fTex0S<0 || fTex0S>maxS0 )  validS0 = false;
-    }
-    if( validT0 )
-    {
-        if( fTex0T<0 || fTex0T>maxT0 )  validT0 = false;
-    }
-    if( validS1 )
-    {
-        if( fTex1S<0 || fTex1S>maxS1 )  validS1 = false;
-    }
-    if( validT1 )
-    {
-        if( fTex1T<0 || fTex1T>maxT1 )  validT1 = false;
-    }
-}
-
-bool CheckTextureCoords(int tex)
-{
-    if( tex==0 )
-        return validS0&&validT0;
-
-    return validS1&&validT1;
-}
-
-void ResetTextureCoordsLog(float maxs0, float maxt0, float maxs1, float maxt1)
-{
-    maxS0 = maxs0;
-    maxT0 = maxt0;
-    maxS1 = maxs1;
-    maxT1 = maxt1;
-    validS0 = validT0 = true;
-    validS1 = validT1 = true;
-}
-
 void ForceMainTextureIndex(int dwTile) 
 {
    // Hack
@@ -1288,16 +1215,6 @@ float HackZ(float z)
         //return (10+z)/100;
         z = (expf(z)/20);
     return z;
-}
-
-void HackZ(std::vector<XVECTOR3>& points)
-{
-    int size = points.size();
-    for( int i=0; i<size; i++)
-    {
-        XVECTOR3 &v = points[i];
-        v.z = (float)HackZ(v.z);
-    }
 }
 
 void HackZAll()

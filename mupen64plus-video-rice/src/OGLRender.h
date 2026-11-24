@@ -70,11 +70,8 @@ public:
     virtual void TexCoord(TLITVERTEX &vtxInfo);
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
-    void DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw);
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
     void DrawSpriteR_Render();
-    void DrawObjBGCopy(uObjBg &info);
-    void DrawText(const char* str, M64P_RECT *rect);
 
     void SetFogMinMax(float fMin, float fMax);
     void SetFogEnable(bool bEnable);

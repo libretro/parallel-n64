@@ -147,18 +147,6 @@ void COGLGraphicsContext::InitOGLExtension(void)
 {
 }
 
-bool COGLGraphicsContext::IsExtensionSupported(const char* pExtName)
-{
-   if (strstr((const char*)m_pExtensionStr, pExtName) != NULL)
-   {
-      DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is supported.", pExtName);
-      return true;
-   }
-
-   DebugMessage(M64MSG_VERBOSE, "OpenGL Extension '%s' is NOT supported.", pExtName);
-   return false;
-}
-
 void COGLGraphicsContext::CleanUp()
 {
 }

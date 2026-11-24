@@ -36,7 +36,6 @@ public:
 
     void UpdateFrame(bool swapOnly);
 
-    bool IsExtensionSupported(const char* pExtName);
     static void InitDeviceParameters();
 
 protected:

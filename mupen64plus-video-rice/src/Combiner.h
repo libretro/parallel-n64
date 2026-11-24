@@ -67,9 +67,6 @@ protected:
     CSortedList<uint64_t, DecodedMux> m_DecodedMuxList;
 };
 
-uint32_t GetTexelNumber(N64CombinerType &m);
-int CountTexel1Cycle(N64CombinerType &m);
-bool IsTextureUsed(N64CombinerType &m);
 
 inline bool isEqual(uint8_t val1, uint8_t val2)
 {

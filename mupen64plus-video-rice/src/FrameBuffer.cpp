@@ -422,108 +422,13 @@ int FrameBufferManager::CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize, 
 }
 
 
-bool FrameBufferManager::FrameBufferInRDRAMCheckCRC()
-{
-   uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
-    RecentCIInfo &p = *(g_uRecentCIInfoPtrs[0]);
-    uint8_t *pFrameBufferBase = (uint8_t*)(rdram_u8 + p.dwAddr);
-    uint32_t pitch = (p.dwWidth << p.dwSize ) >> 1;
-    uint32_t crc = CalculateRDRAMCRC(pFrameBufferBase, 0, 0, p.dwWidth, p.dwHeight, p.dwSize, pitch);
-    if (crc != p.dwCRC)
-    {
-        p.dwCRC = crc;
-        TRACE0("Frame Buffer CRC mismatch, it was modified by the CPU");
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-extern std::vector<uint32_t> frameWriteRecord;
+/* Nothing reads CPU frame-buffer writes back any more; the record they
+ * used to go into was only consumed by the removed
+ * UpdateFrameBufferBeforeUpdateFrame. */
 void FrameBufferManager::FrameBufferWriteByCPU(uint32_t addr, uint32_t size)
 {
-    if (!frameBufferOptions.bProcessCPUWrite)
-        return;
-
-    //WARNING(TRACE2("Frame Buffer Write, address=%08X, CI Address=%08X", addr, g_CI.dwAddr));
-    status.frameWriteByCPU = true;
-    frameWriteRecord.push_back(addr&(g_dwRamSize-1));
-}
-
-extern M64P_RECT frameWriteByCPURect;
-extern std::vector<M64P_RECT> frameWriteByCPURects;
-extern M64P_RECT frameWriteByCPURectArray[20][20];
-extern bool frameWriteByCPURectFlag[20][20];
-#define FRAMEBUFFER_IN_BLOCK
-bool FrameBufferManager::ProcessFrameWriteRecord()
-{
-    int size = frameWriteRecord.size();
-    if (size == 0)
-        return false;
-
-    int index = FindRecentCIInfoIndex(frameWriteRecord[0]);
-    if (index == -1)
-    {
-        LOG_TEXTURE(TRACE1("Frame Buffer Write to non-recorded address = %08X", frameWriteRecord[0]));
-        frameWriteRecord.clear();
-        return false;
-    }
-    else
-    {
-        uint32_t base = g_uRecentCIInfoPtrs[index]->dwAddr;
-        uint32_t uwidth = g_uRecentCIInfoPtrs[index]->dwWidth;
-        uint32_t uheight = g_uRecentCIInfoPtrs[index]->dwHeight;
-        uint32_t upitch = uwidth<<1;
-
-        frameWriteByCPURect.left = uwidth-1;
-        frameWriteByCPURect.top  = uheight-1;
-
-        frameWriteByCPURect.right  = 0;
-        frameWriteByCPURect.bottom = 0;
-
-        for (int i=0; i<size; i++)
-        {
-            int off = frameWriteRecord[i]-base;
-            if (off < (int)g_uRecentCIInfoPtrs[index]->dwMemSize)
-            {
-                int y = off/upitch;
-                int x = (off - y*upitch)>>1;
-
-#ifdef FRAMEBUFFER_IN_BLOCK
-                int xidx=x/32;
-                int yidx=y/24;
-
-                M64P_RECT &rect = frameWriteByCPURectArray[xidx][yidx];
-
-                if (!frameWriteByCPURectFlag[xidx][yidx])
-                {
-                    rect.left=rect.right=x;
-                    rect.top=rect.bottom=y;
-                    frameWriteByCPURectFlag[xidx][yidx]=true;
-                }
-                else
-                {
-                    if(x < rect.left) rect.left = x;
-                    if(x > rect.right) rect.right = x;
-                    if(y < rect.top) rect.top = y;
-                    if(y > rect.bottom) rect.bottom = y;
-                }
-#else
-                if (x < frameWriteByCPURect.left)   frameWriteByCPURect.left = x;
-                if (x > frameWriteByCPURect.right)  frameWriteByCPURect.right = x;
-                if (y < frameWriteByCPURect.top)    frameWriteByCPURect.top = y;
-                if (y > frameWriteByCPURect.bottom) frameWriteByCPURect.bottom = y;
-#endif
-            }
-        }
-
-        frameWriteRecord.clear();
-        LOG_TEXTURE(TRACE4("Frame Buffer Write: Left=%d, Top=%d, Right=%d, Bottom=%d", frameWriteByCPURect.left,
-            frameWriteByCPURect.top, frameWriteByCPURect.right, frameWriteByCPURect.bottom));
-        return true;
-    }
+    (void)addr;
+    (void)size;
 }
 
 void FrameBufferManager::FrameBufferReadByCPU( uint32_t addr )
@@ -570,82 +475,6 @@ void FrameBufferManager::FrameBufferReadByCPU( uint32_t addr )
 }
 
 
-
-extern M64P_RECT frameWriteByCPURect;
-extern std::vector<M64P_RECT> frameWriteByCPURects;
-extern M64P_RECT frameWriteByCPURectArray[20][20];
-extern bool frameWriteByCPURectFlag[20][20];
-#define FRAMEBUFFER_IN_BLOCK
-
-void FrameBufferManager::UpdateFrameBufferBeforeUpdateFrame()
-{
-    if ((frameBufferOptions.bProcessCPUWrite && status.frameWriteByCPU ) ||
-        (frameBufferOptions.bLoadBackBufFromRDRAM && !FrameBufferInRDRAMCheckCRC() ))
-        // Checks if frame buffer has been modified by CPU
-        // Only happens to Dr. Mario
-    {
-        if (frameBufferOptions.bProcessCPUWrite)
-        {
-            if (ProcessFrameWriteRecord())
-            {
-#ifdef FRAMEBUFFER_IN_BLOCK
-                for (int i=0; i<20; i++)
-                {
-                    for (int j=0; j<20; j++)
-                    {
-                        if (frameWriteByCPURectFlag[i][j])
-                        {
-                            CRender::GetRender()->DrawFrameBuffer(false, frameWriteByCPURectArray[i][j].left, frameWriteByCPURectArray[i][j].top,
-                                frameWriteByCPURectArray[i][j].right-frameWriteByCPURectArray[i][j].left+1, frameWriteByCPURectArray[i][j].bottom-frameWriteByCPURectArray[i][j].top+1);
-                        }
-                    }
-                }
-                for (int i=0; i<20; i++)
-                {
-                    for (int j=0; j<20; j++)
-                    {
-                        if (frameWriteByCPURectFlag[i][j])
-                        {
-                            ClearN64FrameBufferToBlack(frameWriteByCPURectArray[i][j].left, frameWriteByCPURectArray[i][j].top,
-                                frameWriteByCPURectArray[i][j].right-frameWriteByCPURectArray[i][j].left+1, frameWriteByCPURectArray[i][j].bottom-frameWriteByCPURectArray[i][j].top+1);
-                            frameWriteByCPURectFlag[i][j] = false;
-                        }
-                    }
-                }
-                //memset(frameWriteByCPURectArray, 0, sizeof(frameWriteByCPURectArray));
-                //memset(frameWriteByCPURectFlag, 0, sizeof(frameWriteByCPURectFlag));
-#else
-                CRender::GetRender()->DrawFrameBuffer(false, frameWriteByCPURect.left, frameWriteByCPURect.top,
-                    frameWriteByCPURect.right-frameWriteByCPURect.left, frameWriteByCPURect.bottom-frameWriteByCPURect.top);
-                ClearN64FrameBufferToBlack(frameWriteByCPURect.left, frameWriteByCPURect.top,
-                    frameWriteByCPURect.right-frameWriteByCPURect.left+1, frameWriteByCPURect.bottom-frameWriteByCPURect.top+1);
-
-                /*
-                int size = frameWriteByCPURects.size();
-                for( int i=0; i<size; i++)
-                {
-                    CRender::GetRender()->DrawFrameBuffer(false, frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
-                    frameWriteByCPURects[i].right-frameWriteByCPURects[i].left, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top);
-                    ClearN64FrameBufferToBlack(frameWriteByCPURects[i].left, frameWriteByCPURects[i].top,
-                    frameWriteByCPURects[i].right-frameWriteByCPURects[i].left+1, frameWriteByCPURects[i].bottom-frameWriteByCPURects[i].top+1);
-                }
-                frameWriteByCPURects.clear();
-                */
-#endif
-            }
-            status.frameWriteByCPU = false;
-        }
-        else
-        {
-            if (CRender::IsAvailable())
-            {
-                RecentCIInfo &p = *(g_uRecentCIInfoPtrs[0]);
-                CRender::GetRender()->DrawFrameBuffer(false, 0, 0, p.dwWidth, p.dwHeight);
-                ClearN64FrameBufferToBlack(0, 0, 0, 0);
-            }
-        }
-    }
-}
 
 uint32_t FrameBufferManager::ComputeCImgHeight(SetImgInfo &info, uint32_t &height)
 {

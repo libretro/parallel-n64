@@ -346,7 +346,6 @@ void DLParser_Init()
     status.gDlistCount = 0;
     status.gUcodeCount = 0;
     status.frameReadByCPU = false;
-    status.frameWriteByCPU = false;
     status.SPCycleCount = 0;
     status.DPCycleCount = 0;
     status.bN64IsDrawingTextureBuffer = false;
@@ -401,13 +400,6 @@ void DLParser_Init()
     status.LargerTileRealLeft[0] = status.LargerTileRealLeft[1] = 0;
 }
 
-
-void RDP_GFX_Reset()
-{
-    __RSP.PCi =-1;
-    status.bUcodeIsKnown = false;
-    TextureManager_RecycleAllTextures();
-}
 
 
 void RDP_Cleanup()
@@ -856,10 +848,6 @@ void DLParser_Process(OSTask * pTask)
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-void RDP_NOIMPL_Real(const char* op, uint32_t word0, uint32_t word1) 
-{
-}
-
 void RDP_NOIMPL_WARN(const char* op)
 {
 }
@@ -874,14 +862,6 @@ void RSP_GBI1_Noop(Gfx *gfx)
 void RDP_GFX_PopDL()
 {
     __RSP.PCi--;
-}
-
-uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize)
-{
-    uint32_t crc=0;
-    for( uint32_t i=0; i<srcSize; i++ )
-        crc += srcPtr[i];
-    return crc;
 }
 
 

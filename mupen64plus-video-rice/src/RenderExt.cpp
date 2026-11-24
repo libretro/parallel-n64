@@ -112,48 +112,6 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
         SetCurrentTexture( 0, pEntry->pTexture, pEntry->ti.WidthToCreate, pEntry->ti.HeightToCreate, pEntry);
 }
 
-void CRender::LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t pitch, uint32_t format)
-{
-    TxtrInfo gti;
-    gti.Format  = g_CI.dwFormat;
-    gti.Size    = g_CI.dwSize;
-    gti.Palette = 0;
-    gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-    gti.PalAddress = 0;
-    gti.bSwapped = false;
-    gti.Address = 0;
-    gti.LeftToLoad = 0;
-    gti.TopToLoad = 0;
-    gti.WidthToCreate = width;
-    gti.HeightToCreate = height;
-
-    gti.Pitch   = pitch;
-
-    gti.HeightToLoad = height;
-    gti.WidthToLoad = width;
-    gti.pPhysicalAddress = (uint8_t*)buf;
-
-    gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = TextureManager_GetTexture(&gti, false, true, false);
-    //Upto here, the texture is loaded wrong because the format is wrong
-
-    DrawInfo info;  
-    if( CTexture_StartUpdate(pEntry->pTexture, &info) )
-    {
-        for( uint32_t i=0; i<height; i++)
-        {
-            uint32_t *psrc = (uint32_t*)((uint8_t*)buf+pitch*(i+top))+left;
-            uint32_t *pdst = (uint32_t*)((uint8_t*)info.lpSurface+i*info.lPitch);
-            for( uint32_t j=0; j<width; j++)
-            {
-                pdst[j]=psrc[j];
-            }
-        }
-        CTexture_EndUpdate(pEntry->pTexture);
-    }
-    SetCurrentTexture( 0, pEntry->pTexture, width, height, pEntry);
-}
-
 void CRender::LoadObjBGCopy(uObjBg &info)
 {
    uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
@@ -192,36 +150,6 @@ void CRender::LoadObjBGCopy(uObjBg &info)
         TRACE0("Skip BG copy loading, memory out of bound");
         return;
     }
-
-    gti.HeightToLoad = gti.HeightToCreate;
-    gti.WidthToLoad = gti.WidthToCreate;
-    gti.pPhysicalAddress = ((uint8_t*)rdram_u32)+gti.Address;
-    gti.tileNo = -1;
-    TxtrCacheEntry *pEntry = TextureManager_GetTexture(&gti, false, true, false);
-    SetCurrentTexture(0,pEntry);
-}
-
-void CRender::LoadTxtrBufIntoTexture(void)
-{
-    TxtrInfo gti;
-   uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
-
-    gti.Format  = g_pRenderTextureInfo->CI_Info.dwFormat;
-    gti.Size    = g_pRenderTextureInfo->CI_Info.dwSize;
-
-    gti.Address = RSPSegmentAddr(g_pRenderTextureInfo->CI_Info.dwAddr);
-    gti.LeftToLoad      = 0;
-    gti.TopToLoad       = 0;
-    gti.Palette = 0;
-
-    gti.PalAddress = (uint8_t *) &g_wRDPTlut[0];
-    gti.bSwapped    = false;
-
-    gti.WidthToCreate       = g_pRenderTextureInfo->N64Width;
-    gti.HeightToCreate      = g_pRenderTextureInfo->N64Height;
-    gti.TLutFmt = TLUT_FMT_RGBA16;  //RGBA16
-
-    gti.Pitch   = gti.WidthToCreate << (gti.Size-1);
 
     gti.HeightToLoad = gti.HeightToCreate;
     gti.WidthToLoad = gti.WidthToCreate;

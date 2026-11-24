@@ -386,7 +386,6 @@ void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
 #endif
 
 void DLParser_Init();
-void RDP_GFX_Reset();
 void RDP_Cleanup();
 void DLParser_Process(OSTask * pTask);
 void RDP_DLParser_Process(void);
@@ -399,7 +398,6 @@ void RDP_NOIMPL_WARN(const char* op);
 void RSP_GFX_Force_Matrix(uint32_t dwAddr);
 void RSP_GFX_InitGeometryMode();
 void RSP_SetUcode(int ucode, uint32_t ucStart, uint32_t ucDStart, uint32_t cdSize);
-uint32_t CalcalateCRC(uint32_t* srcPtr, uint32_t srcSize);
 void RDP_GFX_PopDL();
 
 #ifdef __cplusplus

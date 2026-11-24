@@ -614,51 +614,6 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     if( cullface ) glEnable(GL_CULL_FACE);
 }
 
-void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw)
-{
-    StartDrawSimpleRect(nX0, nY0, nX1, nY1, dwColor, depth, rhw);
-
-    GLboolean cullface = glIsEnabled(GL_CULL_FACE);
-    glDisable(GL_CULL_FACE);
-
-    float a = (dwColor>>24)/255.0f;
-    float r = ((dwColor>>16)&0xFF)/255.0f;
-    float g = ((dwColor>>8)&0xFF)/255.0f;
-    float b = (dwColor&0xFF)/255.0f;
-
-    GLfloat colour[] = {
-            r,g,b,a,
-            r,g,b,a,
-            r,g,b,a,
-            r,g,b,a};
-    float w = windowSetting.uDisplayWidth / 2.0f, h = windowSetting.uDisplayHeight / 2.0f, inv = 1.0f;
-
-    GLfloat vertices[] = {
-            -inv + m_simpleRectVtx[1].x / w, inv - m_simpleRectVtx[0].y / h, -depth, 1,
-            -inv + m_simpleRectVtx[1].x / w, inv - m_simpleRectVtx[1].y / h, -depth, 1,
-            -inv + m_simpleRectVtx[0].x / w, inv - m_simpleRectVtx[1].y / h, -depth, 1,
-            -inv + m_simpleRectVtx[0].x / w, inv - m_simpleRectVtx[0].y / h, -depth, 1
-    };
-
-    glEnableVertexAttribArray(VS_COLOR);
-    glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_FALSE, 0, &colour );
-    glEnableVertexAttribArray(VS_POSITION);
-    glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
-    glDisableVertexAttribArray(VS_TEXCOORD0);
-    glDisableVertexAttribArray(VS_TEXCOORD1);
-
-    glDrawArrays(GL_TRIANGLE_FAN,0,4);
-
-    //Restore old pointers
-    glVertexAttribPointer(VS_COLOR, 4, GL_UNSIGNED_BYTE,GL_TRUE, sizeof(uint8_t)*4, &(g_oglVtxColors[0][0]) );
-    glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
-    glEnableVertexAttribArray(VS_TEXCOORD0);
-    glEnableVertexAttribArray(VS_TEXCOORD1);
-
-
-    if( cullface ) glEnable(GL_CULL_FACE);
-}
-
 #if 0
 void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 {

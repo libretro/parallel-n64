@@ -136,15 +136,6 @@ void RSP_S2DEX_OBJ_RENDERMODE_2(Gfx *gfx)
     RSP_S2DEX_OBJ_RENDERMODE(gfx);
 }
 
-void ObjMtxTranslate(float &x, float &y)
-{
-    float x1 = gObjMtxReal.A*x + gObjMtxReal.B*y + gObjMtxReal.X;
-    float y1 = gObjMtxReal.C*x + gObjMtxReal.D*y + gObjMtxReal.Y;
-
-    x = x1;
-    y = y1;
-}
-
 void RSP_S2DEX_SPObjLoadTxtr(Gfx *gfx)
 {
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;

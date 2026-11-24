@@ -266,46 +266,6 @@ bool DecodedMux::IsUsedInCycle(uint8_t val, int cycle, uint8_t mask)
 }
 
 
-void DecodedMux::ConvertComplements()
-{
-    //For (A-B)*C+D, if A=1, then we can convert A-B to Ac-0
-    if( aRGB0 != MUX_1 && bRGB0 != MUX_0 )
-    {
-        aRGB0 = bRGB0|MUX_COMPLEMENT;
-        bRGB0 = MUX_0;
-    }
-    if( aRGB1 != MUX_1 && bRGB1 != MUX_0 )
-    {
-        aRGB1 = bRGB1|MUX_COMPLEMENT;
-        bRGB1 = MUX_0;
-    }
-    if( aA0 != MUX_1 && bA0 != MUX_0 )
-    {
-        aA0 = bA0|MUX_COMPLEMENT;
-        bA0 = MUX_0;
-    }
-    if( aA1 != MUX_1 && bA1 != MUX_0 )
-    {
-        aA1 = bA1|MUX_COMPLEMENT;
-        bA1 = MUX_0;
-    }
-}
-
-
-CombinerFormatType DecodedMux::GetCombinerFormatType(uint32_t cycle)
-{
-    //Analyze the formula
-    /*
-    C=0                 = D
-    A==B                = D
-    B=0, C=1, D=0       = A
-    A=1, B=0, D=0       = C
-    C=1, B==D           = A
-    A=1, C=1, D=0       = 1-B
-    D = 1               = 1
-    */
-    return CM_FMT_TYPE_D;
-}
 
 void DecodedMuxForPixelShader::Simplify(void)
 {
@@ -676,64 +636,6 @@ const char* MuxGroupStr[4] =
     "Alpha1",
 };
 
-char* DecodedMux::FormatStr(uint8_t val, char *buf)
-{
-    if( val == CM_IGNORE_BYTE )
-    {
-        strcpy(buf," ");
-    }
-    else
-    {
-        strcpy(buf, translatedCombTypes[val&MUX_MASK]);
-        if( val&MUX_ALPHAREPLICATE )
-            strcat(buf,"|A");
-        if( val&MUX_COMPLEMENT )
-            strcat(buf,"|C");
-        if( val&MUX_NEG )
-            strcat(buf,"|N");
-    }
-
-    return buf;
-}
-
-void DecodedMux::Display(bool simplified, FILE *fp)
-{
-    DecodedMux decodedMux;
-    DecodedMux *mux;
-    if (simplified)
-    {
-        mux = this;
-    }
-    else
-    {
-        decodedMux.Decode(m_dwMux0, m_dwMux1);
-        mux = &decodedMux;
-    }
-
-    char buf0[30];
-    char buf1[30];
-    char buf2[30];
-    char buf3[30];
-
-    for (int i=0; i<2; i++)
-    {
-        for (int j=0; j<2; j++)
-        {
-            N64CombinerType &m = mux->m_n64Combiners[i+2*j];
-            if (fp != NULL)
-            {
-                fprintf(fp,"%s: (%s - %s) * %s + %s\n", MuxGroupStr[i+2*j], FormatStr(m.a,buf0), 
-                    FormatStr(m.b,buf1), FormatStr(m.c,buf2), FormatStr(m.d,buf3));
-            }
-            else
-            {
-                DebuggerAppendMsg("%s: (%s - %s) * %s + %s\n", MuxGroupStr[i+2*j], FormatStr(m.a,buf0), 
-                    FormatStr(m.b,buf1), FormatStr(m.c,buf2), FormatStr(m.d,buf3));
-            }
-        }
-    }
-}
-
 int DecodedMux::HowManyConstFactors()
 {
     int n = 0;
@@ -766,21 +668,6 @@ int DecodedMux::HowManyTextures()
     return n;
 }
 
-int DecodedMux::CountTexels(void)
-{
-    int count=0;
-
-    for (int i=0; i<4; i++)
-    {
-        N64CombinerType &m = m_n64Combiners[i];
-        count = MAX(count, ::CountTexel1Cycle(m));
-        if (count == 2) 
-            break;
-    }
-
-    return count;
-}
-
 void DecodedMux::ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask)
 {
     int start = 0;
@@ -801,20 +688,6 @@ void DecodedMux::ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask)
             pmux[i] |= val2;
         }
     }
-}
-
-uint32_t DecodedMux::GetCycle(int cycle, CombineChannel channel)
-{
-    uint32_t* pmux = m_dWords;
-    if (channel == COLOR_CHANNEL)
-    {
-        return pmux[cycle*2];
-    }
-    else
-    {
-        return pmux[cycle*2+1];
-    }
-
 }
 
 uint32_t DecodedMux::GetCycle(int cycle)
@@ -948,15 +821,6 @@ void DecodedMux::MergeShadeWithConstantsInChannel(CombineChannel channel)
         m_dwShadeAlphaChannelFlag = cycleVal;
 }
 
-
-void DecodedMux::MergeConstants(void)
-{
-    // This function should be called afte the mux has been simplified
-    // The goal of this function is to merge remain constants and to reduce the
-    // total number of constants, so we can implement the mux easiler
-
-    // This function should be called after the MergeShadeWithConstants() function
-}
 
 
 void DecodedMux::UseShadeForConstant(void)
@@ -1119,150 +983,7 @@ void DecodedMux::UseTextureForConstant(void)
 
 
 extern const char *translatedCombTypes[];
-void DecodedMux::LogMuxString(const char *prompt, FILE *fp)
-{
-    fprintf(fp, "//Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    Display(false, fp);
-    TRACE0("\n");
-}
 
-void DecodedMux::LogSimpliedMuxString(const char *prompt, FILE *fp)
-{
-    fprintf(fp, "//Simplified Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    fprintf(fp, "Simplified DWORDs=%08X, %08X, %08X, %08X\n", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
-    Display(true, fp);
-    fprintf(fp, "Simplified type: %s", muxTypeStrs[mType]);
-    if( m_dwShadeColorChannelFlag != 0 )
-    {
-        if( m_dwShadeColorChannelFlag == MUX_ENV )
-            TRACE0("Shade = ENV in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_PRIM )
-            TRACE0("Shade = PRIM in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_LODFRAC )
-            TRACE0("Shade = MUX_LODFRAC in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_PRIMLODFRAC )
-            TRACE0("Shade = MUX_PRIMLODFRAC in color channel")
-        else
-            LogConstantsWithShade(m_dwShadeColorChannelFlag,COLOR_CHANNEL,fp);
-    }
-
-    if( m_dwShadeAlphaChannelFlag != 0 )
-    {
-        if( m_dwShadeAlphaChannelFlag == MUX_ENV )
-            TRACE0("Shade = ENV in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_PRIM )
-            TRACE0("Shade = PRIM in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_LODFRAC )
-            TRACE0("Shade = MUX_LODFRAC in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_PRIMLODFRAC )
-            TRACE0("Shade = MUX_PRIMLODFRAC in alpha channel")
-        else
-            LogConstantsWithShade(m_dwShadeAlphaChannelFlag,ALPHA_CHANNEL,fp);
-    }
-
-    for( int i=0; i<2; i++ )
-    {
-        if( m_ColorTextureFlag[i] != 0 )
-        {
-            if( m_ColorTextureFlag[i] == MUX_ENV )
-                TRACE1("Tex %d = ENV", i)
-            else if( m_ColorTextureFlag[i] == MUX_PRIM )
-                TRACE1("Tex %d = PRIM", i)
-            else if( m_ColorTextureFlag[i] == MUX_LODFRAC )
-                TRACE1("Tex %d = MUX_LODFRAC", i)
-            else if( m_ColorTextureFlag[i] == MUX_PRIMLODFRAC )
-                TRACE1("Tex %d = MUX_PRIMLODFRAC", i)
-        }
-    }
-
-    TRACE0("\n");
-}
-
-void DecodedMux::LogConstantsWithShade(uint32_t flag,CombineChannel channel, FILE *fp)
-{
-    fprintf(fp, "Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
-}
-
-
-void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce
-{
-    // This function should be called after calling reformat 
-    // This function will not be called by default, can be called optionally
-    // by TNT/Geforce combiner compilers
-
-    for( int i=0; i<2; i++ )
-    {
-        N64CombinerType &m0 = m_n64Combiners[i];
-        N64CombinerType &m1 = m_n64Combiners[i+2];
-        switch( splitType[i] )
-        {
-        case CM_FMT_TYPE_A_SUB_B_ADD_D:     // = A-B+D      can not map very well in 1 stage
-            if( splitType[i+2] == CM_FMT_TYPE_NOT_USED )
-            {
-                m1.a = m0.d;
-                m1.d = MUX_COMBINED;
-                splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-
-                m0.d = MUX_0;
-                splitType[i] = CM_FMT_TYPE_A_SUB_B;
-            }
-            else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
-            {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
-                m1.b = m1.d = m1.c;
-                m1.c = (m0.d | (m1.a & (~MUX_MASK)));
-                splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
-
-                m0.d = MUX_0;
-                splitType[i] = CM_FMT_TYPE_A_SUB_B;
-            }
-            break;
-        case CM_FMT_TYPE_A_SUB_B_MOD_C:     // = (A-B)*C    can not map very well in 1 stage
-            m0.d = m0.b;
-            m0.b = m0.c;
-            splitType[i] = CM_FMT_TYPE_AB_SUB_CD;
-            break;
-        case CM_FMT_TYPE_A_ADD_B_MOD_C:     // = (A+B)*C    can not map very well in 1 stage
-            m0.d = m0.b;
-            m0.b = m0.c;
-            splitType[i] = CM_FMT_TYPE_AB_ADD_CD;
-            break;
-        case CM_FMT_TYPE_A_B_C_D:           // = (A-B)*C+D
-        case CM_FMT_TYPE_A_B_C_A:           // = (A-B)*C+D
-            if( splitType[i+2] == CM_FMT_TYPE_NOT_USED )
-            {
-                m1.a = m0.d;
-                m1.d = MUX_COMBINED;
-                splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-
-                m0.d = m0.b;
-                m0.b = m0.c;
-                splitType[i] = CM_FMT_TYPE_AB_SUB_CD;
-            }
-            else if( splitType[i+2] == CM_FMT_TYPE_A_MOD_C )
-            {
-                if( (m1.c&MUX_MASK) == MUX_COMBINED )   swapbyte(&m1.a, &m1.c);
-                m1.b = m1.d = m1.c;
-                m1.c = (m0.d | (m1.a & (~MUX_MASK)));
-                splitType[i+2] = CM_FMT_TYPE_AB_ADD_CD;
-
-                m0.d = m0.b;
-                m0.b = m0.c;
-                splitType[i] = CM_FMT_TYPE_AB_ADD_CD;
-            }
-            break;
-         default:
-           break;
-        }
-    }
-}
-
-void DecodedMux::To_AB_Add_C_Format(void)   // Use by ATI Radeon
-{
-    // This function should be called after calling reformat
-    // This function will not be called by default, can be called optionally
-    // by ATI combiner compilers
-}
 
 void DecodedMux::CheckCombineInCycle1(void)
 {
@@ -1282,80 +1003,6 @@ void DecodedMux::CheckCombineInCycle1(void)
 
     if (IsUsedInCycle(MUX_COMBALPHA, 0, ALPHA_CHANNEL, MUX_MASK))
         ReplaceVal(MUX_COMBALPHA, MUX_SHADE, 1, MUX_MASK);
-}
-
-void DecodedMux::SplitComplexStages()
-{
-    for( int i=0; i<2; i++) // Color channel and alpha channel
-    {
-        if( splitType[i+2] != CM_FMT_TYPE_NOT_USED )    
-            continue;
-
-        N64CombinerType &m = m_n64Combiners[i];
-        N64CombinerType &m2 = m_n64Combiners[i+2];
-        
-        switch( splitType[i] )
-        {
-        case CM_FMT_TYPE_A_MOD_C_ADD_D:     // = A*C+D      can mapped to MULTIPLYADD(arg1,arg2,arg0)
-            m2.a = m.d;
-            m2.d = MUX_COMBINED;
-            m2.c = MUX_1;
-            m2.b = 0;
-            splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-            m.d = MUX_0;
-            splitType[i] = CM_FMT_TYPE_A_MOD_C;
-            break;
-        case CM_FMT_TYPE_A_SUB_B_ADD_D:     // = A-B+D      can not map very well in 1 stage
-            m2.a = m.d;
-            m2.d = MUX_COMBINED;
-            m2.c = MUX_1;
-            m2.b=0;
-            splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-            m.d = MUX_0;
-            splitType[i] = CM_FMT_TYPE_A_SUB_B;
-            break;
-        case CM_FMT_TYPE_A_SUB_B_MOD_C:     // = (A-B)*C    can not map very well in 1 stage
-            m2.a = m.c;
-            m2.c = MUX_COMBINED;
-            m2.d = m2.b=0;
-            splitType[i+2] = CM_FMT_TYPE_A_MOD_C;
-            m.c = MUX_1;
-            splitType[i] = CM_FMT_TYPE_A_SUB_B;
-            break;
-        case CM_FMT_TYPE_A_ADD_B_MOD_C:     // = (A+B)*C    can not map very well in 1 stage
-            m2.a = m.c;
-            m2.c = MUX_COMBINED;
-            m2.d = m2.b = 0;
-            splitType[i+2] = CM_FMT_TYPE_A_MOD_C;
-            m.c = MUX_1;
-            m.d = m.b;
-            m.b = MUX_0;
-            splitType[i] = CM_FMT_TYPE_A_ADD_D;
-            break;
-        case CM_FMT_TYPE_A_B_C_D:           // = (A-B)*C+D  can not map very well in 1 stage
-            m2.a = m.d;
-            m2.d = MUX_COMBINED;
-            m2.c = MUX_1;
-            m2.b = 0;
-            splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-            m.d = MUX_0;
-            splitType[i] = CM_FMT_TYPE_A_SUB_B_MOD_C;
-            break;
-        case CM_FMT_TYPE_A_B_C_A:           // = (A-B)*C+A  can not map very well in 1 stage
-            m2.a = m.d;
-            m2.d = MUX_COMBINED;
-            m2.c = MUX_1;
-            m2.b = 0;
-            splitType[i+2] = CM_FMT_TYPE_A_ADD_D;
-            m.d = MUX_0;
-            splitType[i] = CM_FMT_TYPE_A_SUB_B_MOD_C;
-            break;
-         default:
-           break;
-        }
-    }
-    //Reformat(true);
-    //UseShadeForConstant();
 }
 
 

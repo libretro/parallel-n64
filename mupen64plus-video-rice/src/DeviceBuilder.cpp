@@ -50,16 +50,6 @@ void CDeviceBuilder::SelectDeviceType(SupportedDeviceType type)
     CDeviceBuilder::m_deviceGeneralType = OGL_DEVICE;
 }
 
-SupportedDeviceType CDeviceBuilder::GetDeviceType(void)
-{
-    return CDeviceBuilder::m_deviceType;
-}
-
-SupportedDeviceType CDeviceBuilder::GetGeneralDeviceType(void)
-{
-    return CDeviceBuilder::m_deviceGeneralType;
-}
-
 CDeviceBuilder* CDeviceBuilder::CreateBuilder(SupportedDeviceType type)
 {
     if( m_pInstance == NULL )

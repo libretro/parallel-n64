@@ -72,7 +72,6 @@ public:
     virtual void ClearN64FrameBufferToBlack(uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     virtual int SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciInfoIdx);
     void        LoadTextureFromRenderTexture(TxtrCacheEntry* pEntry, int infoIdx);
-    void        UpdateFrameBufferBeforeUpdateFrame();
     virtual void RestoreNormalBackBuffer();                 // restore the normal back buffer
     virtual void CopyBackToFrameBufferIfReadByCPU(uint32_t addr);
     virtual void SetRenderTexture(void);
@@ -86,10 +85,8 @@ public:
 
     int FindASlot(void);
 
-    bool ProcessFrameWriteRecord();
     void FrameBufferWriteByCPU(uint32_t addr, uint32_t size);
     void FrameBufferReadByCPU( uint32_t addr );
-    bool FrameBufferInRDRAMCheckCRC();
     void StoreRenderTextureToRDRAM(int infoIdx);
 
     virtual bool IsRenderingToTexture() {return m_isRenderingToTexture;}

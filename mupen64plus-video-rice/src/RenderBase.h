@@ -102,7 +102,6 @@ enum { MAX_VERTS = 80 };        // F3DLP.Rej supports up to 80 verts!
 #ifdef __cplusplus
 extern "C" {
 #endif
-void myVec3Transform(float *vecout, float *vecin, float* m);
 
 // All these arrays are moved out of the class CRender
 // to be accessed in faster speed
@@ -294,9 +293,6 @@ void ClipVertexes();
 void ClipVertexesOpenGL();
 void ClipVertexesForRect();
 
-void LogTextureCoords(float fTex0S, float fTex0T, float fTex1S, float fTex1T);
-bool CheckTextureCoords(int tex);
-void ResetTextureCoordsLog(float maxs0, float maxt0, float maxs1, float maxt1);
 
 inline float ViewPortTranslatef_x(float x) { return ( (x+1) * windowSetting.vpWidthW/2) + windowSetting.vpLeftW; }
 inline float ViewPortTranslatef_y(float y) { return ( (1-y) * windowSetting.vpHeightW/2) + windowSetting.vpTopW; }

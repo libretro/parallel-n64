@@ -45,8 +45,6 @@ public:
     static void DeleteBuilder(void);
     static CDeviceBuilder* GetBuilder(void);
     static void SelectDeviceType(SupportedDeviceType type);
-    static SupportedDeviceType GetDeviceType(void);
-    static SupportedDeviceType GetGeneralDeviceType(void);
     static SupportedDeviceType m_deviceGeneralType;
 protected:
     CDeviceBuilder();

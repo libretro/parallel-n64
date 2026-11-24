@@ -114,7 +114,6 @@ public:
     }
 
     void PopWorldView();
-    Matrix & GetWorldProjectMatrix(void);
     void SetWorldProjectMatrix(Matrix &mtx);
     
     void ResetMatrices();
@@ -199,8 +198,6 @@ public:
     void LoadObjSprite(uObjTxSprite &info, bool useTIAddr);
 
     void LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-    void LoadTextureFromMemory(void *buf, uint32_t left, uint32_t top, uint32_t width, uint32_t height, uint32_t pitch, uint32_t format);
-    void LoadTxtrBufIntoTexture(void);
     void DrawSprite2D(Sprite2DInfo &info, uint32_t ucode);
     void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     void DrawSprite(uObjTxSprite &sprite, bool rectR);
@@ -213,7 +210,6 @@ public:
     static CRender * g_pRender;
     static int gRenderReferenceCount;
     static CRender * GetRender(void);
-    static bool IsAvailable();
 
 
 protected:

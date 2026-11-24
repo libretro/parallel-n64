@@ -119,28 +119,19 @@ public:
     bool IsUsedInColorChannel(uint8_t fac, uint8_t mask);
     bool IsUsedInCycle(uint8_t fac, int cycle, CombineChannel channel, uint8_t mask);
     bool IsUsedInCycle(uint8_t fac, int cycle, uint8_t mask);
-    uint32_t GetCycle(int cycle, CombineChannel channel);
     uint32_t GetCycle(int cycle);
-    CombinerFormatType GetCombinerFormatType(uint32_t cycle);
-    void Display(bool simplified, FILE *fp);
-    static char* FormatStr(uint8_t val, char *buf);
     void CheckCombineInCycle1(void);
     virtual void Simplify(void);
     virtual void Reformat(bool do_complement);
-    virtual void To_AB_Add_CD_Format(void); // Use by TNT,Geforce
-    virtual void To_AB_Add_C_Format(void);  // Use by ATI Radeon
     
     virtual void MergeShadeWithConstants(void);
     virtual void MergeShadeWithConstantsInChannel(CombineChannel channel);
-    virtual void MergeConstants(void);
     virtual void UseShadeForConstant(void);
     virtual void UseTextureForConstant(void);
 
-    void ConvertComplements();
     int HowManyConstFactors();
     int HowManyTextures();
     void MergeConstFactors();
-    virtual void SplitComplexStages();  // Only used if the combiner supports more than 1 stages
     void ConvertLODFracTo0();
     void ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask);
     void Replace1Val(uint8_t &val1, const uint8_t val2, uint8_t mask)
@@ -148,15 +139,11 @@ public:
         val1 &= (~mask);
         val1 |= val2;
     }
-    int CountTexels(void);
     int Count(uint8_t val, int cycle, uint8_t mask);
 
     void DisplayMuxString(const char *prompt) {}
     void DisplaySimpliedMuxString(const char *prompt){}
     void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel){}
-    void LogMuxString(const char *prompt, FILE *fp);
-    void LogSimpliedMuxString(const char *prompt, FILE *fp);
-    void LogConstantsWithShade(uint32_t flag,CombineChannel channel, FILE *fp);
 
     virtual DecodedMux& operator=(const DecodedMux& mux)
     {
@@ -212,7 +199,6 @@ class DecodedMuxForPixelShader : public DecodedMux
 {
 public:
     virtual void Simplify(void);
-    void SplitComplexStages() {};
 };
 
 typedef struct 

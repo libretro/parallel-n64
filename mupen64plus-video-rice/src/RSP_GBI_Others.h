@@ -34,35 +34,6 @@ uint32_t dwConkerVtxZAddr=0;
 
 static void RDP_GFX_DumpVtxInfoDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
 
-void RDP_GFX_DLInMem(Gfx *gfx)
-{
-   uint32_t dwLimit = ((gfx->words.w0) >> 16) & 0xFF;
-   uint32_t dwPush  = G_DL_PUSH; //((gfx->words.w0) >> 16) & 0xFF;
-   uint32_t dwAddr  = 0x00000000 | (gfx->words.w1); //RSPSegmentAddr((gfx->words.w1));
-
-   LOG_UCODE("    Address=0x%08x Push: 0x%02x", dwAddr, dwPush);
-
-   switch (dwPush)
-   {
-      case G_DL_PUSH:
-         LOG_UCODE("    Pushing DisplayList 0x%08x", dwAddr);
-         __RSP.PCi++;
-         __RSP.PC[__RSP.PCi]        = dwAddr;
-         __RSP.countdown[__RSP.PCi] = dwLimit;
-
-         break;
-      case G_DL_NOPUSH:
-         LOG_UCODE("    Jumping to DisplayList 0x%08x", dwAddr);
-         __RSP.PC[__RSP.PCi]        = dwAddr;
-         __RSP.countdown[__RSP.PCi] = dwLimit;
-         break;
-   }
-
-   LOG_UCODE("");
-   LOG_UCODE("\\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/ \\/");
-   LOG_UCODE("#############################################");
-}
-
 extern Matrix ALIGN(16, dkrMatrixTransposed);
 void RSP_Mtx_DKR(Gfx *gfx)
 {   
@@ -787,12 +758,6 @@ void DLParser_Ucode8_JUMP(Gfx *gfx) // DL Function Call
     }
 }
 
-void DLParser_Ucode8_Unknown(Gfx *gfx)
-{
-    uint32_t dwPC = __RSP.PC[__RSP.PCi]-8;
-    LOG_UCODE("ucode %02X at PC=%08X: 0x%08x 0x%08x\n", ((gfx->words.w0)>>24), dwPC, (gfx->words.w0), (gfx->words.w1));
-}
-
 void DLParser_Unknown_Skip1(Gfx *gfx)
 {
     uint32_t dwPC = __RSP.PC[__RSP.PCi]-8;
@@ -1035,44 +1000,6 @@ void DLParser_Ucode8_0xbf(Gfx *gfx)
     else
         DLParser_Unknown_Skip1(gfx);
 }
-
-void PD_LoadMatrix_0xb4(uint32_t addr)
-{
-   unsigned i, j;
-   uint32_t data[16];
-   uint8_t *rdram_u8  = (uint8_t*)gfx_info.RDRAM;
-   const float fRecip = 1.0f / 65536.0f;
-
-   data[0]  =  *(uint32_t*)(rdram_u8 +addr+4+ 0);
-   data[1]  =  *(uint32_t*)(rdram_u8 +addr+4+ 8);
-   data[2]  =  *(uint32_t*)(rdram_u8 +addr+4+16);
-   data[3]  =  *(uint32_t*)(rdram_u8 +addr+4+24);
-
-   data[8]  =  *(uint32_t*)(rdram_u8 +addr+4+32);
-   data[9]  =  *(uint32_t*)(rdram_u8 +addr+4+40);
-   data[10] =  *(uint32_t*)(rdram_u8 +addr+4+48);
-   data[11] =  *(uint32_t*)(rdram_u8 +addr+4+56);
-
-   data[4]  =  *(uint32_t*)(rdram_u8 +addr+4+ 0+64);
-   data[5]  =  *(uint32_t*)(rdram_u8 +addr+4+ 8+64);
-   data[6]  =  *(uint32_t*)(rdram_u8 +addr+4+16+64);
-   data[7]  =  *(uint32_t*)(rdram_u8 +addr+4+24+64);
-
-   data[12] =  *(uint32_t*)(rdram_u8 +addr+4+32+64);
-   data[13] =  *(uint32_t*)(rdram_u8 +addr+4+40+64);
-   data[14] =  *(uint32_t*)(rdram_u8 +addr+4+48+64);
-   data[15] =  *(uint32_t*)(rdram_u8 +addr+4+56+64);
-
-   for (i = 0; i < 4; i++)
-   {
-      for (j = 0; j < 4; j++) 
-      {
-         int  hi = *(short *)((unsigned char*)data + (((i<<3)+(j<<1)     )^0x2));
-         int  lo = *(uint16_t*)((unsigned char*)data + (((i<<3)+(j<<1) + 32)^0x2));
-         matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
-      }
-   }
-}   
 
 void DLParser_RDPHalf_1_0xb4_GoldenEye(Gfx *gfx)        
 {

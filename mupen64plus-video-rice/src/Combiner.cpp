@@ -224,46 +224,6 @@ COLOR CColorCombiner::GetConstFactor(uint32_t colorFlag, uint32_t alphaFlag, uin
 bool    gUsingPrimColour = false;
 bool    gUsingEnvColour = false;
 
-int CountTexel1Cycle(N64CombinerType &m)
-{
-   unsigned i;
-   int hasTexel[2];
-   uint8_t *p = (uint8_t*)&m;
-
-   for (i=0; i<2; i++)
-   {
-      unsigned j;
-
-      hasTexel[i]=0;
-      for (j=0; j<4; j++)
-      {
-         if ((p[j]&MUX_MASK) == MUX_TEXEL0+i)
-         {
-            hasTexel[i]=1;
-            break;
-         }
-      }
-   }
-
-   return hasTexel[0]+hasTexel[1];
-}
-
-uint32_t GetTexelNumber(N64CombinerType &m)
-{
-   if ((m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1)
-      return TEX_1;
-   return TEX_0;
-}
-
-bool IsTextureUsed(N64CombinerType &m)
-{
-    if((m.a&MUX_MASK) == MUX_TEXEL1 || (m.b&MUX_MASK) == MUX_TEXEL1 || (m.c&MUX_MASK) == MUX_TEXEL1  || (m.d&MUX_MASK) == MUX_TEXEL1)
-        return true;
-    if((m.a&MUX_MASK) == MUX_TEXEL0 || (m.b&MUX_MASK) == MUX_TEXEL0 || (m.c&MUX_MASK) == MUX_TEXEL0  || (m.d&MUX_MASK) == MUX_TEXEL0)
-        return true;
-    return false;
-}
-
 //========================================================================
 
 void CColorCombiner::InitCombinerMode(void)

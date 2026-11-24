@@ -77,7 +77,6 @@ typedef struct {
     float   fRatio;
 
     bool    frameReadByCPU;
-    bool    frameWriteByCPU;
 
     uint32_t  SPCycleCount;       // Count how many CPU cycles SP used in this DLIST
     uint32_t  DPCycleCount;       // Count how many CPU cycles DP used in this DLIST
