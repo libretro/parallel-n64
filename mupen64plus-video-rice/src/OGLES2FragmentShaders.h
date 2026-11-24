@@ -23,8 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#include "OGLCombiner.h"
-#include "OGLExtCombiner.h"
+#include "Combiner.h"
+#include "OGLRender.h"
 
 typedef struct
 {
@@ -56,7 +56,8 @@ typedef struct
 } OGLShaderCombinerSaveType;
 
 
-class COGL_FragmentProgramCombiner : public COGLColorCombiner4
+/* Rice's GL combiner: a fragment program a mux */
+class COGL_FragmentProgramCombiner : public CColorCombiner
 {
 public:
     bool Initialize(void);
@@ -82,6 +83,14 @@ protected:
 
     COGL_FragmentProgramCombiner(CRender *pRender);
     ~COGL_FragmentProgramCombiner();
+
+    /* The combiner is built inside CRender's constructor, before the
+     * OGLRender part exists, so the downcast is done when it is used. */
+    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
+
+    int m_lastIndex;
+    uint32_t m_dwLastMux0;
+    uint32_t m_dwLastMux1;
 
     bool m_bFragmentProgramIsSupported;
     std::vector<OGLShaderCombinerSaveType> m_vCompiledShaders;
@@ -109,26 +118,6 @@ private:
 
 
 
-class COGLFragmentShaderCombiner : public COGLColorCombiner
-{
-public:
-    bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile);
-protected:
-    friend class OGLDeviceBuilder;
-
-    void DisableCombiner(void);
-    void InitCombinerCycleCopy(void);
-    void InitCombinerCycleFill(void);
-    void InitCombinerCycle12(void);
-
-    COGLFragmentShaderCombiner(CRender *pRender);
-    ~COGLFragmentShaderCombiner();
-
-    bool m_bShaderIsSupported;
-
-
-};
 
 
 #endif

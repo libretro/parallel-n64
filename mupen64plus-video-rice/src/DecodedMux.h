@@ -215,19 +215,6 @@ public:
     void SplitComplexStages() {};
 };
 
-class DecodedMuxForSemiPixelShader : public DecodedMux
-{
-public:
-    void Reset(void);
-};
-
-class DecodedMuxForOGL14V2 : public DecodedMuxForPixelShader
-{
-public:
-    virtual void Simplify(void);
-    void UseTextureForConstant(void);
-};
-
 typedef struct 
 {
     bool bFurtherFormatForOGL2;

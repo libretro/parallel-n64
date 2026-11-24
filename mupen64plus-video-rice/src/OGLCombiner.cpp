@@ -24,7 +24,6 @@
 #include "OGLCombiner.h"
 #include "OGLRender.h"
 #include "OGLGraphicsContext.h"
-#include "OGLDecodedMux.h"
 #include "OGLTexture.h"
 
 //========================================================================
@@ -45,94 +44,6 @@ uint32_t DirectX_OGL_BlendFuncMaps [] =
     GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHSRCALPHA       = 12,    
     GL_SRC_ALPHA_SATURATE,      //BLEND_BOTHINVSRCALPHA    = 13,
 };
-
-//========================================================================
-COGLColorCombiner::COGLColorCombiner(CRender *pRender) :
-    CColorCombiner(pRender),
-    m_bSupportAdd(false), m_bSupportSubtract(false)
-{
-    m_pDecodedMux = new COGLDecodedMux;
-    m_pDecodedMux->m_maxConstants = 0;
-    m_pDecodedMux->m_maxTextures = 1;
-}
-
-COGLColorCombiner::~COGLColorCombiner()
-{
-    delete m_pDecodedMux;
-    m_pDecodedMux = NULL;
-}
-
-bool COGLColorCombiner::Initialize(void)
-{
-    m_bSupportAdd = false;
-    m_bSupportSubtract = false;
-    m_supportedStages = 1;
-
-    COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext);
-    if( pcontext->IsExtensionSupported(OSAL_GL_ARB_TEXTURE_ENV_ADD) || pcontext->IsExtensionSupported("GL_EXT_texture_env_add") )
-        m_bSupportAdd = true;
-
-    if( pcontext->IsExtensionSupported("GL_EXT_blend_subtract") )
-        m_bSupportSubtract = true;
-
-    return true;
-}
-
-void COGLColorCombiner::DisableCombiner(void)
-{
-    OGLRenderer()->DisableMultiTexture();
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_ONE, GL_ZERO);
-    
-    if( m_bTexelsEnable )
-    {
-        COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
-        if( pTexture ) 
-        {
-            OGLRenderer()->EnableTexUnit(0, true);
-            OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
-            glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-            OGLRenderer()->SetAllTexelRepeatFlag();
-        }
-    }
-    else
-    {
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        OGLRenderer()->EnableTexUnit(0, false);
-    }
-}
-
-void COGLColorCombiner::InitCombinerCycleCopy(void)
-{
-    OGLRenderer()->DisableMultiTexture();
-    OGLRenderer()->EnableTexUnit(0, true);
-    COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
-    if( pTexture )
-    {
-        OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
-        OGLRenderer()->SetTexelRepeatFlags(gRSP.curTile);
-    }
-
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-}
-
-void COGLColorCombiner::InitCombinerCycleFill(void)
-{
-    OGLRenderer()->DisableMultiTexture();
-    OGLRenderer()->EnableTexUnit(0, false);
-}
-
-
-void COGLColorCombiner::InitCombinerCycle12(void)
-{
-    OGLRenderer()->DisableMultiTexture();
-    if (!m_bTexelsEnable)
-    {
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        OGLRenderer()->EnableTexUnit(0, false);
-        return;
-    }
-}
 
 static void OGLBlender_BlendFunc(CBlender *b, uint32_t srcFunc, uint32_t desFunc)
 {
@@ -159,24 +70,3 @@ CBlender *OGLBlender_Get(void)
 {
     return &oglBlender;
 }
-
-void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
-{
-    OGLRenderer()->DisableMultiTexture();
-    if( g_textures[tile].m_pCTexture )
-    {
-        OGLRenderer()->EnableTexUnit(0, true);
-        glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
-    }
-    OGLRenderer()->SetAllTexelRepeatFlag();
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // Linear Filtering
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
-
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    OGLRenderer()->SetAlphaTestEnable(false);
-}
-
-

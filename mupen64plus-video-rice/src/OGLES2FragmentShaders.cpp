@@ -149,54 +149,9 @@ const char *fragmentFill =
 
 GLuint fillProgram,fillColorLocation;
 
-COGLFragmentShaderCombiner::COGLFragmentShaderCombiner(CRender *pRender)
-: COGLColorCombiner(pRender)
-{
-    m_bShaderIsSupported = true;
-}
-COGLFragmentShaderCombiner::~COGLFragmentShaderCombiner()
-{
-}
-
-bool COGLFragmentShaderCombiner::Initialize(void)
-{
-    if( !COGLColorCombiner::Initialize() )
-        return false;
-
-    m_bShaderIsSupported = true;
-
-    return true;
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycle12(void)
-{
-}
-void COGLFragmentShaderCombiner::DisableCombiner(void)
-{
-    COGLColorCombiner::DisableCombiner();
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycleCopy(void)
-{
-    COGLColorCombiner::InitCombinerCycleCopy();
-}
-
-void COGLFragmentShaderCombiner::InitCombinerCycleFill(void)
-{
-    COGLColorCombiner::InitCombinerCycleFill();
-}
-void COGLFragmentShaderCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
-{
-    COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
-}
-
-
-
-
 COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
-: COGLColorCombiner4(pRender)
+: CColorCombiner(pRender), m_lastIndex(-1), m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    delete m_pDecodedMux;
     m_pDecodedMux = new DecodedMuxForPixelShader;
     m_journal = NULL;
     m_bFragmentProgramIsSupported = true;
@@ -294,6 +249,9 @@ COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
     }
 
     m_vCompiledShaders.clear();
+
+    delete m_pDecodedMux;
+    m_pDecodedMux = NULL;
 }
 
 bool COGL_FragmentProgramCombiner::Initialize(void)
@@ -344,7 +302,21 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
  * program instead, with nothing discarded. */
 void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
 {
-    COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
+    OGLRenderer()->DisableMultiTexture();
+    if( g_textures[tile].m_pCTexture )
+    {
+        OGLRenderer()->EnableTexUnit(0, true);
+        glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
+    }
+    OGLRenderer()->SetAllTexelRepeatFlag();
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR); // Linear Filtering
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
+
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+    OGLRenderer()->SetAlphaTestEnable(false);
     UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation, 0.0f);
 }

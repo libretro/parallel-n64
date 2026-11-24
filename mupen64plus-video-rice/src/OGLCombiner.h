@@ -26,33 +26,6 @@
 #include "Combiner.h"
 #include "OGLRender.h"
 
-class OGLRender;
-
-class COGLColorCombiner : public CColorCombiner
-{
-public:
-    bool Initialize(void);
-    void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile);
-protected:
-    friend class OGLDeviceBuilder;
-
-    void DisableCombiner(void);
-    void InitCombinerCycleCopy(void);
-    void InitCombinerCycleFill(void);
-    void InitCombinerCycle12(void);
-
-    COGLColorCombiner(CRender *pRender);
-    ~COGLColorCombiner();
-    /* The combiner is built inside CRender's constructor, before the
-     * OGLRender part exists, so the downcast is done when it is used. */
-    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
-    
-    bool    m_bSupportAdd;
-    bool    m_bSupportSubtract;
-
-
-};
-
 /* the GL blender, the one there is */
 CBlender *OGLBlender_Get(void);
 

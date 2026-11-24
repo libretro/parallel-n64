@@ -275,9 +275,7 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
             $(VIDEODIR_RICE)/GraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLCombiner.cpp \
-            $(VIDEODIR_RICE)/OGLDecodedMux.cpp \
             $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
-            $(VIDEODIR_RICE)/OGLExtCombiner.cpp \
             $(VIDEODIR_RICE)/OGLExtRender.cpp \
             $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLRender.cpp \
