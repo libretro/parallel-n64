@@ -95,13 +95,7 @@ static bool StartVideo(void)
         status.fRatio = 9/11.0f;;
     
     CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
-    CGraphicsContext::InitWindowInfo();
-
-    bool res = CGraphicsContext::Get()->Initialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
-    if (!res)
-    {
-       return false;
-    }
+    RiceGC_Initialize();
     CDeviceBuilder::GetBuilder()->CreateRender();
     CRender::GetRender()->Initialize();
     DLParser_Init();
@@ -285,7 +279,6 @@ void riceRomClosed(void)
     RDP_Cleanup();
 
     CDeviceBuilder::GetBuilder()->DeleteRender();
-    CGraphicsContext::Get()->CleanUp();
     CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
 
     windowSetting.dps = windowSetting.fps = -1;
@@ -329,14 +322,12 @@ void riceUpdateScreen(void)
        //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
 
        // re-initialize our OpenGL graphics context state
-       bool res = CGraphicsContext::Get()->ResizeInitialize(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
-       if (res)
-       {
-          // re-create the OpenGL renderer
-          CDeviceBuilder::GetBuilder()->CreateRender();
-          CRender::GetRender()->Initialize();
-          DLParser_Init();
-       }
+       RiceGC_Initialize();
+
+       // re-create the OpenGL renderer
+       CDeviceBuilder::GetBuilder()->CreateRender();
+       CRender::GetRender()->Initialize();
+       DLParser_Init();
 
        status.ToResize = false;
        return;
@@ -355,7 +346,7 @@ void riceUpdateScreen(void)
         {
             SetVIScales();
             CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
-            CGraphicsContext::Get()->UpdateFrame(false);
+            RiceGC_UpdateFrame();
         }
         return;
     }
@@ -364,7 +355,7 @@ void riceUpdateScreen(void)
 
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE )
     {
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
         return;
     }
 
@@ -373,7 +364,7 @@ void riceUpdateScreen(void)
     if( currentRomOptions.screenUpdateSetting == SCREEN_UPDATE_AT_VI_UPDATE_AND_DRAWN )
     {
         if( status.bScreenIsDrawn )
-            CGraphicsContext::Get()->UpdateFrame(false);
+            RiceGC_UpdateFrame();
 
         return;
     }
@@ -389,7 +380,7 @@ void riceUpdateScreen(void)
                 status.curVIOriginReg = status.curDisplayBuffer;
                 //status.curRenderBuffer = NULL;
 
-                CGraphicsContext::Get()->UpdateFrame(false);
+                RiceGC_UpdateFrame();
             }
             else
             {
@@ -434,9 +425,6 @@ int riceInitiateGFX(GFX_INFO Gfx_Info)
         DebugMessage(M64MSG_ERROR, "Failed to read configuration data");
         return false;
     }
-
-    CGraphicsContext::InitWindowInfo();
-    CGraphicsContext::InitDeviceParameters();
 
     return true;
 }

@@ -273,11 +273,9 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
-            $(VIDEODIR_RICE)/GraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLCombiner.cpp \
             $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
             $(VIDEODIR_RICE)/OGLExtRender.cpp \
-            $(VIDEODIR_RICE)/OGLGraphicsContext.cpp \
             $(VIDEODIR_RICE)/OGLRender.cpp \
             $(VIDEODIR_RICE)/OGLRenderExt.cpp \
             $(VIDEODIR_RICE)/RenderBase.cpp \
@@ -291,6 +289,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/FrameBufferRDRAM.c \
             $(VIDEODIR_RICE)/gDP_rice.c \
+            $(VIDEODIR_RICE)/GraphicsContext.c \
             $(VIDEODIR_RICE)/gSP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \
             $(VIDEODIR_RICE)/RenderTexture.c \

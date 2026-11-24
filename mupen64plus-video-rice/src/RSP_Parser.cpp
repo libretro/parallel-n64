@@ -807,10 +807,10 @@ void DLParser_Process(OSTask * pTask)
     status.dwNumVertices = 0;
     status.dwBiggestVertexIndex = 0;
 
-    if( g_curRomInfo.bForceScreenClear && CGraphicsContext::needCleanScene )
+    if( g_curRomInfo.bForceScreenClear && rice_gc_need_clean_scene )
     {
         CRender::g_pRender->ClearBuffer(true,true);
-        CGraphicsContext::needCleanScene = false;
+        rice_gc_need_clean_scene = false;
     }
 
     SetVIScales();
@@ -1155,7 +1155,7 @@ void DLParser_SetCImg(Gfx *gfx)
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_CI_CHANGE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
         TXTRBUF_OR_CI_DETAIL_DUMP(TRACE0("Screen Update at 1st CI change"););
     }
 

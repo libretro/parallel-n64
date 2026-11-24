@@ -15,6 +15,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+/* Rice's GL context state (GraphicsContext.h). C89. */
+#include <stdio.h>
 
 #include "osal_opengl.h"
 #include <glsm/glsm.h>
@@ -23,82 +25,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 #include "Config.h"
 #include "Debugger.h"
-#include "OGLGraphicsContext.h"
-#include "TextureManager.h"
+#include "FrameBuffer.h"
+#include "GraphicsContext.h"
 #include "Video.h"
-#include "version.h"
 #include "../../libretro/libretro_private.h"
 
-COGLGraphicsContext::COGLGraphicsContext() :
-    m_bSupportLODBias(false),
-    m_bSupportTextureLOD(false),
-    m_pVendorStr(NULL),
-    m_pRenderStr(NULL),
-    m_pExtensionStr(NULL),
-    m_pVersionStr(NULL),
-    m_vao(0)
+bool rice_gc_need_clean_scene = false;
+
+/* Vertex array object kept bound so rice's client-side vertex arrays draw
+ * under a core-profile GL context (see gc_init_state). */
+static GLuint gc_vao = 0;
+
+static void gc_init_state(void)
 {
-}
-
-
-COGLGraphicsContext::~COGLGraphicsContext()
-{
-}
-
-bool COGLGraphicsContext::Initialize(uint32_t dwWidth, uint32_t dwHeight)
-{
-    DebugMessage(M64MSG_INFO, "Initializing OpenGL Device Context.");
-    CGraphicsContext::Initialize(dwWidth, dwHeight);
-
-    int depthBufferDepth = options.OpenglDepthBufferSetting;
-    int colorBufferDepth = 32;
-    int bVerticalSync = windowSetting.bVerticalSync;
-
-    if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
-        colorBufferDepth = 16;
-
-    InitState();
-    InitOGLExtension();
-    sprintf(m_strDeviceStats, "%.60s - %.128s : %.60s", m_pVendorStr, m_pRenderStr, m_pVersionStr);
-    TRACE0(m_strDeviceStats);
-    DebugMessage(M64MSG_INFO, "Using OpenGL: %s", m_strDeviceStats);
-
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
-    UpdateFrame(false);
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    UpdateFrame(false);
-    
-    return true;
-}
-
-bool COGLGraphicsContext::ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight)
-{
-    CGraphicsContext::Initialize(dwWidth, dwHeight);
-
-    int depthBufferDepth = options.OpenglDepthBufferSetting;
-    int colorBufferDepth = 32;
-    int bVerticalSync = windowSetting.bVerticalSync;
-
-    if (options.colorQuality == TEXTURE_FMT_A4R4G4B4)
-        colorBufferDepth = 16;
-
-    InitState();
-
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);    // Clear buffers
-    UpdateFrame(false);
-    Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
-    UpdateFrame(false);
-    
-    return true;
-}
-
-void COGLGraphicsContext::InitState(void)
-{
-    m_pRenderStr = glGetString(GL_RENDERER);
-    m_pExtensionStr = glGetString(GL_EXTENSIONS);
-    m_pVersionStr = glGetString(GL_VERSION);
-    m_pVendorStr = glGetString(GL_VENDOR);
-
     /* A vertex array object must be bound for any draw to be valid under a
      * core-profile GL context.  rice feeds geometry through client-side vertex
      * arrays (glVertexAttribPointer with app pointers, no VBO); under a core
@@ -114,7 +53,7 @@ void COGLGraphicsContext::InitState(void)
      * on the "gl" driver and black-screen it.  Resolve the entry points through
      * the frontend's get_proc_address rather than glsm's wrappers
      * (rglBindVertexArray also re-binds a framebuffer, wrong this early). */
-    if (m_vao == 0 && glsm_context_is_core())
+    if (gc_vao == 0 && glsm_context_is_core())
     {
         void (*genVAO)(GLsizei, GLuint*) =
             (void (*)(GLsizei, GLuint*))glsm_get_proc_address("glGenVertexArrays");
@@ -122,8 +61,8 @@ void COGLGraphicsContext::InitState(void)
             (void (*)(GLuint))glsm_get_proc_address("glBindVertexArray");
         if (genVAO && bindVAO)
         {
-            genVAO(1, &m_vao);
-            bindVAO(m_vao);
+            genVAO(1, &gc_vao);
+            bindVAO(gc_vao);
         }
     }
 
@@ -143,57 +82,60 @@ void COGLGraphicsContext::InitState(void)
     glDepthRange(-1.0f, 1.0f);
 }
 
-void COGLGraphicsContext::InitOGLExtension(void)
+void RiceGC_Initialize(void)
 {
+    RiceFB_Initialize();
+    gc_init_state();
+
+    /* two cleared, handed-off frames, so neither buffer starts with garbage */
+    RiceGC_Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
+    RiceGC_UpdateFrame();
+    RiceGC_Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0xFF000000, 1.0f);
+    RiceGC_UpdateFrame();
 }
 
-void COGLGraphicsContext::CleanUp()
+void RiceGC_Release(void)
 {
+    gc_vao = 0;
 }
 
-
-void COGLGraphicsContext::Clear(ClearFlag dwFlags, uint32_t color, float depth)
+void RiceGC_Clear(unsigned flags, uint32_t color, float depth)
 {
-    uint32_t flag = 0;
-    float r       = ((color>>16)&0xFF)/255.0f;
-    float g       = ((color>> 8)&0xFF)/255.0f;
-    float b       = ((color    )&0xFF)/255.0f;
-    float a       = ((color>>24)&0xFF)/255.0f;
+    GLbitfield flag = 0;
+    float r         = ((color>>16)&0xFF)/255.0f;
+    float g         = ((color>> 8)&0xFF)/255.0f;
+    float b         = ((color    )&0xFF)/255.0f;
+    float a         = ((color>>24)&0xFF)/255.0f;
 
-    if (dwFlags & CLEAR_COLOR_BUFFER)
+    if (flags & CLEAR_COLOR_BUFFER)
        flag |= GL_COLOR_BUFFER_BIT;
-    if (dwFlags & CLEAR_DEPTH_BUFFER)
+    if (flags & CLEAR_DEPTH_BUFFER)
        flag |= GL_DEPTH_BUFFER_BIT;
 
     glClearColor(r, g, b, a);
     glClearDepth(depth);
-    glClear(flag);  //Clear color buffer and depth buffer
+    glClear(flag);
 }
 
-void COGLGraphicsContext::UpdateFrame(bool swapOnly)
+void RiceGC_UpdateFrame(void)
 {
     status.gFrameCount++;
 
     /* (no glFlush: the frame is drawn into the frontend's framebuffer,
      * and the frontend submits it) */
 
-    // if emulator defined a render callback function, call it before buffer swap
+    /* if the emulator set a render callback, it is called before the swap */
     if (renderCallback)
         (*renderCallback)(status.bScreenIsDrawn);
 
-   retro_return(true);
-   
+    retro_return(true);
+
     glDepthMask(GL_TRUE);
     glClearDepth(1.0f);
     if (!g_curRomInfo.bForceScreenClear)
         glClear(GL_DEPTH_BUFFER_BIT);
     else
-        needCleanScene = true;
+        rice_gc_need_clean_scene = true;
 
     status.bScreenIsDrawn = false;
-}
-
-// This is a static function, will be called when the plugin DLL is initialized
-void COGLGraphicsContext::InitDeviceParameters()
-{
 }

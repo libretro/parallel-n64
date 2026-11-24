@@ -14,65 +14,42 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
 */
-
+/* Rice's GL context state: clears, frame hand-off and the state set up
+ * when the context is (re)made. C89. */
 #ifndef GFXCONTEXT_H
 #define GFXCONTEXT_H
 
-#include "typedefs.h"
+#include <stdint.h>
+#include <boolean.h>
 
 enum ClearFlag
 {
     CLEAR_COLOR_BUFFER           = 0x01,
     CLEAR_DEPTH_BUFFER           = 0x02,
-    CLEAR_COLOR_AND_DEPTH_BUFFER = 0x03,
+    CLEAR_COLOR_AND_DEPTH_BUFFER = 0x03
 };
 
-
-typedef struct
-{
-    uint32_t  addr;   //N64 RDRAM address
-    uint32_t  size;   //N64 buffer size
-    uint32_t  format; //N64 format
-    uint32_t  width;
-    uint32_t  height;
-} TextureBufferShortInfo;
-
-
-// This class basically provides an extra level of security for our
-// multi-threaded code. Threads can Grab the CGraphicsContext to prevent
-// other threads from changing/releasing any of the pointers while it is
-// running.
-
-class CGraphicsContext
-{
-    friend class CDeviceBuilder;
-    
-public:
-    virtual bool Initialize(uint32_t dwWidth, uint32_t dwHeight);
-    virtual bool ResizeInitialize(uint32_t dwWidth, uint32_t dwHeight);
-    virtual void CleanUp();
-
-    virtual void Clear(ClearFlag flags, uint32_t color, float depth) = 0;
-    virtual void UpdateFrame(bool swapOnly) = 0;
-
-    static void InitWindowInfo();
-    static void InitDeviceParameters();
-
-public:
-protected:
-    char                m_strDeviceStats[256];
-
-    virtual ~CGraphicsContext();
-    CGraphicsContext();
-    
-public:
-    static CGraphicsContext *g_pGraphicsContext;
-    static CGraphicsContext * Get(void);
-    inline const char* GetDeviceStr() {return m_strDeviceStats;}
-    static bool needCleanScene;
-};
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+/* set when a frame ended with bForceScreenClear on: the next display list
+ * clears the colour buffer first (RSP_Parser.cpp) */
+extern bool rice_gc_need_clean_scene;
+
+/* the context came up (for a game, or anew at another size): the
+ * frame-buffer manager, the GL state, two cleared frames */
+void RiceGC_Initialize(void);
+/* the context is gone (the next one gets a vertex array object anew) */
+void RiceGC_Release(void);
+
+void RiceGC_Clear(unsigned flags, uint32_t color, float depth);
+/* a frame is done: the render callback, the hand-off to the frontend */
+void RiceGC_UpdateFrame(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -325,7 +325,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
     if(status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE)
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
     }
 
   if (status.bCIBufferIsRendered && status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_BEFORE_SCREEN_CLEAR )
@@ -335,7 +335,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
           ((nX0+nX1 == (int)g_CI.dwWidth || nX0+nX1 == (int)g_CI.dwWidth-1 || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right || nX0+nX1 == gRDP.scissor.left+gRDP.scissor.right-1) && (nY0 == gRDP.scissor.top || nY0 == 0 || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom || nY0+nY1 == gRDP.scissor.top+gRDP.scissor.bottom-1)))
       {
           status.bVIOriginIsUpdated=false;
-          CGraphicsContext::Get()->UpdateFrame(false);
+          RiceGC_UpdateFrame();
       }
   }
 
@@ -348,7 +348,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
     // I don't know why this does not work for OpenGL
     if( gRDP.otherMode.cycle_type == G_CYC_FILL && nX0 == 0 && nY0 == 0 && ((nX1==windowSetting.uViWidth && nY1==windowSetting.uViHeight)||(nX1==windowSetting.uViWidth-1 && nY1==windowSetting.uViHeight-1)) )
     {
-        CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER,dwColor, 0xFF000000, 1.0f);
+        RiceGC_Clear(CLEAR_COLOR_BUFFER,dwColor, 0xFF000000, 1.0f);
     }
     else
     */
@@ -517,7 +517,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
     }
 
     if( options.enableHackForGames == HACK_FOR_BANJO_TOOIE )
@@ -1028,7 +1028,7 @@ bool CRender::DrawTriangles()
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
     }
 
     // Hack for Pilotwings 64 (U) [!].v64

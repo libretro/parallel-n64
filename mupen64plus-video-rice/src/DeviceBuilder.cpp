@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "OGLCombiner.h"
 #include "OGLExtRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "OGLTexture.h"
 #include "OGLES2FragmentShaders.h"
 
@@ -66,7 +66,7 @@ void CDeviceBuilder::DeleteBuilder(void)
 
 CDeviceBuilder::CDeviceBuilder() :
     m_pRender(NULL),
-    m_pGraphicsContext(NULL),
+    m_bGraphicsContext(false),
     m_pColorCombiner(NULL),
     m_pAlphaBlender(NULL)
 {
@@ -82,10 +82,11 @@ CDeviceBuilder::~CDeviceBuilder()
 
 void CDeviceBuilder::DeleteGraphicsContext(void)
 {
-    if( m_pGraphicsContext != NULL )
+    if( m_bGraphicsContext )
     {
-        delete m_pGraphicsContext;
-        CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext = NULL;
+        g_pFrameBufferManager->CloseUp();
+        RiceGC_Release();
+        m_bGraphicsContext = false;
     }
 
     delete g_pFrameBufferManager;
@@ -119,23 +120,16 @@ void CDeviceBuilder::DeleteAlphaBlender(void)
 
 //========================================================================
 
-CGraphicsContext * OGLDeviceBuilder::CreateGraphicsContext(void)
+void CDeviceBuilder::CreateGraphicsContext(void)
 {
-    if( m_pGraphicsContext == NULL )
-    {
-        m_pGraphicsContext = new COGLGraphicsContext();
-        CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext;
-    }
-
+    m_bGraphicsContext = true;
     g_pFrameBufferManager = new FrameBufferManager;
-    return m_pGraphicsContext;
 }
 
 CRender * OGLDeviceBuilder::CreateRender(void)
 {
     if( m_pRender == NULL )
     {
-        COGLGraphicsContext &context = *((COGLGraphicsContext*)CGraphicsContext::g_pGraphicsContext);
         m_pRender = new COGLExtRender();
 
         CRender::g_pRender = m_pRender;

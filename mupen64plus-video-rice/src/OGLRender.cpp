@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "OGLTexture.h"
 #include "TextureManager.h"
 
@@ -537,7 +537,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
         status.bVIOriginIsUpdated=false;
-        CGraphicsContext::Get()->UpdateFrame(false);
+        RiceGC_UpdateFrame();
     }
 
     StartDrawSimple2DTexture(x0, y0, x1, y1, u0, v0, u1, v1, dif, spe, z, rhw);

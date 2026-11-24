@@ -23,7 +23,7 @@
 
 #include "OGLCombiner.h"
 #include "OGLRender.h"
-#include "OGLGraphicsContext.h"
+#include "GraphicsContext.h"
 #include "OGLTexture.h"
 
 //========================================================================

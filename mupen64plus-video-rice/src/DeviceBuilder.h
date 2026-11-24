@@ -31,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 class CDeviceBuilder
 {
 public:
-    virtual CGraphicsContext * CreateGraphicsContext(void)=0;
+    void CreateGraphicsContext(void);
     virtual CRender * CreateRender(void)=0;
     virtual CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL)=0;
     virtual CColorCombiner * CreateColorCombiner(CRender *pRender)=0;
@@ -55,7 +55,7 @@ protected:
     static CDeviceBuilder* m_pInstance;
 
     CRender* m_pRender;
-    CGraphicsContext* m_pGraphicsContext;
+    bool m_bGraphicsContext;
     CColorCombiner* m_pColorCombiner;
     CBlender* m_pAlphaBlender;
 };
@@ -64,7 +64,6 @@ class OGLDeviceBuilder : public CDeviceBuilder
 {
     friend class CDeviceBuilder;
 public:
-    CGraphicsContext * CreateGraphicsContext(void);
     CRender * CreateRender(void);
     CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL);
     CColorCombiner * CreateColorCombiner(CRender *pRender);

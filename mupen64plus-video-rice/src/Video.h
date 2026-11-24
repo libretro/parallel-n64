@@ -173,7 +173,13 @@ extern uint32_t   g_dwRamSize;
 
 /* global functions provided by Video.cpp */
 extern char generalText[];
+#ifdef __cplusplus
+extern "C" {
+#endif
 extern void (*renderCallback)(int);
+#ifdef __cplusplus
+}
+#endif
 /* the frontend gave no debug callback: nothing is said */
 #define DebugMessage(...) do { } while (0)
 

@@ -42,6 +42,8 @@ extern RenderTextureInfo *g_pRenderTextureInfo;
 
 /* FrameBuffer.cpp's: the render texture drawn into made active */
 void RiceFB_ActiveTextureBuffer(void);
+/* FrameBuffer.cpp's: the frame-buffer manager set up for a new context */
+void RiceFB_Initialize(void);
 
 #ifdef __cplusplus
 }
@@ -50,7 +52,6 @@ void RiceFB_ActiveTextureBuffer(void);
 #ifdef __cplusplus
 class FrameBufferManager
 {
-    friend class CGraphicsContext;
     friend class CDXGraphicsContext;
 public:
     FrameBufferManager();

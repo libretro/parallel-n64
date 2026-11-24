@@ -273,7 +273,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBufferRDRAM.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLCombiner.cpp">
@@ -283,9 +283,6 @@
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtRender.cpp">
-      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLGraphicsContext.cpp">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp">

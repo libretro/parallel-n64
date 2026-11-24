@@ -863,7 +863,7 @@ void FrameBufferManager::CopyBackToFrameBufferIfReadByCPU(uint32_t addr)
     int i = FindRecentCIInfoIndex(addr);
     if (i != -1)
     {
-        //if (i == 0) CGraphicsContext::Get()->UpdateFrame(false);
+        //if (i == 0) RiceGC_UpdateFrame();
         RecentCIInfo *info = g_uRecentCIInfoPtrs[i];
 
         StoreBackBufferToRDRAM(info->dwAddr, info->dwFormat, info->dwSize, info->dwWidth, info->dwHeight, 
@@ -1065,15 +1065,15 @@ void FrameBufferManager::ActiveTextureBuffer(void)
             //Clear(CLEAR_COLOR_AND_DEPTH_BUFFER, 0x80808080, 1.0f);
             if (frameBufferOptions.bFillRectNextTextureBuffer)
             {
-                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER, gRDP.fillColor, 1.0f);
+                RiceGC_Clear(CLEAR_COLOR_BUFFER, gRDP.fillColor, 1.0f);
             }
             else if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS && g_pRenderTextureInfo->N64Width > 64 && g_pRenderTextureInfo->N64Width < 300 )
             {
-                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
+                RiceGC_Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
             }
             else if( options.enableHackForGames == HACK_FOR_MARIO_TENNIS && g_pRenderTextureInfo->N64Width < 64 && g_pRenderTextureInfo->N64Width > 32 )
             {
-                CGraphicsContext::g_pGraphicsContext->Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
+                RiceGC_Clear(CLEAR_COLOR_BUFFER, 0, 1.0f);
             }
 
             m_curRenderTextureIndex = idxToUse;
@@ -1168,7 +1168,7 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
         else if (status.curRenderBuffer != g_CI.dwAddr)
         {
             status.curDisplayBuffer = status.curRenderBuffer;
-            CGraphicsContext::Get()->UpdateFrame(false);
+            RiceGC_UpdateFrame();
             status.curRenderBuffer = g_CI.dwAddr;
         }
     }
@@ -1257,7 +1257,7 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, M64P_RECT* pSrcRect, bool
 
     if (ciInfoIdx == 1)    // to save the current front buffer
     {
-        CGraphicsContext::g_pGraphicsContext->UpdateFrame(true);
+        RiceGC_UpdateFrame();
     }
 
     if (frameBufferOptions.bWriteBackBufToRDRAM || forceToSaveToRDRAM)
@@ -1277,7 +1277,7 @@ void FrameBufferManager::SaveBackBuffer(int ciInfoIdx, M64P_RECT* pSrcRect, bool
         g_uRecentCIInfoPtrs[ciInfoIdx]->bCopied = true;
         if (ciInfoIdx == 1)    // to save the current front buffer
         {
-            CGraphicsContext::g_pGraphicsContext->UpdateFrame(true);
+            RiceGC_UpdateFrame();
         }
         return;
     }
@@ -1332,6 +1332,11 @@ extern "C" void RiceFB_LoadTextureFromRenderTexture(TxtrCacheEntry *pEntry, int 
 extern "C" void RiceFB_CloseRenderTexture(bool toSave)
 {
     g_pFrameBufferManager->CloseRenderTexture(toSave);
+}
+
+extern "C" void RiceFB_Initialize(void)
+{
+    g_pFrameBufferManager->Initialize();
 }
 
 extern "C" void RiceFB_ActiveTextureBuffer(void)
