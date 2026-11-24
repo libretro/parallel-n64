@@ -100,9 +100,6 @@ public:
     virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
         uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
         uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt) {}
-#ifdef DEBUGGER
-    virtual void DisplayRenderTexture(int infoIdx);
-#endif
 
 protected:
     bool    m_isRenderingToTexture;

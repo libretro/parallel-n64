@@ -50,9 +50,6 @@ protected:
     bool    m_bSupportAdd;
     bool    m_bSupportSubtract;
 
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
 
 };
 

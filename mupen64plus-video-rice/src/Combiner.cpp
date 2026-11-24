@@ -21,42 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Config.h"
 #include "RenderBase.h"
 
-#ifdef DEBUGGER
-const char *constStrs[] = {
-    "MUX_0",
-    "MUX_1",
-    "MUX_COMBINED",
-    "MUX_TEXEL0",
-    "MUX_TEXEL1",
-    "MUX_PRIM",
-    "MUX_SHADE",
-    "MUX_ENV",
-    "MUX_COMBALPHA",
-    "MUX_T0_ALPHA",
-    "MUX_T1_ALPHA",
-    "MUX_PRIM_ALPHA",
-    "MUX_SHADE_ALPHA",
-    "MUX_ENV_ALPHA",
-    "MUX_LODFRAC",
-    "MUX_PRIMLODFRAC",
-    "MUX_K5",
-    "MUX_UNK",
-};
-
-const char *cycleTypeStrs[] = {
-    "1 Cycle",
-    "2 Cycle",
-    "Copy Mode",
-    "Fill Mode"
-};
-
-const char* constStr(uint32_t op)
-{
-    if (op <= MUX_UNK)
-        return constStrs[op];
-    return "Invalid-Const";
-}
-#endif
 
 //========================================================================
 
@@ -304,13 +268,6 @@ bool IsTextureUsed(N64CombinerType &m)
 
 void CColorCombiner::InitCombinerMode(void)
 {
-#ifdef DEBUGGER
-    LOG_UCODE(cycleTypeStrs[gRDP.otherMode.cycle_type]);
-    if (debuggerDropDecodedMux)
-    {
-        UpdateCombiner(m_pDecodedMux->m_dwMux0, m_pDecodedMux->m_dwMux1);
-    }
-#endif
 
     if (currentRomOptions.bNormalCombiner)
         DisableCombiner();
@@ -336,14 +293,6 @@ bool bConkerHideShadow=false;
 
 void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
 {
-#ifdef DEBUGGER
-   if (debuggerDropDecodedMux)
-   {
-      debuggerDropDecodedMux = false;
-      m_pDecodedMux->m_dwMux0 = m_pDecodedMux->m_dwMux1 = 0;
-      m_DecodedMuxList.clear();
-   }
-#endif
 
    DecodedMux &m_decodedMux = *m_pDecodedMux;
    if (m_decodedMux.m_dwMux0 != dwMux0 || m_decodedMux.m_dwMux1 != dwMux1)
@@ -396,13 +345,6 @@ void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
             m_decodedMux.SplitComplexStages();
 
          m_DecodedMuxList.add(m_decodedMux.m_u64Mux, *m_pDecodedMux);
-#ifdef DEBUGGER
-         if (logCombiners) 
-         {
-            TRACE0("Add a new mux");
-            DisplayMuxString();
-         }
-#endif
       }
 
       m_bTex0Enabled = m_decodedMux.m_bTexel0IsUsed;
@@ -415,24 +357,4 @@ void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
 }
 
 
-#ifdef DEBUGGER
-void CColorCombiner::DisplayMuxString(void)
-{
-    if (gRDP.otherMode.cycle_type == G_CYC_COPY)
-    {
-        TRACE0("COPY Mode\n");
-    }   
-    else if (gRDP.otherMode.cycle_type == G_CYC_FILL)
-    {
-        TRACE0("FILL Mode\n");
-    }
-
-    m_pDecodedMux->DisplayMuxString("Used");
-}
-
-void CColorCombiner::DisplaySimpleMuxString(void)
-{
-    m_pDecodedMux->DisplaySimpliedMuxString("Used");
-}
-#endif
 

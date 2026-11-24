@@ -190,12 +190,6 @@ void COGLFragmentShaderCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_
     COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
 }
 
-#ifdef DEBUGGER
-void COGLFragmentShaderCombiner::DisplaySimpleMuxString(void)
-{
-    COGLColorCombiner::DisplaySimpleMuxString();
-}
-#endif
 
 
 
@@ -760,14 +754,6 @@ void COGL_FragmentProgramCombiner::GenerateCombinerSettingConstants(int index)
 
 int COGL_FragmentProgramCombiner::FindCompiledMux()
 {
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        m_vCompiledShaders.clear();
-        //m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
     for( uint32_t i=0; i<m_vCompiledShaders.size(); i++ )
     {
         if( m_vCompiledShaders[i].dwMux0 == m_pDecodedMux->m_dwMux0 
@@ -785,15 +771,6 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
 //////////////////////////////////////////////////////////////////////////
 void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 {
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        UpdateCombiner(m_pDecodedMux->m_dwMux0,m_pDecodedMux->m_dwMux1);
-        m_vCompiledShaders.clear();
-        m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
 
     OGLRenderer()->EnableMultiTexture();
 
@@ -849,22 +826,4 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
     }
 }
 
-#ifdef DEBUGGER
-void COGL_FragmentProgramCombiner::DisplaySimpleMuxString(void)
-{
-    COGLColorCombiner::DisplaySimpleMuxString();
-    DecodedMuxForPixelShader &mux = *(DecodedMuxForPixelShader*)m_pDecodedMux;
-    mux.Reformat(false);
-    GenerateProgramStr();
-    //sprintf(oglNewFP, oglFP, 
-    //  MuxToOC(mux.aRGB0), MuxToOC(mux.bRGB0), MuxToOC(mux.cRGB0), MuxToOC(mux.dRGB0),
-    //  MuxToOA(mux.aA0), MuxToOA(mux.bA0), MuxToOA(mux.cA0), MuxToOA(mux.dA0),
-    //  MuxToOC(mux.aRGB1), MuxToOC(mux.bRGB1), MuxToOC(mux.cRGB1), MuxToOC(mux.dRGB1),
-    //  MuxToOA(mux.aA1), MuxToOA(mux.bA1), MuxToOA(mux.cA1), MuxToOA(mux.dA1)
-    //  );
-
-    TRACE0("OGL Fragment Program:");
-    TRACE0(oglNewFP);
-}
-#endif
 

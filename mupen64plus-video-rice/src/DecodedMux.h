@@ -151,18 +151,12 @@ public:
     int CountTexels(void);
     int Count(uint8_t val, int cycle, uint8_t mask);
 
-#ifdef DEBUGGER
-    void DisplayMuxString(const char *prompt);
-    void DisplaySimpliedMuxString(const char *prompt);
-    void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel);
-#else
     void DisplayMuxString(const char *prompt) {}
     void DisplaySimpliedMuxString(const char *prompt){}
     void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel){}
     void LogMuxString(const char *prompt, FILE *fp);
     void LogSimpliedMuxString(const char *prompt, FILE *fp);
     void LogConstantsWithShade(uint32_t flag,CombineChannel channel, FILE *fp);
-#endif
 
     virtual DecodedMux& operator=(const DecodedMux& mux)
     {

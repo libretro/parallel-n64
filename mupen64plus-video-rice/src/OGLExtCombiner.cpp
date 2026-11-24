@@ -57,15 +57,6 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
 //////////////////////////////////////////////////////////////////////////
 void COGLColorCombiner4::InitCombinerCycle12(void)
 {
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        UpdateCombiner(m_pDecodedMux->m_dwMux0,m_pDecodedMux->m_dwMux1);
-        m_vCompiledSettings.clear();
-        m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
 
     OGLRenderer()->EnableMultiTexture();
 
@@ -78,9 +69,6 @@ void COGLColorCombiner4::InitCombinerCycle12(void)
         if( m_lastIndex < 0 )       // Can not found
         {
             m_lastIndex = ParseDecodedMux();
-#ifdef DEBUGGER
-            DisplaySimpleMuxString();
-#endif
         }
 
         m_dwLastMux0 = m_pDecodedMux->m_dwMux0;
@@ -210,12 +198,6 @@ int COGLColorCombiner4::SaveParsedResult(OGLExtCombinerSaveType &result)
     m_vCompiledSettings.push_back(result);
     m_lastIndex = m_vCompiledSettings.size()-1;
 
-#ifdef DEBUGGER
-    if( logCombiners )
-    {
-        DisplaySimpleMuxString();
-    }
-#endif
 
     return m_lastIndex;
 }
@@ -228,36 +210,11 @@ bool isGLtex(GLint val)
         return false;
 }
 
-#ifdef DEBUGGER
-extern const char *translatedCombTypes[];
-void COGLColorCombiner4::DisplaySimpleMuxString(void)
-{
-    char buf0[30], buf1[30], buf2[30];
-    OGLExtCombinerSaveType &result = m_vCompiledSettings[m_lastIndex];
-
-    COGLColorCombiner::DisplaySimpleMuxString();
-    DebuggerAppendMsg("OpenGL 1.2: %d Stages", result.numOfUnits);      
-    for( int i=0; i<result.numOfUnits; i++ )
-    {
-        DebuggerAppendMsg("//aRGB%d:\t%s: %s, %s, %s\n", i,GetOpStr(result.units[i].rgbOp), DecodedMux::FormatStr(result.units[i].rgbArg0,buf0), DecodedMux::FormatStr(result.units[i].rgbArg1,buf1), DecodedMux::FormatStr(result.units[i].rgbArg2,buf2));     
-        DebuggerAppendMsg("//aAlpha%d:\t%s: %s, %s, %s\n", i,GetOpStr(result.units[i].alphaOp), DecodedMux::FormatStr(result.units[i].alphaArg0,buf0), DecodedMux::FormatStr(result.units[i].alphaArg1,buf1), DecodedMux::FormatStr(result.units[i].alphaArg2,buf2));       
-    }
-    TRACE0("\n\n");
-}
-#endif
 
 
 //////////////////////////////////////////////////////////////////////////
 int COGLColorCombiner4::FindCompiledMux()
 {
-#ifdef DEBUGGER
-    if( debuggerDropCombiners )
-    {
-        m_vCompiledSettings.clear();
-        //m_dwLastMux0 = m_dwLastMux1 = 0;
-        debuggerDropCombiners = false;
-    }
-#endif
     for( uint32_t i=0; i<m_vCompiledSettings.size(); i++ )
     {
         if( m_vCompiledSettings[i].dwMux0 == m_pDecodedMux->m_dwMux0 && m_vCompiledSettings[i].dwMux1 == m_pDecodedMux->m_dwMux1 )

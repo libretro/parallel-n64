@@ -387,9 +387,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-angrylion\n64video_vi.c">
       <Filter>Source Files\mupen64plus-video-angrylion</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceDebugger.cpp">
-      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\get_time_using_C_localtime.c">
       <Filter>Source Files\mupen64plus-core\src\plugin</Filter>
     </ClCompile>

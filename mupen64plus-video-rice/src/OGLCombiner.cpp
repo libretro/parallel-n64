@@ -179,12 +179,4 @@ void COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
     OGLRenderer()->SetAlphaTestEnable(false);
 }
 
-#ifdef DEBUGGER
-extern const char *translatedCombTypes[];
-void COGLColorCombiner::DisplaySimpleMuxString(void)
-{
-    TRACE0("\nSimplified Mux\n");
-    m_pDecodedMux->DisplaySimpliedMuxString("Used");
-}
-#endif
 

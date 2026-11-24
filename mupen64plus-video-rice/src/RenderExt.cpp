@@ -99,13 +99,6 @@ void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
         return;
     }
 
-#ifdef DEBUGGER
-    if( pauseAtNext )
-    {
-        DebuggerAppendMsg("Load Frame Buffer Imag at: %08X, (%d, %d) - (%d, %d)", gti.Address,
-            gti.LeftToLoad, gti.TopToLoad, gti.WidthToCreate, gti.HeightToCreate );
-    }
-#endif
 
 
     gti.HeightToLoad = gti.HeightToCreate;
@@ -489,14 +482,6 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
     }
 
     TXTRBUF_OR_CI_DUMP(TRACE0("Draw Frame Buffer Img"));
-#ifdef DEBUGGER
-    if( pauseAtNext && ( eventToPause == NEXT_FRAME || eventToPause == NEXT_FLUSH_TRI ) )
-    {
-        TRACE0("Draw Frame Buffer Img");
-        debuggerPause = true;
-        DebuggerPause();
-    }
-#endif
 
     EndRendering();
 }

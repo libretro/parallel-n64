@@ -104,9 +104,6 @@ private:
     void UseProgram(GLuint program);
     GLuint currentProgram;
 
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
 
 };
 
@@ -130,9 +127,6 @@ protected:
 
     bool m_bShaderIsSupported;
 
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
 
 };
 

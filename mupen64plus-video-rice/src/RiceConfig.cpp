@@ -1269,7 +1269,6 @@ void OutputSectionDetails(uint32_t i, FILE * fh)
 // Find the entry corresponding to the specified rom. 
 // If the rom is not found, a new entry is created
 // The resulting value is returned
-void __cdecl DebuggerAppendMsg (const char * Message, ...);
 
 static int FindIniEntry(uint32_t dwCRC1, uint32_t dwCRC2, uint8_t nCountryID, char* szName, int PrintInfo)
 {

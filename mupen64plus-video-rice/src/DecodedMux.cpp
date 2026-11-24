@@ -1208,72 +1208,6 @@ void DecodedMuxForOGL14V2::UseTextureForConstant(void)
     }
 }
 
-#ifdef DEBUGGER
-extern const char *translatedCombTypes[];
-void DecodedMux::DisplayMuxString(const char *prompt)
-{
-    DebuggerAppendMsg("//Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    Display(false, NULL);
-    TRACE0("\n");
-}
-
-void DecodedMux::DisplaySimpliedMuxString(const char *prompt)
-{
-    DebuggerAppendMsg("//Simplified Mux=0x%08x%08x\t%s in %s\n", m_dwMux0, m_dwMux1, prompt, g_curRomInfo.szGameName);
-    DebuggerAppendMsg("Simplified DWORDs=%08X, %08X, %08X, %08X", m_dWords[0],m_dWords[1],m_dWords[2],m_dWords[3]);
-    Display(true, NULL);
-    DebuggerAppendMsg("Simplified type: %s", muxTypeStrs[mType]);
-    if( m_dwShadeColorChannelFlag != 0 )
-    {
-        if( m_dwShadeColorChannelFlag == MUX_ENV )
-            TRACE0("Shade = ENV in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_PRIM )
-            TRACE0("Shade = PRIM in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_LODFRAC )
-            TRACE0("Shade = MUX_LODFRAC in color channel")
-        else if( m_dwShadeColorChannelFlag == MUX_PRIMLODFRAC )
-            TRACE0("Shade = MUX_PRIMLODFRAC in color channel")
-        else
-            DisplayConstantsWithShade(m_dwShadeColorChannelFlag,COLOR_CHANNEL);
-    }
-    if( m_dwShadeAlphaChannelFlag != 0 )
-    {
-        if( m_dwShadeAlphaChannelFlag == MUX_ENV )
-            TRACE0("Shade = ENV in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_PRIM )
-            TRACE0("Shade = PRIM in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_LODFRAC )
-            TRACE0("Shade = MUX_LODFRAC in alpha channel")
-        else if( m_dwShadeAlphaChannelFlag == MUX_PRIMLODFRAC )
-            TRACE0("Shade = MUX_PRIMLODFRAC in alpha channel")
-        else
-            DisplayConstantsWithShade(m_dwShadeAlphaChannelFlag,ALPHA_CHANNEL);
-    }
-
-    for( int i=0; i<2; i++ )
-    {
-        if( m_ColorTextureFlag[i] != 0 )
-        {
-            if( m_ColorTextureFlag[i] == MUX_ENV )
-                TRACE1("Tex %d = ENV", i)
-            else if( m_ColorTextureFlag[i] == MUX_PRIM )
-                TRACE1("Tex %d = PRIM", i)
-            else if( m_ColorTextureFlag[i] == MUX_LODFRAC )
-                TRACE1("Tex %d = MUX_LODFRAC", i)
-            else if( m_ColorTextureFlag[i] == MUX_PRIMLODFRAC )
-                TRACE1("Tex %d = MUX_PRIMLODFRAC", i)
-        }
-    }
-
-
-    TRACE0("\n");
-}
-
-void DecodedMux::DisplayConstantsWithShade(uint32_t flag,CombineChannel channel)
-{
-    DebuggerAppendMsg("Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
-}
-#else
 
 extern const char *translatedCombTypes[];
 void DecodedMux::LogMuxString(const char *prompt, FILE *fp)
@@ -1339,7 +1273,6 @@ void DecodedMux::LogConstantsWithShade(uint32_t flag,CombineChannel channel, FIL
 {
     fprintf(fp, "Shade = %08X in %s channel",flag,channel==COLOR_CHANNEL?"color":"alpha");
 }
-#endif
 
 
 void DecodedMux::To_AB_Add_CD_Format(void)  // Use by TNT,Geforce

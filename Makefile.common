@@ -270,7 +270,6 @@ CFLAGS   += -DHAVE_RICE
 CXXFLAGS += -DHAVE_RICE
 SOURCES_CXX += $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
-            $(VIDEODIR_RICE)/RiceDebugger.cpp \
             $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \

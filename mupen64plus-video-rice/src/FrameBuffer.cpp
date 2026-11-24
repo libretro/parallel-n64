@@ -1373,13 +1373,6 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
     default:
         if (status.bHandleN64RenderTexture)
         {
-#ifdef DEBUGGER
-            if (pauseAtNext && eventToPause == NEXT_RENDER_TEXTURE)
-            {
-                pauseAtNext = true;
-                eventToPause = NEXT_RENDER_TEXTURE;
-            }
-#endif
             g_pFrameBufferManager->CloseRenderTexture(true);
         }
 
@@ -1393,13 +1386,6 @@ void FrameBufferManager::Set_CI_addr(SetImgInfo &newCI)
         }
         else
         {
-#ifdef DEBUGGER
-            if (g_CI.dwWidth == 512 && pauseAtNext && (eventToPause==NEXT_OBJ_BG || eventToPause==NEXT_SET_CIMG))
-            {
-                DebuggerAppendMsg("Warning SetCImg: new Address=0x%08X, Format:%s size=%sb, Width=%d\n", 
-                    g_CI.dwAddr, pszImgFormat[newCI.dwFormat], pszImgSize[newCI.dwSize], newCI.dwWidth);
-            }
-#endif
             //g_pFrameBufferManager->UpdateRecentCIAddr(g_CI);      // Delay this until the CI buffer is actally drawn
         }
         break;
@@ -1429,32 +1415,6 @@ void FrameBufferManager::StoreRenderTextureToRDRAM(int infoIdx)
 
 
 //does FB copy to N64 RDAM structure
-#ifdef DEBUGGER
-void FrameBufferManager::DisplayRenderTexture(int infoIdx)
-{
-    if (infoIdx < 0)
-        infoIdx = m_lastTextureBufferIndex;
-
-    if (gRenderTextureInfos[infoIdx].pRenderTexture)
-    {
-        if (CRenderTexture_IsBeingRendered(gRenderTextureInfos[infoIdx].pRenderTexture))
-        {
-            TRACE1("Render texture %d is being rendered, cannot display", infoIdx);
-        }
-        else
-        {
-            TRACE1("Texture buffer %d:", infoIdx);
-            TRACE1("Address=%08X", gRenderTextureInfos[infoIdx].CI_Info.dwAddr);
-            TRACE2("Width=%d, Created Height=%d", gRenderTextureInfos[infoIdx].N64Width, gRenderTextureInfos[infoIdx].N64Height);
-            TRACE2("Format=%d, Size=%d", gRenderTextureInfos[infoIdx].CI_Info.dwFormat, gRenderTextureInfos[infoIdx].CI_Info.dwSize);
-        }
-    }
-    else
-    {
-        TRACE1("Texture buffer %d is not used", infoIdx);
-    }
-}
-#endif
 
 
 

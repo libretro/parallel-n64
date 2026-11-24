@@ -415,11 +415,7 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 
 
 #ifdef __cplusplus
-#if defined(DEBUGGER)
-  void __cdecl LOG_UCODE(const char* szFormat, ...);
-#else
   inline void LOG_UCODE(...) {}
-#endif
 #endif
 
 #endif  // __RICE_RDP_GFX_H__

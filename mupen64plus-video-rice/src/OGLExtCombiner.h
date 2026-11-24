@@ -160,9 +160,6 @@ protected:
     uint32_t m_dwLastMux0;
     uint32_t m_dwLastMux1;
 
-#ifdef DEBUGGER
-    void DisplaySimpleMuxString(void);
-#endif
 
 protected:
     virtual int SaveParsedResult(OGLExtCombinerSaveType &result);

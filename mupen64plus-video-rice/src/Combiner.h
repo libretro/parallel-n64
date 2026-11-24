@@ -43,10 +43,6 @@ public:
     virtual void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)=0;
     virtual void DisableCombiner(void)=0;
 
-#ifdef DEBUGGER
-    virtual void DisplaySimpleMuxString(void);
-    virtual void DisplayMuxString(void);
-#endif
 
     DecodedMux *m_pDecodedMux;
 protected:

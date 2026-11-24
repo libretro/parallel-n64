@@ -309,13 +309,6 @@ int riceRomOpen(void)
 
    g_dwRamSize = 0x800000;
     
-#ifdef DEBUGGER
-    if( debuggerPause )
-    {
-        debuggerPause = false;
-        usleep(100 * 1000);
-    }
-#endif
 
     if (!StartVideo())
         return 0;
