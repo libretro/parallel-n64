@@ -478,7 +478,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderTexture.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceConfig.cpp" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_Parser.cpp" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_S2DEX.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RSP_S2DEX.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Texture.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\TextureManager.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\VectorMath.c" />

@@ -21,9 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "FrameBuffer.h"
 #include "Render.h"
 
-extern uObjMtxReal gObjMtxReal;
-extern Matrix g_MtxReal;
-
 //========================================================================
 
 void CRender::LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
@@ -812,3 +809,31 @@ void CRender::LoadObjSprite(uObjTxSprite &sprite, bool useTIAddr)
     SetCurrentTexture(0,pEntry);
 }
 
+/* RSP_S2DEX.c's: the S2DEX backgrounds and sprites (RSP_S2DEX.h) */
+extern "C" void RiceRender_ObjBGCopy(uObjBg *bg)
+{
+    CRender::g_pRender->LoadObjBGCopy(*bg);
+    CRender::g_pRender->DrawObjBGCopy(*bg);
+}
+
+extern "C" void RiceRender_ObjBG1CYC(uObjScaleBg *bg)
+{
+    CRender::g_pRender->LoadObjBG1CYC(*bg);
+    CRender::g_pRender->DrawObjBG1CYC(*bg, true);
+}
+
+extern "C" void RiceRender_LoadObjSprite(uObjTxSprite *sprite, bool useTIAddr)
+{
+    CRender::g_pRender->LoadObjSprite(*sprite, useTIAddr);
+}
+
+extern "C" void RiceRender_DrawSprite(uObjTxSprite *sprite, bool rectR)
+{
+    CRender::g_pRender->DrawSprite(*sprite, rectR);
+}
+
+extern "C" void RiceRender_DrawSpriteR(uObjTxSprite *sprite, bool initCombiner, uint32_t tile,
+      uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+{
+    CRender::g_pRender->DrawSpriteR(*sprite, initCombiner, tile, left, top, width, height);
+}

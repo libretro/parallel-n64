@@ -397,5 +397,49 @@ typedef struct
 
 #endif
 
+#include <boolean.h>
+#include "UcodeDefs.h"
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+/* RSP_S2DEX.c's: the object state the S2DEX commands leave behind */
+extern uObjTxtr *gObjTxtr;
+extern uObjMtxReal gObjMtxReal;
+
+/* RSP_S2DEX.c's: the S2DEX microcode commands */
+void RSP_S2DEX_BG_COPY(Gfx *gfx);
+void RSP_S2DEX_OBJ_RECTANGLE(Gfx *gfx);
+void RSP_S2DEX_OBJ_SPRITE(Gfx *gfx);
+void RSP_S2DEX_SELECT_DL(Gfx *gfx);
+void RSP_S2DEX_OBJ_RENDERMODE(Gfx *gfx);
+void RSP_S2DEX_OBJ_RENDERMODE_2(Gfx *gfx);
+void RSP_S2DEX_SPObjLoadTxtr(Gfx *gfx);
+void RSP_S2DEX_SPObjLoadTxSprite(Gfx *gfx);
+void RSP_S2DEX_SPObjLoadTxRect(Gfx *gfx);
+void RSP_S2DEX_SPObjLoadTxRectR(Gfx *gfx);
+void RSP_S2DEX_RDPHALF_0(Gfx *gfx);
+void RSP_S2DEX_OBJ_MOVEMEM(Gfx *gfx);
+void RSP_S2DEX_BG_1CYC(Gfx *gfx);
+void RSP_S2DEX_BG_1CYC_2(Gfx *gfx);
+void RSP_S2DEX_OBJ_RECTANGLE_R(Gfx *gfx);
+
+/* RSP_Parser.cpp's: the commands S2DEX falls through to */
+void RSP_GBI1_Tri2(Gfx *gfx);
+void RSP_GBI0_Mtx(Gfx *gfx);
+void DLParser_TexRect(Gfx *gfx);
+
+/* Render's (RenderExt.cpp): the S2DEX backgrounds and sprites drawn */
+void RiceRender_ObjBGCopy(uObjBg *bg);
+void RiceRender_ObjBG1CYC(uObjScaleBg *bg);
+void RiceRender_LoadObjSprite(uObjTxSprite *sprite, bool useTIAddr);
+void RiceRender_DrawSprite(uObjTxSprite *sprite, bool rectR);
+void RiceRender_DrawSpriteR(uObjTxSprite *sprite, bool initCombiner, uint32_t tile,
+      uint32_t left, uint32_t top, uint32_t width, uint32_t height);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

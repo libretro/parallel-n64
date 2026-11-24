@@ -20,9 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "OGLRender.h"
 
-extern Matrix g_MtxReal;
-extern uObjMtxReal gObjMtxReal;
-
 //========================================================================
 
 void OGLRender::DrawSpriteR_Render()    // With Rotation

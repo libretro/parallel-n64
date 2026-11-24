@@ -293,7 +293,6 @@ void TexRectToN64FrameBuffer_YUV_16b(uint32_t x0, uint32_t y0, uint32_t width, u
    }
 }
 
-extern uObjMtxReal gObjMtxReal;
 void DLParser_OgreBatter64BG(Gfx *gfx)
 {
 
