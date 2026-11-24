@@ -95,9 +95,10 @@ void gln64gSPForceMatrix( uint32_t mptr );
 #endif
 #endif
 
-#ifdef __cplusplus
-
 /* Rice prototypes */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void ricegSPModifyVertex(uint32_t vtx, uint32_t where, uint32_t val);
 void ricegSPCIVertex(uint32_t v, uint32_t n, uint32_t v0);
@@ -107,6 +108,8 @@ void ricegSPDMATriangles( uint32_t tris, uint32_t n );
 void ricegSPLight(uint32_t dwAddr, uint32_t dwLight);
 void ricegSPViewport(uint32_t v);
 
+#ifdef __cplusplus
+}
 #endif
 
 #endif

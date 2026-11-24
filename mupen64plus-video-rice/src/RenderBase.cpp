@@ -331,17 +331,17 @@ void InitVertexTextureConstants()
     gRSP.texGenYRatio = gRSP.fTexScaleX/gRSP.fTexScaleY*tex0.m_fTexWidth/tex0.m_fTexHeight*tile0->fShiftScaleT;
 }
 
-void TexGen(float &s, float &t)
+void TexGen(float *s, float *t)
 {
     if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR)
     {   
-        s = acosf(g_normal.x) / 3.14159f;
-        t = acosf(g_normal.y) / 3.14159f;
+        *s = acosf(g_normal.x) / 3.14159f;
+        *t = acosf(g_normal.y) / 3.14159f;
     }
     else
     {
-        s = 0.5f * ( 1.0f + g_normal.x);
-        t = 0.5f * ( 1.0f - g_normal.y);
+        *s = 0.5f * ( 1.0f + g_normal.x);
+        *t = 0.5f * ( 1.0f - g_normal.y);
     }
 }
 
@@ -520,8 +520,9 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
     }
 }
 
-uint32_t LightVert(XVECTOR4 & norm, int vidx)
+uint32_t LightVert(XVECTOR4 *pnorm, int vidx)
 {
+    XVECTOR4 &norm = *pnorm;
     float fCosT;
     /* Do ambient */
     float r = gRSP.fAmbientLightR;
@@ -723,7 +724,7 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_normal.z = (float)vert.norma.nz;
 
             Vec3TransformNormal(g_normal, gRSPmodelViewTop);
-            g_dwVtxDifColor[i] = LightVert(g_normal, i);
+            g_dwVtxDifColor[i] = LightVert(&g_normal, i);
             *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vert.rgba.a; // still use alpha from the vertex
         }
         else
@@ -756,7 +757,7 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable )
         {
-            TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
+            TexGen(&g_fVtxTxtCoords[i].x, &g_fVtxTxtCoords[i].y);
         }
         else
         {
@@ -970,7 +971,7 @@ void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             g_normal.z = (char)b; //norma.nz;
 
             Vec3TransformNormal(g_normal, matWorldProject)
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
+                g_dwVtxDifColor[i] = LightVert(&g_normal, i);
         }
         else   // Assign true vert colour after lighting/fogging
             g_dwVtxDifColor[i] = COLOR_RGBA(r, g, b, a);
@@ -1074,7 +1075,7 @@ void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
                 g_normal.y = (float)*(int8_t*)(rdram_u8 + (((i<<1)+1)^3)+dwConkerVtxZAddr);
                 g_normal.z = (float)*(int8_t*)(rdram_u8 + (((i<<1)+2)^3)+dwConkerVtxZAddr);
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
-                TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
+                TexGen(&g_fVtxTxtCoords[i].x, &g_fVtxTxtCoords[i].y);
         }
         else
         {
@@ -1155,7 +1156,7 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
 
             {
                 Vec3TransformNormal(g_normal, gRSPmodelViewTop);
-                g_dwVtxDifColor[i] = LightVert(g_normal, i);
+                g_dwVtxDifColor[i] = LightVert(&g_normal, i);
             }
             *(((uint8_t*)&(g_dwVtxDifColor[i]))+3) = vertcolors.a;    // still use alpha from the vertex
         }
@@ -1186,7 +1187,7 @@ void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, 
         // can't generate tex coord)
         if (gRSP.bTextureGen && gRSP.bLightingEnable && g_textures[gRSP.curTile].m_bTextureEnable )
         {
-            TexGen(g_fVtxTxtCoords[i].x, g_fVtxTxtCoords[i].y);
+            TexGen(&g_fVtxTxtCoords[i].x, &g_fVtxTxtCoords[i].y);
         }
         else
         {
@@ -1352,3 +1353,11 @@ void UpdateCombinedMatrix()
     //}
 }
 
+
+void SetAmbientLight(uint32_t color)
+{
+    gRSP.ambientLightColor = color;
+    gRSP.fAmbientLightR = (float)RGBA_GETRED(gRSP.ambientLightColor);
+    gRSP.fAmbientLightG = (float)RGBA_GETGREEN(gRSP.ambientLightColor);
+    gRSP.fAmbientLightB = (float)RGBA_GETBLUE(gRSP.ambientLightColor);
+}

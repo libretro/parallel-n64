@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../../Graphics/GBI.h"
 #include "../../Graphics/RSP/gSP_state.h"
+#include "../../Graphics/RSP/gSP_funcs_prot.h"
 
 #define RSP_SPNOOP              0   // handle 0 gracefully 
 #define RSP_MTX                 1
@@ -390,12 +391,9 @@ void RDP_Cleanup();
 void DLParser_Process(OSTask * pTask);
 void RDP_DLParser_Process(void);
 
-void PrepareTextures();
 void RDP_InitRenderState();
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
 
-void ricegSPLight(uint32_t dwAddr, uint32_t dwLight);
-void ricegSPViewport(uint32_t v);
 
 void RDP_NOIMPL_WARN(const char* op);
 void RSP_GFX_Force_Matrix(uint32_t dwAddr);

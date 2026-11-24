@@ -457,7 +457,7 @@
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Blender.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.c" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage16.c" />

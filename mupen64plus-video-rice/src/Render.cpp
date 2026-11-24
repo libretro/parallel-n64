@@ -256,6 +256,22 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
 }
 
 
+/* gSP_rice.c's: the renderer's to C */
+extern "C" void RiceRender_SetCombinerAndBlender(void)
+{
+    CRender::g_pRender->SetCombinerAndBlender();
+}
+
+extern "C" bool RiceRender_DrawTriangles(void)
+{
+    return CRender::g_pRender->DrawTriangles();
+}
+
+extern "C" void RiceRender_SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ)
+{
+    CRender::g_pRender->SetViewport(nLeft, nTop, nRight, nBottom, maxZ);
+}
+
 /* gDP_rice.c's: the renderer's to C */
 extern "C" void RiceRender_SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {

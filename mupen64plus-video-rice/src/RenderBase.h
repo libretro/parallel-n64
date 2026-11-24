@@ -90,9 +90,7 @@ bool RiceRender_FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor);
 }
 #endif
 
-/* the rest C++'s, until Rice's drawing is C */
-#ifdef __cplusplus
-
+/* the RSP state, the vertices and lights, C and C++ alike */
 enum FillMode
 {
     RICE_FILLMODE_WINFRAME,
@@ -101,6 +99,9 @@ enum FillMode
 
 enum { MAX_VERTS = 80 };        // F3DLP.Rej supports up to 80 verts!
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void myVec3Transform(float *vecout, float *vecin, float* m);
 
 // All these arrays are moved out of the class CRender
@@ -240,7 +241,37 @@ typedef struct
 
 } RSP_Options;
 
+
 extern ALIGN(16, RSP_Options gRSP);
+
+/* RenderBase.cpp's vertices, to C and C++ alike */
+extern ALIGN(16, XVECTOR4 g_normal);
+extern ALIGN(16, XVECTOR4 g_vtxNonTransformed[MAX_VERTS]);
+extern FiddledVtx *g_pVtxBase;
+extern uint32_t dwPDCIAddr;
+void UpdateCombinedMatrix(void);
+void RSP_Vtx_Clipping(int i);
+uint32_t LightVert(XVECTOR4 *norm, int vidx);
+void ReplaceAlphaWithFogFactor(int i);
+void TexGen(float *s, float *t);
+void InitVertexTextureConstants(void);
+bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
+void SetVertexXYZ(uint32_t vertex, float x, float y, float z);
+void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range);
+void SetAmbientLight(uint32_t color);
+/* RDP_Texture.h's: the tiles' textures for what is drawn next */
+void PrepareTextures(void);
+/* Render.cpp's, the renderer's to C */
+void RiceRender_SetCombinerAndBlender(void);
+bool RiceRender_DrawTriangles(void);
+void RiceRender_SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ);
+#ifdef __cplusplus
+}
+#endif
+
+/* the rest C++'s, until Rice's drawing is C */
+#ifdef __cplusplus
+
 
 
 /*
@@ -249,8 +280,6 @@ extern ALIGN(16, RSP_Options gRSP);
 void InitRenderBase();
 void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
 void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture);
-void InitVertexTextureConstants();
-bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
 bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
 extern void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
@@ -258,13 +287,8 @@ void ProcessVertexDataNEON(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
 void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
-void SetVertexXYZ(uint32_t vertex, float x, float y, float z);
-void ricegSPModifyVertex(uint32_t vtx, uint32_t where,  uint32_t val);
 void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void ricegSPLightColor(uint32_t dwLight, uint32_t dwCol);
-void SetLightDirection(uint32_t dwLight, float x, float y, float z, float range);
 void ForceMainTextureIndex(int dwTile); 
-void UpdateCombinedMatrix();
 
 void ClipVertexes();
 void ClipVertexesOpenGL();
@@ -288,14 +312,6 @@ inline uint32_t GetLODFrac() { return gRDP.LODFrac; }
 inline uint32_t GetEnvColor() { return gRDP.envColor; }
 inline float* GetEnvColorfv() { return gRDP.fvEnvColor; }
 
-inline void SetAmbientLight(uint32_t color) 
-{ 
-    gRSP.ambientLightColor = color; 
-    gRSP.fAmbientLightR = (float)RGBA_GETRED(gRSP.ambientLightColor);
-    gRSP.fAmbientLightG = (float)RGBA_GETGREEN(gRSP.ambientLightColor);
-    gRSP.fAmbientLightB = (float)RGBA_GETBLUE(gRSP.ambientLightColor);
-    LIGHT_DUMP(TRACE1("Set Ambient Light: %08X", color));
-}
 
 inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 
@@ -314,7 +330,6 @@ inline void SetScreenMult(float fMultX, float fMultY)
 }
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
 
-void ricegSPNumLights(int32_t n);
 
 #endif /* __cplusplus */
 

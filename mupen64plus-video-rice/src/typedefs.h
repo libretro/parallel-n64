@@ -23,9 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdint.h>
 
 #include "osal_preproc.h"
-#ifdef __cplusplus
 #include "VectorMath.h"
-#endif
 
 typedef unsigned int COLOR;
 typedef struct _COORDRECT
@@ -41,9 +39,7 @@ typedef struct _COORDRECT
 #define RGBA_GETGREEN(rgb)      (((rgb) >> 8) & 0xff)
 #define RGBA_GETBLUE(rgb)       ((rgb) & 0xff)
 
-#ifdef __cplusplus
 typedef XMATRIX Matrix;
-#endif
 typedef void* LPRICETEXTURE ;
 
 typedef struct 
@@ -107,6 +103,8 @@ typedef struct VECTOR2
     VECTOR2( float newx, float newy )   {x=newx; y=newy;}
     VECTOR2()   {x=0; y=0;}
 } VECTOR2;
+#else
+typedef struct VECTOR2 { float x; float y; } VECTOR2;
 #endif
 
 typedef struct

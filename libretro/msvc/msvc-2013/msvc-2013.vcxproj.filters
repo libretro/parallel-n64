@@ -252,7 +252,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c">
