@@ -3286,7 +3286,9 @@ static void invalidate_all_pages(void)
       restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
     }
   }
-  #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+  #if NEW_DYNAREC >= NEW_DYNAREC_ARM && !defined(__SWITCH2__)
+  /* Switch 2 publishes every cache write as it is made; a full-range
+   * publish here would copy the whole cache on each state load. */
   cache_flush((char *)base_addr_rx,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
   #endif
   #ifdef USE_MINI_HT
