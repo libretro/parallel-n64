@@ -135,6 +135,21 @@ typedef struct
    uint32_t Arg0;
 } StageOperate;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* CombinerConst.c's: a combiner's constant factor for the shade colour.
+ * GetConstFactor: one source (the flags' low bytes) per channel;
+ * CalculateConstFactor: a whole (A-B)*C+D equation per channel, as the
+ * combiner would compute it on bytes. */
+COLOR Rice_GetConstFactor(uint32_t colorFlag, uint32_t alphaFlag, uint32_t defaultColor);
+COLOR CalculateConstFactor(uint32_t colorOp, uint32_t alphaOp, uint32_t curCol);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 
 

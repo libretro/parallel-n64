@@ -34,7 +34,6 @@ class CColorCombiner
     friend class CRender;
 public:
     virtual ~CColorCombiner() {};
-    COLOR GetConstFactor(uint32_t colorFlag, uint32_t alphaFlag, uint32_t defaultColor);
     virtual void InitCombinerMode(void);
 
     virtual bool Initialize(void)=0;
@@ -81,8 +80,6 @@ inline bool isTexel(uint8_t val)
       return true;
    return false;
 }
-
-COLOR CalculateConstFactor(uint32_t colorOp, uint32_t alphaOp, uint32_t curCol);
 
 #endif
 

@@ -701,11 +701,11 @@ void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum)
             }
             else
             {
-                IColor &color = *(IColor*)&g_dwVtxDifColor[i];
-                color.b = vert.rgba.r;
-                color.g = vert.rgba.g;
-                color.r = vert.rgba.b;
-                color.a = vert.rgba.a;
+                uint8_t *color = (uint8_t*)&g_dwVtxDifColor[i];
+                color[0] = vert.rgba.b;
+                color[1] = vert.rgba.g;
+                color[2] = vert.rgba.r;
+                color[3] = vert.rgba.a;
             }
         }
 

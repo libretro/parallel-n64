@@ -288,6 +288,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/FrameBufferRDRAM.c \
             $(VIDEODIR_RICE)/gDP_rice.c \
+            $(VIDEODIR_RICE)/CombinerConst.c \
             $(VIDEODIR_RICE)/GraphicsContext.c \
             $(VIDEODIR_RICE)/gSP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \

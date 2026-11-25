@@ -174,10 +174,6 @@ typedef struct {
     COLOR dcDiffuse;
 } FILLRECTVERTEX, *LPFILLRECTVERTEX;
 
-#ifdef __cplusplus
-#include "COLOR.h"
-#include "IColor.h"
-#endif
 
 typedef struct
 {

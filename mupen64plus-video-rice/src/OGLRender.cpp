@@ -633,9 +633,9 @@ COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
     if( colorflag+alphaflag != MUX_0 )
     {
         if( (colorflag & 0xFFFFFF00) == 0 && (alphaflag & 0xFFFFFF00) == 0 )
-            color = (m_pColorCombiner->GetConstFactor(colorflag, alphaflag, curDiffuseColor));
+            color = Rice_GetConstFactor(colorflag, alphaflag, curDiffuseColor);
         else
-            color = (CalculateConstFactor(colorflag, alphaflag, curDiffuseColor));
+            color = CalculateConstFactor(colorflag, alphaflag, curDiffuseColor);
     }
 
     //return (color<<8)|(color>>24);
