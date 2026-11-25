@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "osal_opengl.h"
 
 #include "Combiner.h"
-#include "OGLRender.h"
+#include "Render.h"
 
 typedef struct
 {
@@ -84,9 +84,6 @@ protected:
     COGL_FragmentProgramCombiner(CRender *pRender);
     ~COGL_FragmentProgramCombiner();
 
-    /* The combiner is built inside CRender's constructor, before the
-     * OGLRender part exists, so the downcast is done when it is used. */
-    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
 
     int m_lastIndex;
     uint32_t m_dwLastMux0;

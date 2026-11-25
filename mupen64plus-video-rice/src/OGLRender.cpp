@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "osal_opengl.h"
 
 #include "OGLES2FragmentShaders.h"
-#include "OGLRender.h"
+#include "Render.h"
 #include "GraphicsContext.h"
 #include "OGLTexture.h"
 #include "TextureManager.h"
@@ -36,36 +36,19 @@ UVFlagMap OGLXUVFlagMaps[] =
 };
 
 //===================================================================
-OGLRender::OGLRender()
-{
-    m_bSupportClampToEdge = false;
-    for( int i=0; i<8; i++ )
-    {
-        m_curBoundTex[i]=0;
-        m_texUnitEnabled[i]= false;
-    }
-
-    m_bEnableMultiTexture = false;
-}
-
-OGLRender::~OGLRender()
-{
-    ClearDeviceObjects();
-}
-
-bool OGLRender::InitDeviceObjects()
+bool CRender::InitDeviceObjects()
 {
     // enable Z-buffer by default
     ZBufferEnable(true);
     return true;
 }
 
-bool OGLRender::ClearDeviceObjects()
+bool CRender::ClearDeviceObjects()
 {
     return true;
 }
 
-void OGLRender::Initialize(void)
+void CRender::Initialize(void)
 {
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
 
@@ -92,7 +75,7 @@ void OGLRender::Initialize(void)
     m_textureUnitMap[1] = 1;    // T1 is usually using texture unit 1
 }
 //===================================================================
-void OGLRender::ApplyTextureFilter()
+void CRender::ApplyTextureFilter()
 {
     static uint32_t minflag[32], magflag[32];
     static uint32_t mtex[32];
@@ -168,11 +151,11 @@ void OGLRender::ApplyTextureFilter()
     }
 }
 
-void OGLRender::SetShadeMode(RenderShadeMode mode)
+void CRender::SetShadeMode(RenderShadeMode mode)
 {
 }
 
-void OGLRender::ZBufferEnable(bool bZBuffer)
+void CRender::ZBufferEnable(bool bZBuffer)
 {
     gRSP.bZBufferEnabled = bZBuffer;
     if( g_curRomInfo.bForceDepthBuffer )
@@ -191,7 +174,7 @@ void OGLRender::ZBufferEnable(bool bZBuffer)
     }
 }
 
-void OGLRender::ClearBuffer(bool cbuffer, bool zbuffer)
+void CRender::ClearBuffer(bool cbuffer, bool zbuffer)
 {
     uint32_t flag = 0;
     float depth   = ((gRDP.originalFillColor&0xFFFF)>>2)/(float)0x3FFF;
@@ -204,14 +187,14 @@ void OGLRender::ClearBuffer(bool cbuffer, bool zbuffer)
     glClear(flag);
 }
 
-void OGLRender::ClearZBuffer(float depth)
+void CRender::ClearZBuffer(float depth)
 {
     uint32_t flag=GL_DEPTH_BUFFER_BIT;
     glClearDepth(depth);
     glClear(flag);
 }
 
-void OGLRender::SetZCompare(bool bZCompare)
+void CRender::SetZCompare(bool bZCompare)
 {
     if( g_curRomInfo.bForceDepthBuffer )
         bZCompare = true;
@@ -229,7 +212,7 @@ void OGLRender::SetZCompare(bool bZCompare)
     }
 }
 
-void OGLRender::SetZUpdate(bool bZUpdate)
+void CRender::SetZUpdate(bool bZUpdate)
 {
     if( g_curRomInfo.bForceDepthBuffer )
         bZUpdate = true;
@@ -243,7 +226,7 @@ void OGLRender::SetZUpdate(bool bZUpdate)
         glDepthMask(GL_FALSE);
 }
 
-void OGLRender::ApplyZBias(int bias)
+void CRender::ApplyZBias(int bias)
 {
     static int old_bias;
     float f1 = bias > 0 ? -3.0f : 0.0f;  // z offset = -3.0 * max(abs(dz/dx),abs(dz/dy)) per pixel delta z slope
@@ -264,14 +247,14 @@ void OGLRender::ApplyZBias(int bias)
     glPolygonOffset(f1, f2);  // set bias functions
 }
 
-void OGLRender::SetZBias(int bias)
+void CRender::SetZBias(int bias)
 {
     // set member variable and apply the setting in opengl
     m_dwZBias = bias;
     ApplyZBias(bias);
 }
 
-void OGLRender::SetAlphaRef(uint32_t dwAlpha)
+void CRender::SetAlphaRef(uint32_t dwAlpha)
 {
     if (m_dwAlpha != dwAlpha)
     {
@@ -279,18 +262,19 @@ void OGLRender::SetAlphaRef(uint32_t dwAlpha)
     }
 }
 
-void OGLRender::ForceAlphaRef(uint32_t dwAlpha)
+void CRender::ForceAlphaRef(uint32_t dwAlpha)
 {
     m_dwAlpha = dwAlpha;
 }
 
-void OGLRender::SetFillMode(FillMode mode)
+void CRender::SetFillMode(FillMode mode)
 {
 }
 
-void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
+void CRender::SetCullMode(bool bCullFront, bool bCullBack)
 {
-    CRender::SetCullMode(bCullFront, bCullBack);
+    gRSP.bCullFront = bCullFront;
+    gRSP.bCullBack = bCullBack;
     if( bCullFront && bCullBack )
     {
         glCullFace(GL_FRONT_AND_BACK);
@@ -312,7 +296,7 @@ void OGLRender::SetCullMode(bool bCullFront, bool bCullBack)
     }
 }
 
-bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry)
+bool CRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry)
 {
     RenderTexture &texture = g_textures[tile];
     texture.pTextureEntry = pTextureEntry;
@@ -340,7 +324,7 @@ bool OGLRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWid
     return true;
 }
 
-bool OGLRender::SetCurrentTexture(int tile, TxtrCacheEntry *pEntry)
+bool CRender::SetCurrentTexture(int tile, TxtrCacheEntry *pEntry)
 {
     if (pEntry != NULL && pEntry->pTexture != NULL)
     {   
@@ -355,17 +339,17 @@ bool OGLRender::SetCurrentTexture(int tile, TxtrCacheEntry *pEntry)
     return true;
 }
 
-void OGLRender::SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
+void CRender::SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
     SetTextureUFlag(dwFlag, dwTile);
 }
 
-void OGLRender::SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
+void CRender::SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
 {
     SetTextureVFlag(dwFlag, dwTile);
 }
 
-void OGLRender::SetTexWrapS(int unitno,GLuint flag)
+void CRender::SetTexWrapS(int unitno,GLuint flag)
 {
     static GLuint mflag[8];
     static GLuint mtex[8];
@@ -377,7 +361,7 @@ void OGLRender::SetTexWrapS(int unitno,GLuint flag)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, flag);
     }
 }
-void OGLRender::SetTexWrapT(int unitno,GLuint flag)
+void CRender::SetTexWrapT(int unitno,GLuint flag)
 {
     static GLuint mflag[8];
     static GLuint mtex[8];
@@ -389,7 +373,7 @@ void OGLRender::SetTexWrapT(int unitno,GLuint flag)
     }
 }
 
-void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
+void CRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileUFlags[dwTile] = dwFlag;
     if( !m_bEnableMultiTexture )
@@ -439,7 +423,7 @@ void OGLRender::SetTextureUFlag(TextureUVFlag dwFlag, uint32_t dwTile)
         }
     }
 }
-void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
+void CRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 {
     TileVFlags[dwTile] = dwFlag;
     if( !m_bEnableMultiTexture )
@@ -492,7 +476,7 @@ void OGLRender::SetTextureVFlag(TextureUVFlag dwFlag, uint32_t dwTile)
 
 // Basic render drawing functions
 
-bool OGLRender::RenderTexRect()
+bool CRender::RenderTexRect()
 {
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
 
@@ -553,7 +537,7 @@ bool OGLRender::RenderTexRect()
     return true;
 }
 
-bool OGLRender::RenderFillRect(uint32_t dwColor, float depth)
+bool CRender::RenderFillRect(uint32_t dwColor, float depth)
 {
     float a = (dwColor>>24)/255.0f;
     float r = ((dwColor>>16)&0xFF)/255.0f;
@@ -599,7 +583,7 @@ bool OGLRender::RenderFillRect(uint32_t dwColor, float depth)
     return true;
 }
 
-bool OGLRender::RenderLine3D()
+bool CRender::RenderLine3D()
 {
     return true;
 }
@@ -608,7 +592,7 @@ extern FiddledVtx * g_pVtxBase;
 
 // This is so weird that I can not do vertex transform by myself. I have to use
 // OpenGL internal transform
-bool OGLRender::RenderFlushTris()
+bool CRender::RenderFlushTris()
 {
    if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
    {
@@ -652,7 +636,7 @@ bool OGLRender::RenderFlushTris()
     return true;
 }
 
-void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
+void CRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
 {
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
@@ -735,7 +719,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
 }
 
 #if 0
-void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
+void CRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 {
     //glEnable(GL_CULL_FACE);
     EnableTexUnit(0, false);
@@ -745,23 +729,30 @@ void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 }
 #endif
 
-void OGLRender::SetViewportRender()
+void CRender::SetViewportRender()
 {
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, true);
 }
 
-void OGLRender::RenderReset()
+void CRender::RenderReset()
 {
-    CRender::RenderReset();
+    UpdateClipRectangle();
+    ResetMatrices();
+    SetZBias(0);
+    gRSP.numVertices = 0;
+    gRSP.maxVertexID = 0;
+    gRSP.curTile = 0;
+    gRSP.fTexScaleX = 1/32.0f;;
+    gRSP.fTexScaleY = 1/32.0f;
 }
 
-void OGLRender::SetAlphaTestEnable(bool bAlphaTestEnable)
+void CRender::SetAlphaTestEnable(bool bAlphaTestEnable)
 {
         COGL_FragmentProgramCombiner* frag = (COGL_FragmentProgramCombiner*)m_pColorCombiner;
         frag->SetAlphaTestState(bAlphaTestEnable);
 }
 
-void OGLRender::BindTexture(GLuint texture, int unitno)
+void CRender::BindTexture(GLuint texture, int unitno)
 {
     if( m_bEnableMultiTexture )
     {
@@ -782,7 +773,7 @@ void OGLRender::BindTexture(GLuint texture, int unitno)
     }
 }
 
-void OGLRender::DisBindTexture(GLuint texture, int unitno)
+void CRender::DisBindTexture(GLuint texture, int unitno)
 {
     if( m_bEnableMultiTexture )
     {
@@ -791,7 +782,7 @@ void OGLRender::DisBindTexture(GLuint texture, int unitno)
     }
 }
 
-void OGLRender::EnableTexUnit(int unitno, bool flag)
+void CRender::EnableTexUnit(int unitno, bool flag)
 {
     if( m_texUnitEnabled[unitno] != flag )
     {
@@ -800,7 +791,7 @@ void OGLRender::EnableTexUnit(int unitno, bool flag)
     }
 }
 
-void OGLRender::UpdateScissor()
+void CRender::UpdateScissor()
 {
     if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*gfx_info.VI_WIDTH_REG & 0xFFF) )
     {
@@ -817,7 +808,7 @@ void OGLRender::UpdateScissor()
     }
 }
 
-void OGLRender::ApplyRDPScissor(bool force)
+void CRender::ApplyRDPScissor(bool force)
 {
     if( !force && status.curScissor == RDP_SCISSOR )
         return;
@@ -840,7 +831,7 @@ void OGLRender::ApplyRDPScissor(bool force)
     status.curScissor = RDP_SCISSOR;
 }
 
-void OGLRender::ApplyScissorWithClipRatio(bool force)
+void CRender::ApplyScissorWithClipRatio(bool force)
 {
     if( !force && status.curScissor == RSP_SCISSOR )
         return;
@@ -852,16 +843,16 @@ void OGLRender::ApplyScissorWithClipRatio(bool force)
     status.curScissor = RSP_SCISSOR;
 }
 
-void OGLRender::SetFogMinMax(float fMin, float fMax)
+void CRender::SetFogMinMax(float fMin, float fMax)
 {
 }
 
-void OGLRender::TurnFogOnOff(bool flag)
+void CRender::TurnFogOnOff(bool flag)
 {
     ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(flag);
 }
 
-void OGLRender::SetFogEnable(bool bEnable)
+void CRender::SetFogEnable(bool bEnable)
 {
     gRSP.bFogEnabled = bEnable;
     
@@ -872,7 +863,7 @@ void OGLRender::SetFogEnable(bool bEnable)
     ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(gRSP.bFogEnabled);
 }
 
-void OGLRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+void CRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
 {
     gRDP.fogColor = COLOR_RGBA(r, g, b, a); 
     gRDP.fvFogColor[0] = r/255.0f;      //r
@@ -881,7 +872,7 @@ void OGLRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
     gRDP.fvFogColor[3] = a/255.0f;      //a
 }
 
-void OGLRender::DisableMultiTexture()
+void CRender::DisableMultiTexture()
 {
     glActiveTexture(GL_TEXTURE1);
     EnableTexUnit(1, false);
@@ -891,13 +882,13 @@ void OGLRender::DisableMultiTexture()
     EnableTexUnit(0, true);
 }
 
-void OGLRender::EndRendering(void)
+void CRender::EndRendering(void)
 {
     if( CRender::gRenderReferenceCount > 0 ) 
         CRender::gRenderReferenceCount--;
 }
 
-void OGLRender::glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag)
+void CRender::glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag)
 {
     /* Always set the viewport. Caching it here is unsafe: glsm re-applies its
      * own tracked viewport every frame, so a stale local cache would let rice

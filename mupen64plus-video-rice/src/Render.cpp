@@ -67,6 +67,16 @@ CRender::CRender() :
     m_Mux(0),
     m_bBlendModeValid(false)
 {
+    /* (the GL renderer's own state, once OGLRender's constructor) */
+    m_bSupportClampToEdge = false;
+    for( int i=0; i<8; i++ )
+    {
+        m_curBoundTex[i]=0;
+        m_texUnitEnabled[i]= false;
+    }
+
+    m_bEnableMultiTexture = false;
+
     InitRenderBase();
 
     for( int i=0; i<MAX_TEXTURES; i++ )
@@ -300,18 +310,6 @@ void CRender::SetCombinerAndBlender()
         Blender_InitBlenderMode(m_pAlphaBlender);
 
     m_pColorCombiner->InitCombinerMode();
-}
-
-void CRender::RenderReset()
-{
-    UpdateClipRectangle();
-    ResetMatrices();
-    SetZBias(0);
-    gRSP.numVertices = 0;
-    gRSP.maxVertexID = 0;
-    gRSP.curTile = 0;
-    gRSP.fTexScaleX = 1/32.0f;;
-    gRSP.fTexScaleY = 1/32.0f;
 }
 
 bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
@@ -895,14 +893,6 @@ void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t d
     m_simpleRectVtx[1].y = ViewPortTranslatei_y(nY1);
 }
 
-void CRender::SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
-{
-}
-
-void CRender::SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag)
-{
-}
-
 void CRender::SetAllTexelRepeatFlag()
 {
     if( IsTextureEnabled() )
@@ -951,12 +941,6 @@ void CRender::SetTexelRepeatFlags(uint32_t dwTile)
         SetTextureVFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
     else                                
         SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-}
-
-void CRender::Initialize(void)
-{
-    ClearDeviceObjects();
-    InitDeviceObjects();
 }
 
 void CRender::CleanUp(void)

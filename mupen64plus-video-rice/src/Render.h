@@ -20,6 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _RICE_RENDER_H
 #define _RICE_RENDER_H
 
+#include "osal_opengl.h"
+
 #include "Blender.h"
 #include "Combiner.h"
 #include "Config.h"
@@ -37,6 +39,8 @@ enum TextureChannel
 
 class CRender
 {
+    friend class OGLDeviceBuilder;
+
 protected:
     CRender();
 
@@ -68,7 +72,7 @@ public:
     CBlender *m_pAlphaBlender;
     
     
-    virtual ~CRender();
+    ~CRender();
     
     inline bool IsTexel0Enable() {return m_pColorCombiner->m_bTex0Enabled;}
     inline bool IsTexel1Enable() {return m_pColorCombiner->m_bTex1Enabled;}
@@ -77,27 +81,13 @@ public:
     inline RenderTexture& GetCurrentTexture() { return g_textures[gRSP.curTile]; }
     inline RenderTexture& GetTexture(uint32_t dwTile) { return g_textures[dwTile]; }
     void SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ);
-    virtual void SetViewportRender() {}
-    virtual void SetClipRatio(uint32_t type, uint32_t value);
-    virtual void UpdateScissor() {}
-    virtual void ApplyRDPScissor(bool force) {}
-    virtual void UpdateClipRectangle();
-    virtual void UpdateScissorWithClipRatio();
-    virtual void ApplyScissorWithClipRatio(bool force) {}
+    void SetClipRatio(uint32_t type, uint32_t value);
+    void UpdateClipRectangle();
+    void UpdateScissorWithClipRatio();
 
     void SetTextureEnableAndScale(int dwTile, bool enable, float fScaleX, float fScaleY);
     
-    virtual void SetFogEnable(bool bEnable) 
-    { 
-        gRSP.bFogEnabled = bEnable;
-    }
-    virtual void SetFogMinMax(float fMin, float fMax) = 0;
-    virtual void TurnFogOnOff(bool flag)=0;
 
-    virtual void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) 
-    { 
-        gRDP.fogColor = COLOR_RGBA(r, g, b, a); 
-    }
     uint32_t GetFogColor() { return gRDP.fogColor; }
 
     void SetProjection(const Matrix & mat, bool bPush, bool bReplace);
@@ -126,39 +116,22 @@ public:
         g_fVtxTxtCoords[dwV].y = tv;
     }
 
-    virtual void RenderReset();
-    virtual void SetCombinerAndBlender();
-    virtual void SetMux(uint32_t dwMux0, uint32_t dwMux1);
-    virtual void SetCullMode(bool bCullFront, bool bCullBack) { gRSP.bCullFront = bCullFront; gRSP.bCullBack = bCullBack; }
+    void SetCombinerAndBlender();
+    void SetMux(uint32_t dwMux0, uint32_t dwMux1);
 
-    virtual void BeginRendering(void) {CRender::gRenderReferenceCount++;}       // For DirectX only
-    virtual void EndRendering(void) 
-    {
-        if( CRender::gRenderReferenceCount > 0 )
-            CRender::gRenderReferenceCount--;
-    }
+    void BeginRendering(void) {CRender::gRenderReferenceCount++;}       // For DirectX only
 
-    virtual void ClearBuffer(bool cbuffer, bool zbuffer)=0;
-    virtual void ClearZBuffer(float depth)=0;
-    virtual void ClearBuffer(bool cbuffer, bool zbuffer, COORDRECT &rect) 
+    void ClearBuffer(bool cbuffer, bool zbuffer);
+    void ClearBuffer(bool cbuffer, bool zbuffer, COORDRECT &rect) 
     {
         ClearBuffer(cbuffer, zbuffer);
     }
-    virtual void ZBufferEnable(bool bZBuffer)=0;
-    virtual void SetZCompare(bool bZCompare)=0;
-    virtual void SetZUpdate(bool bZUpdate)=0;
-    virtual void SetZBias(int bias)=0;
-    virtual void SetAlphaTestEnable(bool bAlphaTestEnable)=0;
 
     void SetTextureFilter(uint32_t dwFilter);
-    virtual void ApplyTextureFilter() {}
     
-    virtual void SetShadeMode(RenderShadeMode mode)=0;
 
-    virtual void SetAlphaRef(uint32_t dwAlpha)=0;
-    virtual void ForceAlphaRef(uint32_t dwAlpha)=0;
 
-    virtual void InitOtherModes(void);
+    void InitOtherModes(void);
 
     void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T);
     void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T);
@@ -166,29 +139,18 @@ public:
     void SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0);
     
     bool DrawTriangles();
-    virtual bool RenderFlushTris()=0;
 
     bool TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fScaleS, float fScaleT, bool colorFlag, uint32_t difcolor);
     bool TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, float fS1, float fT1);
     bool FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor);
     bool Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth);
 
-    virtual void SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag); // For DirectX only, fix me
-    virtual void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag); // For DirectX only, fix me
-    virtual void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile)=0;
-    virtual void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile)=0;
-    virtual void SetTexelRepeatFlags(uint32_t dwTile);
-    virtual void SetAllTexelRepeatFlag();
+    void SetTexelRepeatFlags(uint32_t dwTile);
+    void SetAllTexelRepeatFlag();
     
-    virtual bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry)=0;
-    virtual bool SetCurrentTexture(int tile, CTexture *handler, uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry) = 0;
 
-    virtual bool InitDeviceObjects()=0;
-    virtual bool ClearDeviceObjects()=0;
-    virtual void Initialize(void);
-    virtual void CleanUp(void);
+    void CleanUp(void);
     
-    virtual void SetFillMode(FillMode mode)=0;
 
     void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode);
     void LoadObjBGCopy(uObjBg &info);
@@ -200,8 +162,6 @@ public:
     void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     void DrawSprite(uObjTxSprite &sprite, bool rectR);
     void DrawObjBGCopy(uObjBg &info);
-    virtual void DrawSpriteR_Render(){};
-    virtual void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)=0;
     void DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled);
 
@@ -216,30 +176,99 @@ protected:
     uint32_t          m_savedMagFilter;
 
     // FillRect
-    virtual bool    RenderFillRect(uint32_t dwColor, float depth)=0;
     VECTOR2         m_fillRectVtx[2];
     
     // Line3D
-    virtual bool    RenderLine3D()=0;
 
     LITVERTEX       m_line3DVtx[2];
     VECTOR2         m_line3DVector[4];
     
     // TexRect
-    virtual bool    RenderTexRect()=0;
 
     TexCord         m_texRectTex1UV[2];
     TexCord         m_texRectTex2UV[2];
 
     // DrawSimple2DTexture
-    virtual void    StartDrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
+    void    StartDrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
 
     // DrawSimpleRect
-    virtual void    StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw);
+    void    StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw);
     VECTOR2         m_simpleRectVtx[2];
 
     bool            RemapTextureCoordinate(float s0, float s1, uint32_t tileWidth, uint32_t mask, float textureWidth,
                                             float &u0, float &u1);
+
+    /* the GL renderer (once OGLRender) */
+public:
+    void Initialize(void);
+
+    bool InitDeviceObjects();
+    bool ClearDeviceObjects();
+
+    void ApplyTextureFilter();
+
+    void SetShadeMode(RenderShadeMode mode);
+    void ZBufferEnable(bool bZBuffer);
+    void ClearZBuffer(float depth);
+    void SetZCompare(bool bZCompare);
+    void SetZUpdate(bool bZUpdate);
+    void SetZBias(int bias);
+    void ApplyZBias(int bias);
+    void SetAlphaRef(uint32_t dwAlpha);
+    void ForceAlphaRef(uint32_t dwAlpha);
+    void SetFillMode(FillMode mode);
+    void SetViewportRender();
+    void RenderReset();
+    void SetCullMode(bool bCullFront, bool bCullBack);
+    void SetAlphaTestEnable(bool bAlphaTestEnable);
+    void UpdateScissor();
+    void ApplyRDPScissor(bool force);
+    void ApplyScissorWithClipRatio(bool force);
+
+    bool SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry);
+    bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry);
+    void SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag);
+    void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag);
+    void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile);
+    void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile);
+    void BindTexture(GLuint texture, int unitno);
+    void DisBindTexture(GLuint texture, int unitno);
+
+    void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
+    void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
+    void DrawSpriteR_Render();
+
+    void SetFogMinMax(float fMin, float fMax);
+    void SetFogEnable(bool bEnable);
+    void TurnFogOnOff(bool flag);
+    void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+
+    void DisableMultiTexture();
+    void EnableMultiTexture() {m_bEnableMultiTexture=true;}
+    void EndRendering(void);
+
+    void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag);
+    void EnableTexUnit(int unitno, bool flag);
+    void SetTexWrapS(int unitno,GLuint flag);
+    void SetTexWrapT(int unitno,GLuint flag);
+
+protected:
+
+    // Basic render drawing functions
+    bool RenderFlushTris();
+    bool RenderTexRect();
+    bool RenderFillRect(uint32_t dwColor, float depth);
+    bool RenderLine3D();
+
+    bool m_bSupportClampToEdge;
+
+    GLuint  m_curBoundTex[8];
+    bool    m_texUnitEnabled[8];
+
+    bool m_bEnableMultiTexture;
+
+    GLint m_maxTexUnits;
+    int m_textureUnitMap[8];
 
 };
 

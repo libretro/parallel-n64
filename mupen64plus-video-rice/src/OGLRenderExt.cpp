@@ -18,11 +18,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#include "OGLRender.h"
+#include "Render.h"
 
 //========================================================================
 
-void OGLRender::DrawSpriteR_Render()    // With Rotation
+void CRender::DrawSpriteR_Render()    // With Rotation
 {
     glViewportWrapper(0, 0, windowSetting.uDisplayWidth, windowSetting.uDisplayHeight, true);
 

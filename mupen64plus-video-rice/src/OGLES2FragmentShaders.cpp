@@ -20,7 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../../mupen64plus-video-gliden64/src/CombinerKeyJournal.h"
 #include "../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
 #include "OGLES2FragmentShaders.h"
-#include "OGLRender.h"
 #include "OGLTexture.h"
 
 #define ALPHA_TEST "    if(gl_FragColor.a < AlphaRef) discard;                        \n"
@@ -279,8 +278,8 @@ void COGL_FragmentProgramCombiner::DisableCombiner(void)
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
 {
-    OGLRenderer()->DisableMultiTexture();
-    OGLRenderer()->EnableTexUnit(0, true);
+    m_pRender->DisableMultiTexture();
+    m_pRender->EnableTexUnit(0, true);
     UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation,m_AlphaRef);
     glEnableVertexAttribArray(VS_POSITION);
@@ -291,8 +290,8 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
     COGLTexture* pTexture = (COGLTexture *)g_textures[gRSP.curTile].m_pCTexture;
     if( pTexture )
     {
-        OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
-        OGLRenderer()->SetTexelRepeatFlags(gRSP.curTile);
+        m_pRender->BindTexture(pTexture->m_dwTextureName, 0);
+        m_pRender->SetTexelRepeatFlags(gRSP.curTile);
     }
 }
 
@@ -303,13 +302,13 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
  * program instead, with nothing discarded. */
 void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
 {
-    OGLRenderer()->DisableMultiTexture();
+    m_pRender->DisableMultiTexture();
     if( g_textures[tile].m_pCTexture )
     {
-        OGLRenderer()->EnableTexUnit(0, true);
+        m_pRender->EnableTexUnit(0, true);
         glBindTexture(GL_TEXTURE_2D, ((COGLTexture*)(g_textures[tile].m_pCTexture))->m_dwTextureName);
     }
-    OGLRenderer()->SetAllTexelRepeatFlag();
+    m_pRender->SetAllTexelRepeatFlag();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -317,7 +316,7 @@ void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint3
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // Linear Filtering
 
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-    OGLRenderer()->SetAlphaTestEnable(false);
+    m_pRender->SetAlphaTestEnable(false);
     UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation, 0.0f);
 }
@@ -745,7 +744,7 @@ int COGL_FragmentProgramCombiner::FindCompiledMux()
 void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
 {
 
-    OGLRenderer()->EnableMultiTexture();
+    m_pRender->EnableMultiTexture();
 
     bool combinerIsChanged = false;
 
@@ -771,7 +770,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
         m_dwLastMux1 = m_pDecodedMux->m_dwMux1;
         bAlphaTestPreviousState = bAlphaTestState;
         bFogPreviousState = bFogState;
-        m_AlphaRef = (float)(OGLRenderer()->m_dwAlpha) / 255.0f;
+        m_AlphaRef = (float)(m_pRender->m_dwAlpha) / 255.0f;
     }
 
 
@@ -788,14 +787,14 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
             GenerateCombinerSettingConstants(m_lastIndex);
         }
 
-        OGLRenderer()->SetAllTexelRepeatFlag();
+        m_pRender->SetAllTexelRepeatFlag();
 
         gRDP.colorsAreReloaded = false;
         gRDP.texturesAreReloaded = false;
     }
     else
     {
-        OGLRenderer()->SetAllTexelRepeatFlag();
+        m_pRender->SetAllTexelRepeatFlag();
     }
 }
 
