@@ -38,7 +38,7 @@ static __inline float  truncf(float x) { return (float)(int)x; }
 
 #else
 #define M64P_FPU_INLINE static inline
-#if !defined(VITA) && !defined(__SWITCH__)
+#if !defined(VITA) && (!defined(__SWITCH__) || defined(__SWITCH2__))
   #include <fenv.h>
 #endif
 #endif
@@ -69,7 +69,7 @@ static __inline float  truncf(float x) { return (float)(int)x; }
 
 M64P_FPU_INLINE void set_rounding(uint32_t fcr31)
 {
-#if !defined(VITA) && !defined(__SWITCH__)
+#if !defined(VITA) && (!defined(__SWITCH__) || defined(__SWITCH2__))
     switch(fcr31 & 3) {
     case 0: /* Round to nearest, or to even if equidistant */
         fesetround(FE_TONEAREST);
