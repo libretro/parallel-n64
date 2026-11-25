@@ -17,6 +17,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 #include <stdint.h>
+#include <string.h>
+
 #include "Combiner.h"
 #include "Config.h"
 #include "RenderBase.h"
@@ -91,17 +93,23 @@ void CColorCombiner::UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1)
       }
       else
       {
-         m_decodedMux.Decode(dwMux0, dwMux1);
+         uint64_t key;
+
+         DecodedMux_Decode(&m_decodedMux, dwMux0, dwMux1);
          m_decodedMux.splitType[0] = CM_FMT_TYPE_NOT_CHECKED;
          m_decodedMux.splitType[1] = CM_FMT_TYPE_NOT_CHECKED;
          m_decodedMux.splitType[2] = CM_FMT_TYPE_NOT_CHECKED;
          m_decodedMux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
 
-         m_decodedMux.Hack();
+         DecodedMux_Hack(&m_decodedMux);
 
-         m_decodedMux.Simplify();
+         DecodedMux_Simplify(&m_decodedMux);
 
-         m_DecodedMuxList.add(m_decodedMux.m_u64Mux, *m_pDecodedMux);
+         /* kept under the two words as they lie in memory, as the old
+          * m_u64Mux union was (the same as mux64 on a little-endian
+          * host) */
+         memcpy(&key, &m_decodedMux.m_dwMux0, sizeof(key));
+         m_DecodedMuxList.add(key, *m_pDecodedMux);
       }
 
       m_bTex0Enabled = m_decodedMux.m_bTexel0IsUsed;

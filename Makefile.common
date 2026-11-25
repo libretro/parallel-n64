@@ -273,7 +273,6 @@ CFLAGS   += -DHAVE_RICE
 CXXFLAGS += -DHAVE_RICE
 SOURCES_CXX += $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/RiceConfig.cpp \
-            $(VIDEODIR_RICE)/DecodedMux.cpp \
             $(VIDEODIR_RICE)/DeviceBuilder.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
             $(VIDEODIR_RICE)/OGLCombiner.cpp \
@@ -291,6 +290,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/ConvertImage16.c \
             $(VIDEODIR_RICE)/FrameBufferRDRAM.c \
             $(VIDEODIR_RICE)/gDP_rice.c \
+            $(VIDEODIR_RICE)/DecodedMux.c \
             $(VIDEODIR_RICE)/GraphicsContext.c \
             $(VIDEODIR_RICE)/gSP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \

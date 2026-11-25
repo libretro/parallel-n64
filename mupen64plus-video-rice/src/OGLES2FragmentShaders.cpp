@@ -153,6 +153,7 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
 : CColorCombiner(pRender), m_lastIndex(-1), m_dwLastMux0(0), m_dwLastMux1(0)
 {
     m_pDecodedMux = new DecodedMux;
+    DecodedMux_Init(m_pDecodedMux);
     m_journal = NULL;
     m_bFragmentProgramIsSupported = true;
     m_AlphaRef = 0.0f;
@@ -409,7 +410,7 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
     DecodedMux &mux = *m_pDecodedMux;
 
     mux.splitType[0] = mux.splitType[1] = mux.splitType[2] = mux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
-    m_pDecodedMux->Reformat(false);
+    DecodedMux_Reformat(m_pDecodedMux, false);
 
     char tempstr[500], newFPBody[4092];
     bool bNeedT0 = false, bNeedT1 = false, bNeedComb2 = false;

@@ -16,11 +16,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
+/* A combiner mux decoded: the two cycles' colour and alpha equations,
+ * (A-B)*C+D each, as Rice's MUX_ values, and what kind of equation each
+ * is once simplified. C89. */
 #ifndef _DECODEDMUX_H_
 #define _DECODEDMUX_H_
 
-#include <string.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <boolean.h>
 
 #include "typedefs.h"
 #include "CombinerDefs.h"
@@ -33,93 +36,46 @@ typedef enum
     N64Cycle0RGB   = 0,
     N64Cycle0Alpha = 1,
     N64Cycle1RGB   = 2,
-    N64Cycle1Alpha = 3,
+    N64Cycle1Alpha = 3
 } N64StageNumberType;
 
-typedef union
+typedef struct DecodedMux
 {
-    struct
-    {
-        uint32_t dwMux0;
-        uint32_t dwMux1;
-    };
-    uint64_t Mux64;
-} MuxType;
+    /* by N64StageNumberType: cycle 0 colour, cycle 0 alpha, cycle 1
+     * colour, cycle 1 alpha; 16 bytes, a stage's four in a row */
+    N64CombinerType m_n64Combiners[4];
 
-typedef struct
-{
-    MuxType ori_mux;
-    MuxType simple_mux;
-} SimpleMuxMapType;
-
-class DecodedMux
-{
-public:
-    union
-    {
-        struct
-        {
-            uint8_t aRGB0;
-            uint8_t bRGB0;
-            uint8_t cRGB0;
-            uint8_t dRGB0;
-            
-            uint8_t aA0;
-            uint8_t bA0;
-            uint8_t cA0;
-            uint8_t dA0;
-            
-            uint8_t aRGB1;
-            uint8_t bRGB1;
-            uint8_t cRGB1;
-            uint8_t dRGB1;
-            
-            uint8_t aA1;
-            uint8_t bA1;
-            uint8_t cA1;
-            uint8_t dA1;
-        };
-        uint8_t  m_bytes[16];
-        uint32_t m_dWords[4];
-        N64CombinerType m_n64Combiners[4];
-    };
-    
-    union
-    {
-        struct
-        {
-            uint32_t m_dwMux0;
-            uint32_t m_dwMux1;
-        };
-        uint64_t m_u64Mux;
-    };
+    uint32_t m_dwMux0;
+    uint32_t m_dwMux1;
 
     CombinerFormatType splitType[4];
     CombinerFormatType mType;
-    
+
     bool m_bTexel0IsUsed;
     bool m_bTexel1IsUsed;
+} DecodedMux;
 
-    void Decode(uint32_t dwMux0, uint32_t dwMux1);
-    void Hack(void);
-    bool IsUsed(uint8_t fac, uint8_t mask);
-    bool IsUsedInCycle(uint8_t fac, int cycle, CombineChannel channel, uint8_t mask);
-    void CheckCombineInCycle1(void);
-    void Simplify(void);
-    void Reformat(bool do_complement);
-    void ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask);
-
-    DecodedMux()
-    {
-        memset(m_bytes, 0, sizeof(m_bytes));
-        mType=CM_FMT_TYPE_NOT_CHECKED;
-        for( int i=0; i<4; i++ )
-        {
-            splitType[i] = CM_FMT_TYPE_NOT_CHECKED;
-        }
-    }
-};
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+/* nothing in the equations, no stage checked */
+void DecodedMux_Init(DecodedMux *mux);
+/* the two mux words to equations of MUX_ values */
+void DecodedMux_Decode(DecodedMux *mux, uint32_t dwMux0, uint32_t dwMux1);
+/* the per-game mux hacks (Tony Hawk, Zelda, Mario Tennis and Golf, Top
+ * Gear Rally) */
+void DecodedMux_Hack(DecodedMux *mux);
+/* cycle 0's combined inputs taken from the shade, Texture 1 hack, the
+ * texels used */
+void DecodedMux_Simplify(DecodedMux *mux);
+/* each stage's equation in its simplest form and kind (splitType, mType) */
+void DecodedMux_Reformat(DecodedMux *mux, bool do_complement);
+/* @fac (under @mask) anywhere in the four equations */
+bool DecodedMux_IsUsed(const DecodedMux *mux, uint8_t fac, uint8_t mask);
 
+#ifdef __cplusplus
+}
+#endif
+
+#endif

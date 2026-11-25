@@ -82,6 +82,7 @@ enum CombinerFormatType
     CM_FMT_TYPE_AB_SUB_C,           // = A*B-C      Use by ATI video cards
     CM_FMT_TYPE_NOT_CHECKED = 0xFF
 };
+typedef enum CombinerFormatType CombinerFormatType;
 
 
 typedef enum

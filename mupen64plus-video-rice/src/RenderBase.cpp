@@ -730,7 +730,7 @@ bool PrepareTriangle(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2)
 
         if(gRSP.numVertices == 0 && g_curRomInfo.bEnableTxtLOD && gRDP.otherMode.text_lod)
         {
-            if( CRender::g_pRender->IsTexel1Enable() && CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->IsUsed(MUX_LODFRAC, MUX_MASK) )
+            if( CRender::g_pRender->IsTexel1Enable() && DecodedMux_IsUsed(CRender::g_pRender->m_pColorCombiner->m_pDecodedMux, MUX_LODFRAC, MUX_MASK) )
             {
                 ComputeLOD();
             }
