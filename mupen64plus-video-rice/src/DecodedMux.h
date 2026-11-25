@@ -74,6 +74,35 @@ void DecodedMux_Reformat(DecodedMux *mux, bool do_complement);
 /* @fac (under @mask) anywhere in the four equations */
 bool DecodedMux_IsUsed(const DecodedMux *mux, uint8_t fac, uint8_t mask);
 
+/* The muxes decoded so far, kept by key in a sorted table made once:
+ * a game's mux is decoded, hacked and simplified the first time it is
+ * seen and copied from here after. */
+#define DECODED_MUX_CACHE_SIZE 4096
+typedef struct DecodedMuxCache
+{
+    uint64_t   *keys;
+    DecodedMux *muxes;
+    int         count;
+    int         capacity;
+} DecodedMuxCache;
+
+/* the table for @capacity muxes; false if it could not be had */
+bool DecodedMuxCache_Init(DecodedMuxCache *cache, int capacity);
+void DecodedMuxCache_Free(DecodedMuxCache *cache);
+/* @key's index, or -1 */
+int  DecodedMuxCache_Find(const DecodedMuxCache *cache, uint64_t key);
+/* @mux under @key, replacing what is there; nothing when full */
+void DecodedMuxCache_Add(DecodedMuxCache *cache, uint64_t key, const DecodedMux *mux);
+
+/* set by DecodedMux_Update: Conker's shadow mux is current (Render.cpp
+ * hides that shadow) */
+extern bool bConkerHideShadow;
+
+/* @mux made the one for (@dwMux0, @dwMux1): nothing when it is already,
+ * else from @cache or decoded, hacked, simplified and kept there (with
+ * Dr. Mario's and Conker's mux hacks). True when it changed. */
+bool DecodedMux_Update(DecodedMux *mux, DecodedMuxCache *cache, uint32_t dwMux0, uint32_t dwMux1);
+
 #ifdef __cplusplus
 }
 #endif

@@ -715,6 +715,183 @@ static void bytes_hex(const DecodedMux *mux, char *out)
         sprintf(out + 2 * i, "%02x", b[i]);
 }
 
+
+/* ---- the cache ---- */
+static void mux_with(DecodedMux *m, uint8_t tag)
+{
+    memset(m, 0, sizeof(*m));
+    m->m_n64Combiners[0].a = tag;
+}
+
+static void cache_tests(void)
+{
+    DecodedMuxCache c;
+    DecodedMux m;
+    static const uint64_t keys[] = { 50, 10, 0xFFFFFFFF00000000ULL, 30, 20 };
+    int i;
+
+    memset(&c, 0xAA, sizeof(c));
+    CHECK(DecodedMuxCache_Init(&c, 4));
+    CHECK(c.count == 0 && c.capacity == 4);
+    CHECK(DecodedMuxCache_Find(&c, 10) == -1);
+
+    for (i = 0; i < 5; i++)
+    {
+        mux_with(&m, (uint8_t)(i + 1));
+        DecodedMuxCache_Add(&c, keys[i], &m);
+    }
+    /* full at four: the fifth (20) is not kept */
+    CHECK(c.count == 4);
+    CHECK(c.keys[0] == 10 && c.keys[1] == 30 && c.keys[2] == 50 && c.keys[3] == 0xFFFFFFFF00000000ULL);
+    CHECK(DecodedMuxCache_Find(&c, 10) == 0 && c.muxes[0].m_n64Combiners[0].a == 2);
+    CHECK(DecodedMuxCache_Find(&c, 30) == 1 && c.muxes[1].m_n64Combiners[0].a == 4);
+    CHECK(DecodedMuxCache_Find(&c, 50) == 2 && c.muxes[2].m_n64Combiners[0].a == 1);
+    CHECK(DecodedMuxCache_Find(&c, 0xFFFFFFFF00000000ULL) == 3 && c.muxes[3].m_n64Combiners[0].a == 3);
+    CHECK(DecodedMuxCache_Find(&c, 20) == -1);
+    CHECK(DecodedMuxCache_Find(&c, 0) == -1 && DecodedMuxCache_Find(&c, 40) == -1 && DecodedMuxCache_Find(&c, 60) == -1);
+
+    /* a key there already: its mux replaced, even when full */
+    mux_with(&m, 9);
+    DecodedMuxCache_Add(&c, 30, &m);
+    CHECK(c.count == 4 && DecodedMuxCache_Find(&c, 30) == 1 && c.muxes[1].m_n64Combiners[0].a == 9);
+    CHECK(c.muxes[0].m_n64Combiners[0].a == 2 && c.muxes[2].m_n64Combiners[0].a == 1);
+
+    DecodedMuxCache_Free(&c);
+    CHECK(c.keys == NULL && c.muxes == NULL && c.count == 0 && c.capacity == 0);
+    CHECK(DecodedMuxCache_Find(&c, 10) == -1);
+    mux_with(&m, 1);
+    DecodedMuxCache_Add(&c, 10, &m);    /* no table: nothing */
+    CHECK(c.count == 0);
+
+    /* in order however added, the front and the middle */
+    CHECK(DecodedMuxCache_Init(&c, 8));
+    for (i = 7; i >= 0; i--)
+    {
+        mux_with(&m, (uint8_t)i);
+        DecodedMuxCache_Add(&c, (uint64_t)(i * 3 % 8) * 100, &m);
+    }
+    for (i = 0; i < 8; i++)
+    {
+        CHECK(c.keys[i] == (uint64_t)i * 100);
+        CHECK(DecodedMuxCache_Find(&c, (uint64_t)i * 100) == i);
+    }
+    DecodedMuxCache_Free(&c);
+
+    /* room for one */
+    CHECK(DecodedMuxCache_Init(&c, 1) && c.capacity == 1);
+    mux_with(&m, 1);
+    DecodedMuxCache_Add(&c, 5, &m);
+    DecodedMuxCache_Add(&c, 4, &m);
+    CHECK(c.count == 1 && c.keys[0] == 5);
+    DecodedMuxCache_Free(&c);
+}
+
+/* ---- setting a mux ---- */
+static void update_tests(void)
+{
+    DecodedMuxCache c;
+    DecodedMux m, want;
+    uint64_t key;
+    /* uses TEXEL1, so Tony Hawk's tile 1 hack shows */
+    const uint32_t m0 = 0x0020a442, m1 = 0xf0f0f7ff;
+
+    CHECK(DecodedMuxCache_Init(&c, 2));
+    options.enableHackForGames = HACK_FOR_TONYHAWK;
+    g_curRomInfo.bTexture1Hack = false;
+    DecodedMux_Init(&m);
+    m.m_dwMux0 = m.m_dwMux1 = 0;
+
+    /* the mux it has: nothing */
+    CHECK(!DecodedMux_Update(&m, &c, 0, 0));
+    CHECK(c.count == 0);
+
+    /* new: decoded, hacked and simplified, and kept */
+    gRSP.curTile = 1;
+    CHECK(DecodedMux_Update(&m, &c, m0, m1));
+    DecodedMux_Init(&want);
+    DecodedMux_Decode(&want, m0, m1);
+    DecodedMux_Hack(&want);
+    DecodedMux_Simplify(&want);
+    CHECK(memcmp(m.m_n64Combiners, want.m_n64Combiners, 16) == 0);
+    CHECK(!DecodedMux_IsUsed(&m, MUX_TEXEL1, MUX_MASK));
+    CHECK(m.m_dwMux0 == m0 && m.m_dwMux1 == m1 && m.mType == CM_FMT_TYPE_NOT_USED);
+    CHECK(m.m_bTexel0IsUsed && !m.m_bTexel1IsUsed);
+    memcpy(&key, &m.m_dwMux0, sizeof(key));
+    CHECK(c.count == 1 && DecodedMuxCache_Find(&c, key) == 0);
+    CHECK(key == (((uint64_t)m1 << 32) | m0));
+    CHECK(!DecodedMux_Update(&m, &c, m0, m1));
+
+    /* another, then the first again: from the cache, the tile it was
+     * decoded on kept */
+    gRSP.curTile = 0;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf279));
+    CHECK(c.count == 2);
+    CHECK(DecodedMux_Update(&m, &c, m0, m1));
+    CHECK(!DecodedMux_IsUsed(&m, MUX_TEXEL1, MUX_MASK));
+    CHECK(c.count == 2);
+
+    /* the cache full: a new mux decoded each time, for the tile now */
+    CHECK(DecodedMux_Update(&m, &c, m0 ^ 0x10, m1));
+    CHECK(c.count == 2 && DecodedMux_IsUsed(&m, MUX_TEXEL1, MUX_MASK));
+    CHECK(DecodedMux_Update(&m, &c, m0, m1));
+    gRSP.curTile = 1;
+    CHECK(DecodedMux_Update(&m, &c, m0 ^ 0x10, m1));
+    CHECK(!DecodedMux_IsUsed(&m, MUX_TEXEL1, MUX_MASK));
+    DecodedMuxCache_Free(&c);
+
+    /* Dr. Mario: 0xfffcf239 after 0x00ffffff/0xfffcf279, or after
+     * 0x00ffb3ff/0xff64fe7f with 0x00ffffff, is 0xfffcf438 */
+    CHECK(DecodedMuxCache_Init(&c, 16));
+    options.enableHackForGames = HACK_FOR_DR_MARIO;
+    DecodedMux_Init(&m);
+    m.m_dwMux0 = 0x00ffffff; m.m_dwMux1 = 0xfffcf279;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux0 == 0x00ffffff && m.m_dwMux1 == 0xfffcf438);
+    m.m_dwMux0 = 0x00ffb3ff; m.m_dwMux1 = 0xff64fe7f;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf438);
+    m.m_dwMux0 = 0x00ffb3ff; m.m_dwMux1 = 0xff64fe7f;
+    CHECK(DecodedMux_Update(&m, &c, 0x00fffffe, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+    m.m_dwMux0 = 0x00ffffff; m.m_dwMux1 = 0xfffcf27a;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+    m.m_dwMux0 = 0x00fffffe; m.m_dwMux1 = 0xfffcf279;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+    m.m_dwMux0 = 0x00ffffff; m.m_dwMux1 = 0xfffcf279;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf23a));
+    CHECK(m.m_dwMux1 == 0xfffcf23a);
+    m.m_dwMux0 = 0x00ffb3fe; m.m_dwMux1 = 0xff64fe7f;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+    m.m_dwMux0 = 0x00ffb3ff; m.m_dwMux1 = 0xff64fe7e;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+    options.enableHackForGames = NO_HACK_FOR_GAME;
+    m.m_dwMux0 = 0x00ffffff; m.m_dwMux1 = 0xfffcf279;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffffff, 0xfffcf239));
+    CHECK(m.m_dwMux1 == 0xfffcf239);
+
+    /* Conker's shadow mux sets the flag, any other clears it, only
+     * under the hack */
+    options.enableHackForGames = HACK_FOR_CONKER;
+    bConkerHideShadow = false;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffe9ff, 0xffd21f0f));
+    CHECK(bConkerHideShadow);
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffe9fe, 0xffd21f0f));
+    CHECK(!bConkerHideShadow);
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffe9ff, 0xffd21f0f));
+    CHECK(bConkerHideShadow);
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffe9ff, 0xffd21f0e));
+    CHECK(!bConkerHideShadow);
+    options.enableHackForGames = NO_HACK_FOR_GAME;
+    bConkerHideShadow = true;
+    CHECK(DecodedMux_Update(&m, &c, 0x00ffe9fd, 0xffd21f0f));
+    CHECK(bConkerHideShadow);
+    DecodedMuxCache_Free(&c);
+}
+
 int main(void)
 {
 #ifndef MSB_FIRST
@@ -722,6 +899,8 @@ int main(void)
     int i;
     char got[33];
     DecodedMux mux;
+
+    CHECK(!bConkerHideShadow);
 
     memset(&mux, 0xAA, sizeof(mux));
     memset(&mux, 0xAA, sizeof(mux));
@@ -780,6 +959,9 @@ int main(void)
     CHECK(DecodedMux_IsUsed(&mux, MUX_LODFRAC | MUX_COMPLEMENT, 0xFF));
     mux.m_n64Combiners[0].a = MUX_PRIM;
     CHECK(DecodedMux_IsUsed(&mux, MUX_PRIM, MUX_MASK));
+
+    cache_tests();
+    update_tests();
 #endif
 
     if (failures)

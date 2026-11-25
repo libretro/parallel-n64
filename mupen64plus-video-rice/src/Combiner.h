@@ -20,9 +20,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _COMBINER_H_
 #define _COMBINER_H_
 
+#include <string.h>
+
 #include "typedefs.h"
 #include "CombinerDefs.h"
-#include "CSortedList.h"
 #include "DecodedMux.h"
 
 class CRender;
@@ -31,12 +32,12 @@ class CColorCombiner
 {
     friend class CRender;
 public:
-    virtual ~CColorCombiner() {};
+    virtual ~CColorCombiner() { DecodedMuxCache_Free(&m_DecodedMuxList); };
     virtual void InitCombinerMode(void);
 
     virtual bool Initialize(void)=0;
     virtual void CleanUp(void) {};
-    virtual void UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1);
+    void UpdateCombiner(uint32_t dwMux0, uint32_t dwMux1);
     virtual void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)=0;
     virtual void DisableCombiner(void)=0;
 
@@ -47,6 +48,7 @@ protected:
         m_pDecodedMux(NULL), m_bTex0Enabled(false),m_bTex1Enabled(false),m_bTexelsEnable(false),
         m_bCycleChanged(false), m_pRender(pRender)
     {
+        DecodedMuxCache_Init(&m_DecodedMuxList, DECODED_MUX_CACHE_SIZE);
     }
 
     virtual void InitCombinerCycleCopy(void)=0;
@@ -61,23 +63,9 @@ protected:
 
     CRender *m_pRender;
 
-    CSortedList<uint64_t, DecodedMux> m_DecodedMuxList;
+    DecodedMuxCache m_DecodedMuxList;
 };
 
-
-inline bool isEqual(uint8_t val1, uint8_t val2)
-{
-   if( (val1&MUX_MASK) == (val2&MUX_MASK) )
-      return true;
-   return false;
-}
-
-inline bool isTexel(uint8_t val)
-{
-   if( (val&MUX_MASK) == MUX_TEXEL0 || (val&MUX_MASK) == MUX_TEXEL1 )
-      return true;
-   return false;
-}
 
 #endif
 

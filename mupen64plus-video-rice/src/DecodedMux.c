@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  * The equations are 16 bytes, four stages of four (a, b, c, d); a whole
  * stage is compared and copied as its four bytes. */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <retro_miscellaneous.h>
@@ -514,4 +515,124 @@ void DecodedMux_Hack(DecodedMux *mux)
             mux->m_n64Combiners[N64Cycle1RGB].c = MUX_TEXEL0;
         }
     }
+}
+
+bool DecodedMuxCache_Init(DecodedMuxCache *cache, int capacity)
+{
+    cache->count    = 0;
+    cache->keys     = (uint64_t*)malloc(sizeof(uint64_t) * capacity);
+    cache->muxes    = (DecodedMux*)malloc(sizeof(DecodedMux) * capacity);
+    cache->capacity = (cache->keys && cache->muxes) ? capacity : 0;
+    return cache->capacity != 0;
+}
+
+void DecodedMuxCache_Free(DecodedMuxCache *cache)
+{
+    free(cache->keys);
+    free(cache->muxes);
+    cache->keys     = NULL;
+    cache->muxes    = NULL;
+    cache->count    = 0;
+    cache->capacity = 0;
+}
+
+/* where @key is, or where it would go (*found false) */
+static int cache_search(const DecodedMuxCache *cache, uint64_t key, bool *found)
+{
+    int lo = 0;
+    int hi = cache->count;
+    while (lo < hi)
+    {
+        int mid = lo + (hi - lo) / 2;
+        if (cache->keys[mid] < key)
+            lo = mid + 1;
+        else
+            hi = mid;
+    }
+    *found = lo < cache->count && cache->keys[lo] == key;
+    return lo;
+}
+
+int DecodedMuxCache_Find(const DecodedMuxCache *cache, uint64_t key)
+{
+    bool found;
+    int i = cache_search(cache, key, &found);
+    return found ? i : -1;
+}
+
+void DecodedMuxCache_Add(DecodedMuxCache *cache, uint64_t key, const DecodedMux *mux)
+{
+    bool found;
+    int i = cache_search(cache, key, &found);
+
+    if (found)
+    {
+        cache->muxes[i] = *mux;
+        return;
+    }
+    /* full: the mux is decoded again each time it is set (the table is
+     * made once, at the combiner's start, never mid-game) */
+    if (cache->count == cache->capacity)
+        return;
+
+    memmove(&cache->keys[i + 1], &cache->keys[i], sizeof(uint64_t) * (cache->count - i));
+    memmove(&cache->muxes[i + 1], &cache->muxes[i], sizeof(DecodedMux) * (cache->count - i));
+    cache->keys[i]  = key;
+    cache->muxes[i] = *mux;
+    cache->count++;
+}
+
+bool bConkerHideShadow = false;
+
+bool DecodedMux_Update(DecodedMux *mux, DecodedMuxCache *cache, uint32_t dwMux0, uint32_t dwMux1)
+{
+    uint64_t mux64;
+    int index;
+
+    if (mux->m_dwMux0 == dwMux0 && mux->m_dwMux1 == dwMux1)
+        return false;
+
+    if (options.enableHackForGames == HACK_FOR_DR_MARIO)
+    {
+        /* hack for Dr. Mario */
+        if (dwMux1 == 0xfffcf239 &&
+              ((mux->m_dwMux0 == dwMux0 && dwMux0 == 0x00ffffff &&
+                mux->m_dwMux1 != dwMux1 && mux->m_dwMux1 == 0xfffcf279) ||
+               (mux->m_dwMux0 == 0x00ffb3ff && mux->m_dwMux1 == 0xff64fe7f && dwMux0 == 0x00ffffff)))
+            dwMux1 = 0xfffcf438;
+    }
+
+    mux64 = (((uint64_t)dwMux1) << 32) + dwMux0;
+    index = DecodedMuxCache_Find(cache, mux64);
+
+    if (options.enableHackForGames == HACK_FOR_CONKER)
+    {
+        /* Conker's shadow, to disable the shadow
+         * Mux=0x00ffe9ff    used in CONKER BFD
+         * Color0: (0 - 0) * 0 + SHADE
+         * Color1: (0 - 0) * 0 + SHADE
+         * Alpha0: (1 - TEXEL0) * SHADE + 0
+         * Alpha1: (1 - TEXEL0) * SHADE + 0 */
+        bConkerHideShadow = dwMux1 == 0xffd21f0f && dwMux0 == 0x00ffe9ff;
+    }
+
+    if (index >= 0)
+        *mux = cache->muxes[index];
+    else
+    {
+        uint64_t key;
+
+        /* (the C++ marked the stages unchecked here too, but Simplify
+         * marks them all unused next and Hack does not look) */
+        DecodedMux_Decode(mux, dwMux0, dwMux1);
+        DecodedMux_Hack(mux);
+        DecodedMux_Simplify(mux);
+
+        /* kept under the two words as they lie in memory, as the old
+         * m_u64Mux union was (the same as mux64 on a little-endian
+         * host) */
+        memcpy(&key, &mux->m_dwMux0, sizeof(key));
+        DecodedMuxCache_Add(cache, key, mux);
+    }
+    return true;
 }

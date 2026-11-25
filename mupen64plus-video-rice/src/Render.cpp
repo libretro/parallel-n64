@@ -1057,7 +1057,6 @@ bool CRender::DrawTriangles()
         return true;
     }
 
-    extern bool bConkerHideShadow;
     if( options.enableHackForGames == HACK_FOR_CONKER && bConkerHideShadow )
     {
         gRSP.numVertices = 0;
