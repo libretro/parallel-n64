@@ -3252,7 +3252,7 @@ void invalidate_block(u_int block)
   for(first=page+1;first<last;first++) {
     invalidate_page(first);
   }
-  #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+  #if NEW_DYNAREC == NEW_DYNAREC_ARM
     do_clear_cache();
   #endif
 
@@ -12801,7 +12801,7 @@ int new_recompile_block(int addr)
         break;
       case 3:
         // Clear jump_out
-        #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+        #if NEW_DYNAREC == NEW_DYNAREC_ARM
         if((expirep&2047)==0)
           do_clear_cache();
         #endif
