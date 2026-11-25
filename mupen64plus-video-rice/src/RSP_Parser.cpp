@@ -817,7 +817,6 @@ void DLParser_Process(OSTask * pTask)
     CRender::g_pRender->RenderReset();
     CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
-    CRender::g_pRender->SetFillMode(options.bWinFrameMode? RICE_FILLMODE_WINFRAME : RICE_FILLMODE_SOLID);
 
     {
         // The main loop
@@ -874,11 +873,6 @@ void RSP_GFX_InitGeometryMode()
         bCullFront = false;
 
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
-    
-    bool bShade         = (gSP.geometryMode & G_SHADE) ? true : false;
-    bool bShadeSmooth   = (gSP.geometryMode & G_SHADING_SMOOTH) ? true : false;
-    if (bShade && bShadeSmooth)     CRender::g_pRender->SetShadeMode( SHADE_SMOOTH );
-    else                            CRender::g_pRender->SetShadeMode( SHADE_FLAT );
     
     CRender::g_pRender->SetFogEnable( gSP.geometryMode & G_FOG ? true : false );
     SetTextureGen((gSP.geometryMode & G_TEXTURE_GEN) ? true : false );
@@ -1328,7 +1322,6 @@ void RDP_DLParser_Process(void)
     }
     
     // Lock the graphics context here.
-    CRender::g_pRender->SetFillMode(RICE_FILLMODE_SOLID);
 
     SetVIScales();
 

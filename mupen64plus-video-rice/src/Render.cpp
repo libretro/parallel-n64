@@ -338,7 +338,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
   }
 
 
-    SetFillMode(RICE_FILLMODE_SOLID);
 
     bool res=true;
 
@@ -382,9 +381,6 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
             ZBufferEnable(gRSP.bZBufferEnabled);
         }
     }
-
-    if( options.bWinFrameMode )
-        SetFillMode(RICE_FILLMODE_WINFRAME);
 
     return res;
 }

@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _RICE_RENDER_H
 
 #include "osal_opengl.h"
+#include "RiceGLState.h"
 
 #include "Blender.h"
 #include "Combiner.h"
@@ -121,7 +122,7 @@ public:
 
     void BeginRendering(void) {CRender::gRenderReferenceCount++;}       // For DirectX only
 
-    void ClearBuffer(bool cbuffer, bool zbuffer);
+    void ClearBuffer(bool cbuffer, bool zbuffer) { RiceGL_ClearBuffer(cbuffer, zbuffer); }
     void ClearBuffer(bool cbuffer, bool zbuffer, COORDRECT &rect) 
     {
         ClearBuffer(cbuffer, zbuffer);
@@ -207,23 +208,21 @@ public:
 
     void ApplyTextureFilter();
 
-    void SetShadeMode(RenderShadeMode mode);
-    void ZBufferEnable(bool bZBuffer);
-    void ClearZBuffer(float depth);
-    void SetZCompare(bool bZCompare);
-    void SetZUpdate(bool bZUpdate);
+    void ZBufferEnable(bool bZBuffer) { RiceGL_ZBufferEnable(bZBuffer); }
+    void ClearZBuffer(float depth) { RiceGL_ClearZBuffer(depth); }
+    void SetZCompare(bool bZCompare) { RiceGL_SetZCompare(bZCompare); }
+    void SetZUpdate(bool bZUpdate) { RiceGL_SetZUpdate(bZUpdate); }
     void SetZBias(int bias);
-    void ApplyZBias(int bias);
+    void ApplyZBias(int bias) { RiceGL_ApplyZBias(bias); }
     void SetAlphaRef(uint32_t dwAlpha);
     void ForceAlphaRef(uint32_t dwAlpha);
-    void SetFillMode(FillMode mode);
     void SetViewportRender();
     void RenderReset();
-    void SetCullMode(bool bCullFront, bool bCullBack);
+    void SetCullMode(bool bCullFront, bool bCullBack) { RiceGL_SetCullMode(bCullFront, bCullBack); }
     void SetAlphaTestEnable(bool bAlphaTestEnable);
     void UpdateScissor();
-    void ApplyRDPScissor(bool force);
-    void ApplyScissorWithClipRatio(bool force);
+    void ApplyRDPScissor(bool force) { RiceGL_ApplyRDPScissor(force); }
+    void ApplyScissorWithClipRatio(bool force) { RiceGL_ApplyScissorWithClipRatio(force); }
 
     bool SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry);
     bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry);
@@ -238,10 +237,9 @@ public:
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
     void DrawSpriteR_Render();
 
-    void SetFogMinMax(float fMin, float fMax);
     void SetFogEnable(bool bEnable);
     void TurnFogOnOff(bool flag);
-    void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);
+    void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) { RiceGL_SetFogColor(r, g, b, a); }
 
     void DisableMultiTexture();
     void EnableMultiTexture() {m_bEnableMultiTexture=true;}

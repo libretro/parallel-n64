@@ -288,7 +288,6 @@ void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset)
     }
 
     gRSPfFogDivider = 255/(gRSPfFogMax-gRSPfFogMin);
-    CRender::g_pRender->SetFogMinMax(fMin, fMax);
 }
 
 void InitVertexTextureConstants()

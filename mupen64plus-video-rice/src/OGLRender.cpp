@@ -151,102 +151,6 @@ void CRender::ApplyTextureFilter()
     }
 }
 
-void CRender::SetShadeMode(RenderShadeMode mode)
-{
-}
-
-void CRender::ZBufferEnable(bool bZBuffer)
-{
-    gRSP.bZBufferEnabled = bZBuffer;
-    if( g_curRomInfo.bForceDepthBuffer )
-        bZBuffer = true;
-    if( bZBuffer )
-    {
-        glDepthMask(GL_TRUE);
-        //glEnable(GL_DEPTH_TEST);
-        glDepthFunc( GL_LEQUAL );
-    }
-    else
-    {
-        glDepthMask(GL_FALSE);
-        //glDisable(GL_DEPTH_TEST);
-        glDepthFunc( GL_ALWAYS );
-    }
-}
-
-void CRender::ClearBuffer(bool cbuffer, bool zbuffer)
-{
-    uint32_t flag = 0;
-    float depth   = ((gRDP.originalFillColor&0xFFFF)>>2)/(float)0x3FFF;
-
-    if( cbuffer )
-       flag |= GL_COLOR_BUFFER_BIT;
-    if( zbuffer )
-       flag |= GL_DEPTH_BUFFER_BIT;
-    glClearDepth(depth);
-    glClear(flag);
-}
-
-void CRender::ClearZBuffer(float depth)
-{
-    uint32_t flag=GL_DEPTH_BUFFER_BIT;
-    glClearDepth(depth);
-    glClear(flag);
-}
-
-void CRender::SetZCompare(bool bZCompare)
-{
-    if( g_curRomInfo.bForceDepthBuffer )
-        bZCompare = true;
-
-    gRSP.bZBufferEnabled = bZCompare;
-    if( bZCompare == true )
-    {
-        //glEnable(GL_DEPTH_TEST);
-        glDepthFunc( GL_LEQUAL );
-    }
-    else
-    {
-        //glDisable(GL_DEPTH_TEST);
-        glDepthFunc( GL_ALWAYS );
-    }
-}
-
-void CRender::SetZUpdate(bool bZUpdate)
-{
-    if( g_curRomInfo.bForceDepthBuffer )
-        bZUpdate = true;
-
-    if( bZUpdate )
-    {
-        //glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-    }
-    else
-        glDepthMask(GL_FALSE);
-}
-
-void CRender::ApplyZBias(int bias)
-{
-    static int old_bias;
-    float f1 = bias > 0 ? -3.0f : 0.0f;  // z offset = -3.0 * max(abs(dz/dx),abs(dz/dy)) per pixel delta z slope
-    float f2 = bias > 0 ? -3.0f : 0.0f;  // z offset += -3.0 * 1 bit
-
-    if (bias == old_bias)
-        return;
-    old_bias = bias;
-
-    if (bias > 0)
-    {
-        glEnable(GL_POLYGON_OFFSET_FILL);  // enable z offsets
-    }
-    else
-    {
-        glDisable(GL_POLYGON_OFFSET_FILL);  // disable z offsets
-    }
-    glPolygonOffset(f1, f2);  // set bias functions
-}
-
 void CRender::SetZBias(int bias)
 {
     // set member variable and apply the setting in opengl
@@ -265,35 +169,6 @@ void CRender::SetAlphaRef(uint32_t dwAlpha)
 void CRender::ForceAlphaRef(uint32_t dwAlpha)
 {
     m_dwAlpha = dwAlpha;
-}
-
-void CRender::SetFillMode(FillMode mode)
-{
-}
-
-void CRender::SetCullMode(bool bCullFront, bool bCullBack)
-{
-    gRSP.bCullFront = bCullFront;
-    gRSP.bCullBack = bCullBack;
-    if( bCullFront && bCullBack )
-    {
-        glCullFace(GL_FRONT_AND_BACK);
-        glEnable(GL_CULL_FACE);
-    }
-    else if( bCullFront )
-    {
-        glCullFace(GL_FRONT);
-        glEnable(GL_CULL_FACE);
-    }
-    else if( bCullBack )
-    {
-        glCullFace(GL_BACK);
-        glEnable(GL_CULL_FACE);
-    }
-    else
-    {
-        glDisable(GL_CULL_FACE);
-    }
 }
 
 bool CRender::SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry)
@@ -793,58 +668,8 @@ void CRender::EnableTexUnit(int unitno, bool flag)
 
 void CRender::UpdateScissor()
 {
-    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*gfx_info.VI_WIDTH_REG & 0xFFF) )
-    {
-        // Hack for RE2
-        uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
-        uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(0, int(height * windowSetting.fMultY),
-            int(width*windowSetting.fMultX), int(height*windowSetting.fMultY) );
-    }
-    else
-    {
+    if (!RiceGL_RE2Scissor())
         UpdateScissorWithClipRatio();
-    }
-}
-
-void CRender::ApplyRDPScissor(bool force)
-{
-    if( !force && status.curScissor == RDP_SCISSOR )
-        return;
-
-    if( options.bEnableHacks && g_CI.dwWidth == 0x200 && gRDP.scissor.right == 0x200 && g_CI.dwWidth>(*gfx_info.VI_WIDTH_REG & 0xFFF) )
-    {
-        // Hack for RE2
-        uint32_t width = *gfx_info.VI_WIDTH_REG & 0xFFF;
-        uint32_t height = (gRDP.scissor.right*gRDP.scissor.bottom)/width;
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(0, int(height * windowSetting.fMultY),
-            int(width*windowSetting.fMultX), int(height*windowSetting.fMultY) );
-    }
-    else
-    {
-        glScissor(int(gRDP.scissor.left*windowSetting.fMultX), int((windowSetting.uViHeight-gRDP.scissor.bottom)*windowSetting.fMultY),
-            int((gRDP.scissor.right-gRDP.scissor.left)*windowSetting.fMultX), int((gRDP.scissor.bottom-gRDP.scissor.top)*windowSetting.fMultY ));
-    }
-
-    status.curScissor = RDP_SCISSOR;
-}
-
-void CRender::ApplyScissorWithClipRatio(bool force)
-{
-    if( !force && status.curScissor == RSP_SCISSOR )
-        return;
-
-    glEnable(GL_SCISSOR_TEST);
-    glScissor(windowSetting.clipping.left, int((windowSetting.uViHeight-gRSP.real_clip_scissor_bottom)*windowSetting.fMultY),
-        windowSetting.clipping.width, windowSetting.clipping.height);
-
-    status.curScissor = RSP_SCISSOR;
-}
-
-void CRender::SetFogMinMax(float fMin, float fMax)
-{
 }
 
 void CRender::TurnFogOnOff(bool flag)
@@ -861,15 +686,6 @@ void CRender::SetFogEnable(bool bEnable)
         gRSP.bFogEnabled = true;
 
     ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(gRSP.bFogEnabled);
-}
-
-void CRender::SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-{
-    gRDP.fogColor = COLOR_RGBA(r, g, b, a); 
-    gRDP.fvFogColor[0] = r/255.0f;      //r
-    gRDP.fvFogColor[1] = g/255.0f;      //g
-    gRDP.fvFogColor[2] = b/255.0f;      //b
-    gRDP.fvFogColor[3] = a/255.0f;      //a
 }
 
 void CRender::DisableMultiTexture()

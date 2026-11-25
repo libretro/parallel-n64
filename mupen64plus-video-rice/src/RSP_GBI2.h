@@ -482,12 +482,6 @@ void RSP_GBI2_GeometryMode(Gfx *gfx)
     bool bCullFront     = (gSP.geometryMode & RSP_ZELDA_CULL_FRONT) ? true : false;
     bool bCullBack      = (gSP.geometryMode & RSP_ZELDA_CULL_BACK) ? true : false;
     
-    //bool bShade         = (gSP.geometryMode & G_SHADE) ? true : false;
-    //bool bFlatShade     = (gSP.geometryMode & RSP_ZELDA_SHADING_SMOOTH) ? true : false;
-    bool bFlatShade     = (gSP.geometryMode & RSP_ZELDA_TEXTURE_GEN_LINEAR) ? true : false;
-    if( options.enableHackForGames == HACK_FOR_TIGER_HONEY_HUNT )
-        bFlatShade      = false;
-    
     bool bFog           = (gSP.geometryMode & RSP_ZELDA_FOG) ? true : false;
     bool bTextureGen    = (gSP.geometryMode & RSP_ZELDA_TEXTURE_GEN) ? true : false;
 
@@ -495,10 +489,6 @@ void RSP_GBI2_GeometryMode(Gfx *gfx)
     bool bZBuffer       = (gSP.geometryMode & RSP_ZELDA_ZBUFFER)  ? true : false; 
 
     CRender::g_pRender->SetCullMode(bCullFront, bCullBack);
-    
-    //if (bFlatShade||!bShade)  CRender::g_pRender->SetShadeMode( SHADE_FLAT );
-    if (bFlatShade) CRender::g_pRender->SetShadeMode( SHADE_FLAT );
-    else            CRender::g_pRender->SetShadeMode( SHADE_SMOOTH );
     
     SetTextureGen(bTextureGen);
 
