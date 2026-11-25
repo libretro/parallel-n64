@@ -444,7 +444,9 @@ static void VKAPI_CALL cmd_end_pass(VkCommandBuffer cmd)
 }
 
 #define MAX_PIPELINES 64
-static unsigned num_pipelines;
+/* pipelines are made on the main thread and on the pipeline workers at
+ * once, so each takes its slot (and its handle) with one atomic add */
+static retro_atomic_int_t num_pipelines;
 static struct
 {
 	bool compute;
@@ -455,17 +457,17 @@ static struct
 	uint32_t spec_count;
 } pipelines[MAX_PIPELINES];
 
-static void keep_spec(const VkSpecializationInfo *info)
+static void keep_spec(int slot, const VkSpecializationInfo *info)
 {
 	uint32_t i;
-	if (!info || num_pipelines >= MAX_PIPELINES)
+	if (!info || slot >= MAX_PIPELINES)
 		return;
 	for (i = 0; i < info->mapEntryCount; i++)
 		if (info->pMapEntries[i].constantID < 4)
 		{
-			memcpy(&pipelines[num_pipelines].spec[info->pMapEntries[i].constantID],
+			memcpy(&pipelines[slot].spec[info->pMapEntries[i].constantID],
 					(const uint8_t *)info->pData + info->pMapEntries[i].offset, sizeof(uint32_t));
-			pipelines[num_pipelines].spec_count++;
+			pipelines[slot].spec_count++;
 		}
 }
 
@@ -473,36 +475,38 @@ static VkResult VKAPI_CALL create_graphics(VkDevice d, VkPipelineCache cache, ui
 		const VkGraphicsPipelineCreateInfo *infos, const VkAllocationCallbacks *a, VkPipeline *out)
 {
 	uint32_t i;
+	int slot = retro_atomic_fetch_add_int(&num_pipelines, 1);
 	(void)d; (void)cache; (void)count; (void)a;
-	if (num_pipelines < MAX_PIPELINES)
+	if (slot < MAX_PIPELINES)
 	{
-		pipelines[num_pipelines].compute = false;
-		pipelines[num_pipelines].blend = infos->pColorBlendState->pAttachments[0].blendEnable;
-		pipelines[num_pipelines].write_mask = infos->pColorBlendState->pAttachments[0].colorWriteMask;
-		pipelines[num_pipelines].color_attachments = infos->pColorBlendState->attachmentCount;
+		pipelines[slot].compute = false;
+		pipelines[slot].blend = infos->pColorBlendState->pAttachments[0].blendEnable;
+		pipelines[slot].write_mask = infos->pColorBlendState->pAttachments[0].colorWriteMask;
+		pipelines[slot].color_attachments = infos->pColorBlendState->attachmentCount;
 		for (i = 0; i < infos->stageCount; i++)
 			if (infos->pStages[i].stage == VK_SHADER_STAGE_FRAGMENT_BIT)
 			{
-				pipelines[num_pipelines].fragment = infos->pStages[i].module;
-				keep_spec(infos->pStages[i].pSpecializationInfo);
+				pipelines[slot].fragment = infos->pStages[i].module;
+				keep_spec(slot, infos->pStages[i].pSpecializationInfo);
 			}
 	}
-	*out = GRANITE_VK_FROM_BITS(VkPipeline, 0x9000 + ++num_pipelines);
+	*out = GRANITE_VK_FROM_BITS(VkPipeline, 0x9000 + slot + 1);
 	return VK_SUCCESS;
 }
 
 static VkResult VKAPI_CALL create_compute(VkDevice d, VkPipelineCache cache, uint32_t count,
 		const VkComputePipelineCreateInfo *infos, const VkAllocationCallbacks *a, VkPipeline *out)
 {
+	int slot = retro_atomic_fetch_add_int(&num_pipelines, 1);
 	(void)d; (void)cache; (void)count; (void)a;
-	if (num_pipelines < MAX_PIPELINES)
+	if (slot < MAX_PIPELINES)
 	{
-		pipelines[num_pipelines].compute = true;
+		pipelines[slot].compute = true;
 		/* (a compute pipeline's shader, in the same place) */
-		pipelines[num_pipelines].fragment = infos->stage.module;
-		keep_spec(infos->stage.pSpecializationInfo);
+		pipelines[slot].fragment = infos->stage.module;
+		keep_spec(slot, infos->stage.pSpecializationInfo);
 	}
-	*out = GRANITE_VK_FROM_BITS(VkPipeline, 0x9000 + ++num_pipelines);
+	*out = GRANITE_VK_FROM_BITS(VkPipeline, 0x9000 + slot + 1);
 	return VK_SUCCESS;
 }
 
