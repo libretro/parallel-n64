@@ -242,6 +242,9 @@ ifeq ($(WITH_DYNAREC), aarch64)
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/arm64/apple_jit_protect.c
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/arm64/trampoline_arm64.c
+ifeq ($(platform),libounce)
+		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/arm64/switch2_jit.c
+endif
 
 		SOURCES_ASM += \
 			$(CORE_DIR)/src/device/r4300/new_dynarec/arm64/linkage_arm64.S

@@ -99,6 +99,7 @@
 #endif
 #include <libretro_memory.h>
 #include <mupen64plus-next_common.h>
+#include "device/r4300/r4300.h"
 
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
@@ -825,21 +826,9 @@ m64p_error main_run(void)
      * with controller/pak messages once per frame and redundantly reinitializing
      * everything). The re-entry path only touches globals, so it is safe here. */
     if (l_setup_done) {
-        /* Clear the per-frame yield flag and run a slice (run_device returns
-         * when retro_return sets mupencorestop again). Clear the active
-         * backend's stop via the accessor (ari64 keeps it in
-         * new_dynarec_hot_state, Hacktarux/interpreters in the base struct). */
-        *r4300_stop(&g_dev.r4300) = 0;
-        /* mupencorestop (r4300.h) is hardcoded to ari64's hot-state stop and
-         * gates retro_return's early-out; clear it directly so that in Hacktarux
-         * mode -- where *r4300_stop() is the base-struct field, a different
-         * location -- it does not stay latched from the first frame and block
-         * retro_return from arming the next frame-break. The hot-state stop only
-         * exists when the ari64 dynarec is compiled in (NEW_DYNAREC); without it
-         * there is no separate ari64 stop and *r4300_stop() above is sufficient. */
-#ifdef NEW_DYNAREC
-        g_dev.r4300.new_dynarec_hot_state.stop = 0;
-#endif
+        /* Clear the per-frame stop latches and run a slice; run_device
+         * returns when retro_return sets them again. */
+        R4300_CLEAR_FRAME_STOP(&g_dev.r4300);
         run_device(&g_dev);
         return M64ERR_SUCCESS;
     }

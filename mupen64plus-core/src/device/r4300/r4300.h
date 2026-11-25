@@ -105,6 +105,13 @@ extern int g_cp0_cycle_count;
 #define hi            (g_dev.r4300.new_dynarec_hot_state.hi)
 #define lo            (g_dev.r4300.new_dynarec_hot_state.lo)
 #endif
+
+/* Clear both per-frame stop latches before the next slice: the active
+ * backend's (r4300_stop) and retro_return's gate (mupencorestop). They are
+ * different fields whenever the backend in use is not the one mupencorestop
+ * aliases, e.g. an interpreter on aarch64. */
+#define R4300_CLEAR_FRAME_STOP(r4300) \
+   do { *r4300_stop(r4300) = 0; mupencorestop = 0; } while (0)
 extern int frame_break;
 extern unsigned int llbit;
 extern long long int local_rs;

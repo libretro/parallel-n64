@@ -54,7 +54,10 @@ include:
     file: '/ios9.yml'
 
   ################################## CONSOLES ################################
-    
+  # Nintendo Switch 2
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/libounce-make.yml'
+
   #################################### MISC ##################################
   # webOS 32-bit (LGTV)
   - project: 'libretro-infrastructure/ci-templates'
@@ -142,6 +145,13 @@ libretro-build-osx-arm64:
   variables:
     HAVE_THR_AL: 1
     WITH_DYNAREC: aarch64
+
+################################### CONSOLES #################################
+# Nintendo Switch 2
+libretro-build-libounce-aarch64:
+  extends:
+    - .libretro-libounce-make-aarch64
+    - .core-defs
 
 ################################### CELLULAR #################################
 # Android ARMv7a

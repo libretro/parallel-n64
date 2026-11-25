@@ -81,7 +81,6 @@ void breakpoint(void);
 static void invalidate_addr(u_int addr);
 
 static uintptr_t literals[1024][2];
-static unsigned int needs_clear_cache[1<<(TARGET_SIZE_2-17)];
 
 static const uintptr_t jump_vaddr_reg[32] = {
   (intptr_t)jump_vaddr_x0,
@@ -269,7 +268,9 @@ static uintptr_t jump_table_symbols[] = {
 
 static void cache_flush(char* start, char* end)
 {
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__SWITCH2__)
+    switch2_jit_publish(start, end);
+#elif defined(__APPLE__) && defined(__aarch64__)
     /* Apple-documented MAP_JIT pattern: switch to executable, then
        invalidate the icache. Restore the caller's W^X mode afterwards
        rather than unconditionally re-enabling writes: when called outside
@@ -4580,38 +4581,6 @@ static void do_miniht_insert(u_int return_address,int rt,int temp) {
   emit_writeword(rt,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.mini_ht[(return_address&0x1FF)>>4][0]);
 }
 
-// Clearing the cache is rather slow on ARM Linux, so mark the areas
-// that need to be cleared, and then only clear these areas once.
-static void do_clear_cache(void)
-{
-  int i,j;
-  for (i=0;i<(1<<(TARGET_SIZE_2-17));i++)
-  {
-    u_int bitmap=needs_clear_cache[i];
-    if(bitmap) {
-      uintptr_t start,end;
-      for(j=0;j<32;j++)
-      {
-        if(bitmap&(1<<j)) {
-          start=(intptr_t)base_addr_rx+i*131072+j*4096;
-          end=start+4095;
-          j++;
-          while(j<32) {
-            if(bitmap&(1<<j)) {
-              end+=4096;
-              j++;
-            }else{
-              cache_flush((char *)start,(char *)end);
-              break;
-            }
-          }
-        }
-      }
-      needs_clear_cache[i]=0;
-    }
-  }
-}
-
 static void invalidate_addr(u_int addr)
 {
   invalidate_block(addr>>12);
@@ -4671,5 +4640,5 @@ static void arch_init(void) {
   jit_write_disable();
 
   // Flush icache for the RX mapping where code will actually execute
-  __clear_cache((char *)base_addr_rx+(1<<TARGET_SIZE_2)-JUMP_TABLE_SIZE,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
+  cache_flush((char *)base_addr_rx+(1<<TARGET_SIZE_2)-JUMP_TABLE_SIZE,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
 }

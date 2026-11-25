@@ -116,8 +116,41 @@ ifneq ($(GIT_VERSION)," unknown")
    COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
+# Switch 2 dynamic core (libounce)
+ifeq ($(platform), libounce)
+   include $(DEVKITPRO)/libounce/switch2_rules
+   TARGET := $(TARGET_NAME)_libretro_libounce.elf
+   CC := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-gcc
+   CXX := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-g++
+   AR := $(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar
+   WITH_DYNAREC := aarch64
+   HAVE_PARALLEL := 0
+   HAVE_PARALLEL_RSP := 0
+   override HAVE_GLN64 := 0
+   override HAVE_RICE := 0
+
+   GLES := 1
+   GLES3 := 1
+   GL_LIB :=
+
+   fpic := $(SWITCH2_SHARED_ARCH)
+
+   CPUFLAGS += $(SWITCH2_CPU) -mtp=soft
+   COREFLAGS += -D__SWITCH__ -D__SWITCH2__ -DHAVE_LIBNX
+
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/portlibs/switch2/include
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/portlibs/switch/include
+   INCFLAGS_PLATFORM += -I$(DEVKITPRO)/libounce/include
+
+   LDFLAGS += -shared
+   LDFLAGS += -Wl,-soname,$(TARGET:.elf=.nro)
+   LDFLAGS += -Wl,--version-script=$(abspath $(LIBRETRO_DIR)/link.T)
+
+   LIBS += -lnx
+   LIBS += -lEGL -lGLESv2
+
 # Unix
-ifneq (,$(findstring unix,$(platform)))
+else ifneq (,$(findstring unix,$(platform)))
    TARGET := $(TARGET_NAME)_libretro.so
    LDFLAGS += -shared -Wl,--no-undefined
    ifeq ($(DEBUG_JIT),)
@@ -1115,6 +1148,10 @@ ifeq (,$(findstring msvc,$(platform)))
 endif
 endif
 
+ifeq ($(platform), libounce)
+LDFLAGS := $(filter-out -lm -lpthread -ldl -lrt,$(LDFLAGS))
+GL_LIB :=
+endif
 LDFLAGS    += $(fpic) $(CPUFLAGS)
 
 ifeq ($(platform), theos_ios)
@@ -1135,6 +1172,14 @@ else
 	$(LD) $(LINKOUT)$@ $(OBJECTS) $(LDFLAGS) $(GL_LIB) $(LIBS)
 endif
 
+ifeq ($(platform), libounce)
+TARGET_NRO := $(TARGET:.elf=.nro)
+
+all: $(TARGET_NRO)
+
+$(TARGET_NRO): $(TARGET)
+	$(DEVKITPRO)/tools/bin/elf2nro $< $@
+endif
 
 %.o: %.S
 ifneq (,$(findstring msvc,$(platform)))
@@ -1222,7 +1267,7 @@ $(PARALLEL_RDP_NOEXCEPT_OBJECTS): CXXFLAGS += -fno-exceptions
 endif
 
 clean: clean-tools
-	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
+	rm -f $(OBJECTS) $(TARGET) $(if $(filter libounce,$(platform)),$(TARGET:.elf=.nro)) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
 	rm -f test_gliden64_spirv$(EXE_EXT) $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
@@ -1661,6 +1706,22 @@ test_dynarec_cache_pages$(EXE_EXT): tools/test_dynarec_cache_pages.c \
 		$(CORE_DEVICE_DIR)/r4300/new_dynarec/cache_protect.h
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src \
 		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
+# Per-frame stop latches, once per host alias configuration of r4300.h
+# (gnu89: the core headers carry // comments)
+FRAME_REENTRY_CC := $(CC) -std=gnu89 -Werror=declaration-after-statement $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api
+FRAME_REENTRY_DEPS := tools/test_frame_reentry.c $(CORE_DEVICE_DIR)/r4300/r4300.h $(CORE_DEVICE_DIR)/r4300/r4300_core.h \
+	$(CORE_DEVICE_DIR)/r4300/new_dynarec/new_dynarec.h
+test_frame_reentry$(EXE_EXT): $(FRAME_REENTRY_DEPS)
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -U_M_X64 -UNEW_DYNAREC -DFRAME_REENTRY_CASE=base -c $< -o tools/test_frame_reentry_base.o
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -U_M_X64 -DNEW_DYNAREC=3 -DFRAME_REENTRY_CASE=arm32 -c $< -o tools/test_frame_reentry_arm32.o
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -D_M_X64 -DNEW_DYNAREC=2 -DFRAME_REENTRY_CASE=x64 -c $< -o tools/test_frame_reentry_x64.o
+	$(FRAME_REENTRY_CC) -D__arm64__ -U__aarch64__ -UNEW_DYNAREC -DFRAME_REENTRY_CASE=arm64_interp -c $< -o tools/test_frame_reentry_arm64_interp.o
+	$(FRAME_REENTRY_CC) -D__arm64__ -U__aarch64__ -DNEW_DYNAREC=4 -DFRAME_REENTRY_CASE=arm64_dynarec -c $< -o tools/test_frame_reentry_arm64_dynarec.o
+	$(FRAME_REENTRY_CC) -c $< -o tools/test_frame_reentry_main.o
+	$(CC) tools/test_frame_reentry_main.o tools/test_frame_reentry_base.o tools/test_frame_reentry_arm32.o tools/test_frame_reentry_x64.o \
+		tools/test_frame_reentry_arm64_interp.o tools/test_frame_reentry_arm64_dynarec.o -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+	rm -f tools/test_frame_reentry_*.o
 
 test_re2_fill$(EXE_EXT): tools/test_re2_fill.c $(RSPDIR)/src/re2.c $(RSPDIR)/src/hle_memory.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
@@ -2713,6 +2774,8 @@ CORE_CHECKS += test_prsp_dmem_wrap$(EXE_EXT)
 CORE_CHECKS += test_glitch64_vk_cache$(EXE_EXT)
 CORE_CHECKS += test_gliden64_vk_cache$(EXE_EXT)
 endif
+
+CORE_CHECKS += test_frame_reentry$(EXE_EXT)
 
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done

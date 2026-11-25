@@ -33,6 +33,9 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data) { return false; }
  * g_dev). */
 #include "device/device.h"
 #include "device/r4300/r4300.h"
+#if defined(__SWITCH2__) && defined(NEW_DYNAREC)
+#include "device/r4300/new_dynarec/arm64/switch2_jit.h"
+#endif
 #include "device/memory/m64p_memory.h"
 #include "main/main.h"
 #include "main/cheat.h"
@@ -3955,6 +3958,13 @@ bool retro_load_game(const struct retro_game_info *game)
    if (mupencorestop)
       return false;
 
+#if defined(__SWITCH2__) && defined(NEW_DYNAREC)
+   if (r4300_emumode >= 2 && !new_dynarec_prepare())
+   {
+      log_cb(RETRO_LOG_WARN, "Switch 2 JIT unavailable; using cached interpreter.\n");
+      r4300_emumode = 1;
+   }
+#endif
    first_context_reset = true;
 
    return true;
@@ -4013,6 +4023,9 @@ void retro_unload_game(void)
     g_EmulatorRunning = 0;
 
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
+#if defined(__SWITCH2__) && defined(NEW_DYNAREC)
+    switch2_jit_close();
+#endif
     emu_initialized = false;
     context_setup_first_init = false;
 

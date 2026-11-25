@@ -76,7 +76,9 @@ static inline void jit_write_disable(void) { }
 #include "device/rcp/rsp/rsp_core.h"
 
 #if !defined(WIN32)
-#ifndef HAVE_LIBNX
+#if defined(__SWITCH2__)
+#include "arm64/switch2_jit.h"
+#elif !defined(HAVE_LIBNX)
 #include <sys/mman.h>
 #else
 #include "../../../../../switch/mman.h"
@@ -3250,7 +3252,7 @@ void invalidate_block(u_int block)
   for(first=page+1;first<last;first++) {
     invalidate_page(first);
   }
-  #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+  #if NEW_DYNAREC == NEW_DYNAREC_ARM
     do_clear_cache();
   #endif
 
@@ -3284,7 +3286,9 @@ static void invalidate_all_pages(void)
       restore_candidate[((page&2047)>>3)+256]|=1<<(page&7);
     }
   }
-  #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+  #if NEW_DYNAREC >= NEW_DYNAREC_ARM && !defined(__SWITCH2__)
+  /* Switch 2 publishes every cache write as it is made; a full-range
+   * publish here would copy the whole cache on each state load. */
   cache_flush((char *)base_addr_rx,(char *)base_addr_rx+(1<<TARGET_SIZE_2));
   #endif
   #ifdef USE_MINI_HT
@@ -9393,8 +9397,14 @@ static void pagespan_ds(void)
 }
 
 /**** Recompiler ****/
-#ifdef HAVE_LIBNX
+#if defined(HAVE_LIBNX) && !defined(__SWITCH2__)
 ALIGN(4096, char jit_memory[33554432]) __attribute__((section(".text")));
+#endif
+#ifdef __SWITCH2__
+int new_dynarec_prepare(void)
+{
+  return switch2_jit_init(1U << TARGET_SIZE_2);
+}
 #endif
 void new_dynarec_init(void)
 {
@@ -9418,7 +9428,11 @@ void new_dynarec_init(void)
 #define CACHE_ADDR FIXED_CACHE_ADDR
 #endif
 
-#if defined(__APPLE__) && defined(__aarch64__)
+#if defined(__SWITCH2__)
+  base_addr = switch2_jit_rw();
+  base_addr_rx = switch2_jit_rx();
+  assert(base_addr && base_addr_rx);
+#elif defined(__APPLE__) && defined(__aarch64__)
   {
     // macOS arm64: MAP_JIT single mapping with W^X toggling.
     base_addr = mmap(NULL, 1<<TARGET_SIZE_2,
@@ -9544,7 +9558,9 @@ void new_dynarec_cleanup(void)
   for(n=0;n<4096;n++) ll_clear(jump_dirty+n);
   assert(copy_size==0);
 #if !defined(RECOMP_DBG)
-  #if defined(WIN32)
+  #if defined(__SWITCH2__)
+    /* The mapping belongs to content load/unload, including reset. */
+  #elif defined(WIN32)
     VirtualFree(base_addr, 0, MEM_RELEASE);
   #elif defined(__APPLE__) && defined(__aarch64__)
     if (munmap (base_addr, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
@@ -12787,7 +12803,7 @@ int new_recompile_block(int addr)
         break;
       case 3:
         // Clear jump_out
-        #if NEW_DYNAREC >= NEW_DYNAREC_ARM
+        #if NEW_DYNAREC == NEW_DYNAREC_ARM
         if((expirep&2047)==0)
           do_clear_cache();
         #endif
