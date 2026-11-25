@@ -276,7 +276,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLCombiner.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLBlender.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp">
