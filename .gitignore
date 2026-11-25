@@ -41,6 +41,7 @@ new_dynarec_disasm.txt
 # check-core executables
 /test_gb_cart_banks
 /test_dynarec_cache_pages
+/test_frame_reentry
 /test_pipeline_pending
 /test_combiner_journal
 /dynarec_long_block_test

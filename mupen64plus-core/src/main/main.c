@@ -826,14 +826,9 @@ m64p_error main_run(void)
      * with controller/pak messages once per frame and redundantly reinitializing
      * everything). The re-entry path only touches globals, so it is safe here. */
     if (l_setup_done) {
-        /* Clear the per-frame yield flag and run a slice (run_device returns
-         * when retro_return sets mupencorestop again). Clear the active
-         * backend's stop via the accessor (ari64 keeps it in
-         * new_dynarec_hot_state, Hacktarux/interpreters in the base struct). */
-        *r4300_stop(&g_dev.r4300) = 0;
-        /* Clear retro_return's gate too: ARM64 aliases it to the hot state
-         * even in interpreter-only builds, where r4300_stop uses the base. */
-        mupencorestop = 0;
+        /* Clear the per-frame stop latches and run a slice; run_device
+         * returns when retro_return sets them again. */
+        R4300_CLEAR_FRAME_STOP(&g_dev.r4300);
         run_device(&g_dev);
         return M64ERR_SUCCESS;
     }

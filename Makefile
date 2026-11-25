@@ -1701,6 +1701,22 @@ test_dynarec_cache_pages$(EXE_EXT): tools/test_dynarec_cache_pages.c \
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src \
 		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# Per-frame stop latches, once per host alias configuration of r4300.h
+# (gnu89: the core headers carry // comments)
+FRAME_REENTRY_CC := $(CC) -std=gnu89 -Werror=declaration-after-statement $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api
+FRAME_REENTRY_DEPS := tools/test_frame_reentry.c $(CORE_DEVICE_DIR)/r4300/r4300.h $(CORE_DEVICE_DIR)/r4300/r4300_core.h \
+	$(CORE_DEVICE_DIR)/r4300/new_dynarec/new_dynarec.h
+test_frame_reentry$(EXE_EXT): $(FRAME_REENTRY_DEPS)
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -U_M_X64 -UNEW_DYNAREC -DFRAME_REENTRY_CASE=base -c $< -o tools/test_frame_reentry_base.o
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -U_M_X64 -DNEW_DYNAREC=3 -DFRAME_REENTRY_CASE=arm32 -c $< -o tools/test_frame_reentry_arm32.o
+	$(FRAME_REENTRY_CC) -U__aarch64__ -U__arm64__ -D_M_X64 -DNEW_DYNAREC=2 -DFRAME_REENTRY_CASE=x64 -c $< -o tools/test_frame_reentry_x64.o
+	$(FRAME_REENTRY_CC) -D__arm64__ -U__aarch64__ -UNEW_DYNAREC -DFRAME_REENTRY_CASE=arm64_interp -c $< -o tools/test_frame_reentry_arm64_interp.o
+	$(FRAME_REENTRY_CC) -D__arm64__ -U__aarch64__ -DNEW_DYNAREC=4 -DFRAME_REENTRY_CASE=arm64_dynarec -c $< -o tools/test_frame_reentry_arm64_dynarec.o
+	$(FRAME_REENTRY_CC) -c $< -o tools/test_frame_reentry_main.o
+	$(CC) tools/test_frame_reentry_main.o tools/test_frame_reentry_base.o tools/test_frame_reentry_arm32.o tools/test_frame_reentry_x64.o \
+		tools/test_frame_reentry_arm64_interp.o tools/test_frame_reentry_arm64_dynarec.o -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+	rm -f tools/test_frame_reentry_*.o
+
 test_re2_fill$(EXE_EXT): tools/test_re2_fill.c $(RSPDIR)/src/re2.c $(RSPDIR)/src/hle_memory.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(RSPDIR)/src/hle_memory.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
@@ -2701,6 +2717,8 @@ CORE_CHECKS += test_prsp_dmem_wrap$(EXE_EXT)
 CORE_CHECKS += test_glitch64_vk_cache$(EXE_EXT)
 CORE_CHECKS += test_gliden64_vk_cache$(EXE_EXT)
 endif
+
+CORE_CHECKS += test_frame_reentry$(EXE_EXT)
 
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
