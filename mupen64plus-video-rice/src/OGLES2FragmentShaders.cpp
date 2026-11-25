@@ -152,7 +152,7 @@ GLuint fillProgram,fillColorLocation;
 COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
 : CColorCombiner(pRender), m_lastIndex(-1), m_dwLastMux0(0), m_dwLastMux1(0)
 {
-    m_pDecodedMux = new DecodedMuxForPixelShader;
+    m_pDecodedMux = new DecodedMux;
     m_journal = NULL;
     m_bFragmentProgramIsSupported = true;
     m_AlphaRef = 0.0f;
@@ -406,7 +406,7 @@ static void CheckFpVars(uint8_t MuxVar, bool &bNeedT0, bool &bNeedT1)
 
 void COGL_FragmentProgramCombiner::GenerateProgramStr()
 {
-    DecodedMuxForPixelShader &mux = *(DecodedMuxForPixelShader*)m_pDecodedMux;
+    DecodedMux &mux = *m_pDecodedMux;
 
     mux.splitType[0] = mux.splitType[1] = mux.splitType[2] = mux.splitType[3] = CM_FMT_TYPE_NOT_CHECKED;
     m_pDecodedMux->Reformat(false);

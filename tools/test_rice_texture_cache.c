@@ -17,9 +17,8 @@
  *     images), and their CRC and frame used;
  *   * textures unused five seconds let go, but not those bound, those used
  *     since, or others in their bucket; all let go on recycling and clean
- *     up (the colour textures too), nothing left behind;
- *   * the colour textures: black, the primitive, environment and LOD
- *     fraction colours, made again only when the colour changes;
+ *     up (the black texture too), nothing left behind;
+ *   * the black texture: 4x4, made once;
  *   * CRCs and the highest palette index of texels in RDRAM over random
  *     texels, each size, pitch and offset, fast and slow, held to what they
  *     gave as C++ in FrameBuffer.cpp; and nothing read out of RDRAM,
@@ -683,20 +682,18 @@ static void let_go(void)
    ti.Address = 0x6100;
    CHECK(TextureManager_GetTexture(&ti, false, true, false) != NULL && made == 7);
 
-   /* cleaned up: the colour textures too */
+   /* cleaned up: the black texture too */
    TextureManager_GetBlackTexture();
-   gRDP.primitiveColor = 0x11223344;
-   TextureManager_GetConstantColorTexture(MUX_PRIM);
    releases = 0;
    TextureManager_CleanUp();
-   CHECK(releases == 3);
+   CHECK(releases == 2);
    CHECK(TextureManager_GetBlackTexture()->pTexture != NULL);
    releases = 0;
    TextureManager_CleanUp();
    CHECK(releases == 1);
 }
 
-/* ---- colour textures ---- */
+/* ---- the black texture ---- */
 static void colours(void)
 {
    TxtrCacheEntry *e;
@@ -711,45 +708,6 @@ static void colours(void)
    CHECK(ok);
    CHECK(!gRDP.texturesAreReloaded);
    CHECK(TextureManager_GetBlackTexture() == e && made == 1 && uploads == 1);
-
-   gRDP.primitiveColor = 0x11223344;
-   gRDP.envColor = 0x55667788;
-   gRDP.LODFrac = 0x9A;
-   gRDP.primLODFrac = 0x3C;
-   e = TextureManager_GetConstantColorTexture(MUX_PRIM);
-   CHECK(made == 2 && uploads == 2 && px(e, 3, 3) == C(0x11223344) && gRDP.texturesAreReloaded);
-   gRDP.texturesAreReloaded = false;
-   CHECK(TextureManager_GetConstantColorTexture(MUX_PRIM) == e && uploads == 2 && !gRDP.texturesAreReloaded);
-   gRDP.primitiveColor = 0x01020304;
-   CHECK(TextureManager_GetConstantColorTexture(MUX_PRIM) == e && uploads == 3 && px(e, 0, 0) == C(0x01020304));
-   CHECK(gRDP.texturesAreReloaded);
-
-   gRDP.texturesAreReloaded = false;
-   e = TextureManager_GetConstantColorTexture(MUX_ENV);
-   CHECK(made == 3 && uploads == 4 && px(e, 2, 1) == C(0x55667788) && gRDP.texturesAreReloaded);
-   gRDP.envColor = 0x55667789;
-   CHECK(TextureManager_GetConstantColorTexture(MUX_ENV) == e && uploads == 5 && px(e, 0, 0) == C(0x55667789));
-   CHECK(TextureManager_GetConstantColorTexture(MUX_ENV) == e && uploads == 5);
-
-   gRDP.texturesAreReloaded = false;
-   e = TextureManager_GetConstantColorTexture(MUX_LODFRAC);
-   CHECK(made == 4 && uploads == 6 && px(e, 1, 2) == C(0x9A9A9A9A) && gRDP.texturesAreReloaded);
-   gRDP.LODFrac = 0x19A;   /* the fraction is its byte */
-   CHECK(TextureManager_GetConstantColorTexture(MUX_LODFRAC) == e && uploads == 6);
-   gRDP.LODFrac = 0x9B;
-   CHECK(TextureManager_GetConstantColorTexture(MUX_LODFRAC) == e && uploads == 7 && px(e, 0, 0) == C(0x9B9B9B9B));
-
-   gRDP.texturesAreReloaded = false;
-   e = TextureManager_GetConstantColorTexture(MUX_PRIMLODFRAC);
-   CHECK(made == 5 && uploads == 8 && px(e, 0, 3) == C(0x3C3C3C3C) && gRDP.texturesAreReloaded);
-   CHECK(TextureManager_GetConstantColorTexture(MUX_K5) == e && uploads == 8);
-   gRDP.primLODFrac = 0x3D;
-   CHECK(TextureManager_GetConstantColorTexture(MUX_PRIMLODFRAC) == e && uploads == 9 && px(e, 0, 0) == C(0x3D3D3D3D));
-
-   /* each its own */
-   CHECK(TextureManager_GetConstantColorTexture(MUX_PRIM) != TextureManager_GetConstantColorTexture(MUX_ENV));
-   CHECK(TextureManager_GetConstantColorTexture(MUX_LODFRAC) != TextureManager_GetConstantColorTexture(MUX_PRIMLODFRAC));
-   CHECK(TextureManager_GetConstantColorTexture(MUX_PRIM) != TextureManager_GetBlackTexture());
 }
 
 /* ---- CRCs ---- */
@@ -1055,21 +1013,14 @@ static void more_cache(void)
    TextureManager_PurgeOldTextures();
    CHECK(releases == 2);
 
-   /* cleaned up: each colour texture made again when next asked for */
+   /* cleaned up: the black texture made again when next asked for */
    reset();
    TextureManager_GetBlackTexture();
-   for (i = 0; i < 4; i++)
-      TextureManager_GetConstantColorTexture(i == 0 ? MUX_PRIM : i == 1 ? MUX_ENV : i == 2 ? MUX_LODFRAC : MUX_PRIMLODFRAC);
-   CHECK(made == 5);
-   CHECK(TextureManager_CleanUp() == true && releases == 5);
-   TextureManager_GetBlackTexture();
-   for (i = 0; i < 4; i++)
-      TextureManager_GetConstantColorTexture(i == 0 ? MUX_PRIM : i == 1 ? MUX_ENV : i == 2 ? MUX_LODFRAC : MUX_PRIMLODFRAC);
-   CHECK(made == 10);
-   for (i = 0; i < 5; i++)
+   CHECK(made == 1);
+   CHECK(TextureManager_CleanUp() == true && releases == 1);
    {
-      TxtrCacheEntry *e = i == 4 ? TextureManager_GetBlackTexture()
-         : TextureManager_GetConstantColorTexture(i == 0 ? MUX_PRIM : i == 1 ? MUX_ENV : i == 2 ? MUX_LODFRAC : MUX_PRIMLODFRAC);
+      TxtrCacheEntry *e = TextureManager_GetBlackTexture();
+      CHECK(made == 2);
       CHECK(e->pTexture->m_dwWidth == 4 && e->pTexture->m_dwHeight == 4);
       CHECK(e->ti.WidthToCreate == 4 && e->ti.HeightToCreate == 4);
    }

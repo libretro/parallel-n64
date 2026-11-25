@@ -164,8 +164,6 @@ public:
     void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T);
     void SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0, const TexCord &fTex1);
     void SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0);
-    virtual COLOR PostProcessDiffuseColor(COLOR curDiffuseColor)=0;
-    virtual COLOR PostProcessSpecularColor()=0;
     
     bool DrawTriangles();
     virtual bool RenderFlushTris()=0;

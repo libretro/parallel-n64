@@ -687,9 +687,7 @@ TxtrCacheEntry* LoadTexture(uint32_t tileno)
 
 void PrepareTextures()
 {
-    if( gRDP.textureIsChanged || !currentRomOptions.bFastTexCRC ||
-        CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[0] ||
-        CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[1] )
+    if( gRDP.textureIsChanged || !currentRomOptions.bFastTexCRC )
     {
         status.UseLargerTile[0]=false;
         status.UseLargerTile[1]=false;
@@ -710,27 +708,18 @@ void PrepareTextures()
         {
             if( tilenos[i] < 0 )    continue;
 
-            if( CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i] )
+            TxtrCacheEntry *pEntry = LoadTexture(tilenos[i]);
+            if (pEntry && pEntry->pTexture )
             {
-                TxtrCacheEntry *pEntry = TextureManager_GetConstantColorTexture(CRender::g_pRender->m_pColorCombiner->m_pDecodedMux->m_ColorTextureFlag[i]);
-                CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
+                CRender::g_pRender->SetCurrentTexture( tilenos[i], 
+                    pEntry->pTexture,
+                    pEntry->ti.WidthToLoad, pEntry->ti.HeightToLoad, pEntry);
             }
             else
             {
-                TxtrCacheEntry *pEntry = LoadTexture(tilenos[i]);
-                if (pEntry && pEntry->pTexture )
-                {
-                    CRender::g_pRender->SetCurrentTexture( tilenos[i], 
-                        pEntry->pTexture,
-                        pEntry->ti.WidthToLoad, pEntry->ti.HeightToLoad, pEntry);
-                }
-                else
-                {
-                    pEntry = TextureManager_GetBlackTexture();
-                    CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
-                    _VIDEO_DisplayTemporaryMessage("Fail to load texture, use black to replace");
-                }
-
+                pEntry = TextureManager_GetBlackTexture();
+                CRender::g_pRender->SetCurrentTexture( tilenos[i], pEntry->pTexture, 4, 4, pEntry);
+                _VIDEO_DisplayTemporaryMessage("Fail to load texture, use black to replace");
             }
         }
 

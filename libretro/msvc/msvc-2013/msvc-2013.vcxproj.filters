@@ -249,9 +249,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\CombinerConst.c">
-      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>

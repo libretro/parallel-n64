@@ -97,88 +97,17 @@ public:
     CombinerFormatType splitType[4];
     CombinerFormatType mType;
     
-    uint32_t m_dwShadeColorChannelFlag;
-    uint32_t m_dwShadeAlphaChannelFlag;
-    uint32_t m_ColorTextureFlag[2];   // I may use a texture to represent a constant color
-                                    // when there are more constant colors are used than    
-                                    // the system can support
-
-    bool m_bShadeIsUsed[2];     // 0 for color channel, 1 for alpha channel
     bool m_bTexel0IsUsed;
     bool m_bTexel1IsUsed;
 
-    int  m_maxConstants;    // OpenGL 1.1 does not really support a constant color in combiner
-                            // must use shade for constants;
-    int  m_maxTextures;     // 1 or 2
-
-
     void Decode(uint32_t dwMux0, uint32_t dwMux1);
-    virtual void Hack(void);
+    void Hack(void);
     bool IsUsed(uint8_t fac, uint8_t mask);
-    bool IsUsedInAlphaChannel(uint8_t fac, uint8_t mask);
-    bool IsUsedInColorChannel(uint8_t fac, uint8_t mask);
     bool IsUsedInCycle(uint8_t fac, int cycle, CombineChannel channel, uint8_t mask);
-    bool IsUsedInCycle(uint8_t fac, int cycle, uint8_t mask);
-    uint32_t GetCycle(int cycle);
     void CheckCombineInCycle1(void);
-    virtual void Simplify(void);
-    virtual void Reformat(bool do_complement);
-    
-    virtual void MergeShadeWithConstants(void);
-    virtual void MergeShadeWithConstantsInChannel(CombineChannel channel);
-    virtual void UseShadeForConstant(void);
-    virtual void UseTextureForConstant(void);
-
-    int HowManyConstFactors();
-    int HowManyTextures();
-    void MergeConstFactors();
-    void ConvertLODFracTo0();
+    void Simplify(void);
+    void Reformat(bool do_complement);
     void ReplaceVal(uint8_t val1, uint8_t val2, int cycle, uint8_t mask);
-    void Replace1Val(uint8_t &val1, const uint8_t val2, uint8_t mask)
-    {
-        val1 &= (~mask);
-        val1 |= val2;
-    }
-    int Count(uint8_t val, int cycle, uint8_t mask);
-
-    void DisplayMuxString(const char *prompt) {}
-    void DisplaySimpliedMuxString(const char *prompt){}
-    void DisplayConstantsWithShade(uint32_t flag,CombineChannel channel){}
-
-    virtual DecodedMux& operator=(const DecodedMux& mux)
-    {
-        m_dWords[0] = mux.m_dWords[0];
-        m_dWords[1] = mux.m_dWords[1];
-        m_dWords[2] = mux.m_dWords[2];
-        m_dWords[3] = mux.m_dWords[3];
-        m_u64Mux = mux.m_u64Mux;
-        splitType[0] = mux.splitType[0];
-        splitType[1] = mux.splitType[1];
-        splitType[2] = mux.splitType[2];
-        splitType[3] = mux.splitType[3];
-        mType = mux.mType;
-
-        m_dwShadeColorChannelFlag = mux.m_dwShadeColorChannelFlag;
-        m_dwShadeAlphaChannelFlag = mux.m_dwShadeAlphaChannelFlag;
-
-        m_bShadeIsUsed[0] = mux.m_bShadeIsUsed[0];
-        m_bShadeIsUsed[1] = mux.m_bShadeIsUsed[1];
-        m_bTexel0IsUsed = mux.m_bTexel0IsUsed;
-        m_bTexel1IsUsed = mux.m_bTexel1IsUsed;
-
-        m_maxConstants = mux.m_maxConstants;
-        m_maxTextures = mux.m_maxTextures;
-        m_ColorTextureFlag[0] = mux.m_ColorTextureFlag[0];
-        m_ColorTextureFlag[1] = mux.m_ColorTextureFlag[1];
-
-        return *this;
-    }
-
-    static inline bool IsConstFactor(uint8_t val)
-    {
-        uint8_t v = val&MUX_MASK;
-        return( v == MUX_0 || v == MUX_1 || v == MUX_PRIM || v == MUX_ENV || v == MUX_LODFRAC || v == MUX_PRIMLODFRAC );
-    }
 
     DecodedMux()
     {
@@ -188,34 +117,8 @@ public:
         {
             splitType[i] = CM_FMT_TYPE_NOT_CHECKED;
         }
-        m_maxConstants = 1;
-        m_maxTextures = 2;
     }
-    
-    virtual ~DecodedMux() {}
 };
-
-class DecodedMuxForPixelShader : public DecodedMux
-{
-public:
-    virtual void Simplify(void);
-};
-
-typedef struct 
-{
-    bool bFurtherFormatForOGL2;
-    bool bUseShadeForConstants;
-    bool bUseTextureForConstants;
-    bool bUseMoreThan2TextureForConstants;
-    bool bReformatToAB_CD;
-    bool bAllowHack;
-    bool bAllowComplimentary;
-    bool bCheckCombineInCycle1;
-    bool bSetLODFracTo0;
-    bool bMergeShadeWithConstants;
-    bool bSplitComplexStage;
-    bool bReformatAgainWithTwoTexels;
-} MuxConverterOptions;
 
 #endif
 

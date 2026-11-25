@@ -625,28 +625,6 @@ void OGLRender::InitCombinerBlenderForSimpleRectDraw(uint32_t tile)
 }
 #endif
 
-COLOR OGLRender::PostProcessDiffuseColor(COLOR curDiffuseColor)
-{
-    uint32_t color = curDiffuseColor;
-    uint32_t colorflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeColorChannelFlag;
-    uint32_t alphaflag = m_pColorCombiner->m_pDecodedMux->m_dwShadeAlphaChannelFlag;
-    if( colorflag+alphaflag != MUX_0 )
-    {
-        if( (colorflag & 0xFFFFFF00) == 0 && (alphaflag & 0xFFFFFF00) == 0 )
-            color = Rice_GetConstFactor(colorflag, alphaflag, curDiffuseColor);
-        else
-            color = CalculateConstFactor(colorflag, alphaflag, curDiffuseColor);
-    }
-
-    //return (color<<8)|(color>>24);
-    return color;
-}
-
-COLOR OGLRender::PostProcessSpecularColor()
-{
-    return 0;
-}
-
 void OGLRender::SetViewportRender()
 {
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, true);

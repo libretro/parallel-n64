@@ -395,17 +395,7 @@ static noinline void InitVertex_notopengl_or_clipper_adjust(TLITVERTEX &v, uint3
     //v.z = g_vecProjected[dwV].z;  // DirectX minZ=0, maxZ=1
     v.rhw = g_vecProjected[dwV].w;
 
-    if( gRSP.bProcessSpecularColor )
-    {
-        v.dcSpecular = CRender::g_pRender->PostProcessSpecularColor();
-        if( gRSP.bFogEnabled )
-        {
-            v.dcSpecular &= 0x00FFFFFF;
-            uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
-            v.dcSpecular |= (fogFct<<24);
-        }
-    }
-    else if( gRSP.bFogEnabled )
+    if( gRSP.bFogEnabled )
     {
         uint32_t  fogFct = 0xFF-(uint8_t)((g_fFogCoord[dwV]-gRSPfFogMin)*gRSPfFogDivider);
         v.dcSpecular = (fogFct<<24);
@@ -471,10 +461,6 @@ void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture)
         v.dcDiffuse |= 0xFF000000;
     }
 
-    if( gRSP.bProcessDiffuseColor )
-    {
-        v.dcDiffuse = CRender::g_pRender->PostProcessDiffuseColor(v.dcDiffuse);
-    }
     if( options.bWinFrameMode )
     {
         v.dcDiffuse = g_dwVtxDifColor[dwV];

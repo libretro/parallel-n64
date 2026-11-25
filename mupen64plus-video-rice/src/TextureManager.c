@@ -38,10 +38,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static TxtrCacheEntry *m_pCacheTxtrList[NUM_CACHED_TXTR_LISTS];
 
 static TxtrCacheEntry m_blackTextureEntry;
-static TxtrCacheEntry m_PrimColorTextureEntry;
-static TxtrCacheEntry m_EnvColorTextureEntry;
-static TxtrCacheEntry m_LODFracTextureEntry;
-static TxtrCacheEntry m_PrimLODFracTextureEntry;
 
 /* ---- the entries ---- */
 
@@ -159,21 +155,13 @@ void TextureManager_RecycleAllTextures(void)
    }
 }
 
-/* every cached texture let go, and the colour textures */
+/* every cached texture let go, and the black texture */
 bool TextureManager_CleanUp(void)
 {
    TextureManager_RecycleAllTextures();
 
    CTexture_Delete(m_blackTextureEntry.pTexture);
-   CTexture_Delete(m_PrimColorTextureEntry.pTexture);
-   CTexture_Delete(m_EnvColorTextureEntry.pTexture);
-   CTexture_Delete(m_LODFracTextureEntry.pTexture);
-   CTexture_Delete(m_PrimLODFracTextureEntry.pTexture);
    memset(&m_blackTextureEntry, 0, sizeof(TxtrCacheEntry));
-   memset(&m_PrimColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-   memset(&m_EnvColorTextureEntry, 0, sizeof(TxtrCacheEntry));
-   memset(&m_LODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
-   memset(&m_PrimLODFracTextureEntry, 0, sizeof(TxtrCacheEntry));
 
    return true;
 }
@@ -966,28 +954,6 @@ static void updateColorTexture(CTexture *ptexture, uint32_t color)
    CTexture_EndUpdate(ptexture);
 }
 
-/* @entry's texture, made 4x4 of @color the first time and again when
-   @color is not @last's */
-static TxtrCacheEntry *ColorTexture(TxtrCacheEntry *entry, uint32_t color, uint32_t *last)
-{
-   if (entry->pTexture == NULL)
-   {
-      entry->pTexture = RiceDevice_CreateTexture(4, 4);
-      entry->ti.WidthToCreate  = 4;
-      entry->ti.HeightToCreate = 4;
-      updateColorTexture(entry->pTexture, color);
-      gRDP.texturesAreReloaded = true;
-   }
-   else if (*last != color)
-   {
-      updateColorTexture(entry->pTexture, color);
-      gRDP.texturesAreReloaded = true;
-   }
-
-   *last = color;
-   return entry;
-}
-
 TxtrCacheEntry *TextureManager_GetBlackTexture(void)
 {
    if (m_blackTextureEntry.pTexture == NULL)
@@ -1000,31 +966,4 @@ TxtrCacheEntry *TextureManager_GetBlackTexture(void)
    return &m_blackTextureEntry;
 }
 
-/* a fraction in all four bytes */
-static uint32_t FracColor(uint8_t fac)
-{
-   uint32_t color = fac;
-   color |= (uint32_t)fac << 8;
-   color |= color << 16;
-   return color;
-}
-
-TxtrCacheEntry *TextureManager_GetConstantColorTexture(uint32_t constant)
-{
-   static uint32_t prim, env, lodFrac, primLodFrac;
-
-   switch (constant)
-   {
-      case MUX_PRIM:
-         return ColorTexture(&m_PrimColorTextureEntry, gRDP.primitiveColor, &prim);
-      case MUX_ENV:
-         return ColorTexture(&m_EnvColorTextureEntry, gRDP.envColor, &env);
-      case MUX_LODFRAC:
-         return ColorTexture(&m_LODFracTextureEntry, FracColor((uint8_t)gRDP.LODFrac), &lodFrac);
-      default: /* MUX_PRIMLODFRAC */
-         break;
-   }
-
-   return ColorTexture(&m_PrimLODFracTextureEntry, FracColor((uint8_t)gRDP.primLODFrac), &primLodFrac);
-}
 

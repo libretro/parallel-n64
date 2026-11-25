@@ -60,10 +60,9 @@ TxtrCacheEntry *TextureManager_GetTexture(TxtrInfo *pgti, bool fromTMEM, bool do
    fraction or primitive LOD fraction colour (MUX_PRIM, MUX_ENV,
    MUX_LODFRAC, MUX_PRIMLODFRAC) */
 TxtrCacheEntry *TextureManager_GetBlackTexture(void);
-TxtrCacheEntry *TextureManager_GetConstantColorTexture(uint32_t constant);
 /* textures unused five seconds and not bound let go */
 void TextureManager_PurgeOldTextures(void);
-/* every cached texture let go; and the colour textures too */
+/* every cached texture let go; and the black texture too */
 void TextureManager_RecycleAllTextures(void);
 bool TextureManager_CleanUp(void);
 

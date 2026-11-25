@@ -88,8 +88,6 @@ public:
     virtual void SetTexWrapT(int unitno,GLuint flag);
 
 protected:
-    COLOR PostProcessDiffuseColor(COLOR curDiffuseColor);
-    COLOR PostProcessSpecularColor();
 
     // Basic render drawing functions
     bool RenderFlushTris();
