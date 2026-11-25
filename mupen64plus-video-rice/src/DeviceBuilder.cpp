@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "DeviceBuilder.h"
 #include "FrameBuffer.h"
 #include "OGLBlender.h"
-#include "OGLExtRender.h"
+#include "OGLRender.h"
 #include "GraphicsContext.h"
 #include "OGLTexture.h"
 #include "OGLES2FragmentShaders.h"
@@ -130,7 +130,7 @@ CRender * OGLDeviceBuilder::CreateRender(void)
 {
     if( m_pRender == NULL )
     {
-        m_pRender = new COGLExtRender();
+        m_pRender = new OGLRender();
 
         CRender::g_pRender = m_pRender;
     }

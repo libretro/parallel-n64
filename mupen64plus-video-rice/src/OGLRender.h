@@ -64,10 +64,8 @@ public:
     void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag);
     void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile);
     void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile);
-    virtual void BindTexture(GLuint texture, int unitno);
-    virtual void DisBindTexture(GLuint texture, int unitno);
-    virtual void TexCoord2f(float u, float v);
-    virtual void TexCoord(TLITVERTEX &vtxInfo);
+    void BindTexture(GLuint texture, int unitno);
+    void DisBindTexture(GLuint texture, int unitno);
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
@@ -83,9 +81,9 @@ public:
     void EndRendering(void);
 
     void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag);
-    virtual void EnableTexUnit(int unitno, bool flag);
-    virtual void SetTexWrapS(int unitno,GLuint flag);
-    virtual void SetTexWrapT(int unitno,GLuint flag);
+    void EnableTexUnit(int unitno, bool flag);
+    void SetTexWrapS(int unitno,GLuint flag);
+    void SetTexWrapT(int unitno,GLuint flag);
 
 protected:
 
@@ -101,6 +99,9 @@ protected:
     bool    m_texUnitEnabled[8];
 
     bool m_bEnableMultiTexture;
+
+    GLint m_maxTexUnits;
+    int m_textureUnitMap[8];
 };
 
 #endif

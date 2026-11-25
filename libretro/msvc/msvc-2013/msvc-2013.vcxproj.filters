@@ -282,9 +282,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLExtRender.cpp">
-      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
