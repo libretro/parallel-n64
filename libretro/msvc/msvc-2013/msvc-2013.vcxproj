@@ -458,7 +458,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Blender.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gSP_rice.c" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage16.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DecodedMux.c" />
@@ -470,7 +469,8 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceGLState.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceGLTex.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceGLDraw.c" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombiner.c" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombinerText.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLTexture.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Render.cpp" />

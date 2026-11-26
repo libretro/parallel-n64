@@ -246,9 +246,6 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Blender.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Combiner.cpp">
-      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\gDP_rice.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
@@ -288,7 +285,10 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceGLDraw.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLES2FragmentShaders.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombiner.c">
+      <Filter>Source Files\mupen64plus-video-rice\src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombinerText.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp">

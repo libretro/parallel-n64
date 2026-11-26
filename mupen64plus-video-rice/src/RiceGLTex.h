@@ -66,6 +66,9 @@ void RiceGLTex_EnableUnit(int unitno, bool flag);
  * the texture bound and the mode set */
 void RiceGLTex_SetUFlag(TextureUVFlag flag, uint32_t tile);
 void RiceGLTex_SetVFlag(TextureUVFlag flag, uint32_t tile);
+/* @tile's wrap modes from its mask, clamp and mirror bits (and the
+ * ROM's forced clamps and wraps) */
+void RiceGLTex_SetTileRepeat(uint32_t tile);
 
 /* each enabled unit's min and mag filters for @min_filter and
  * @mag_filter (and the mipmapping option), set when they or the bound

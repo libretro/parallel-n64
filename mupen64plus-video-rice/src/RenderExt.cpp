@@ -376,7 +376,7 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
 
     LoadFrameBuffer(useVIreg, left, top, width, height);
 
-    m_pColorCombiner->InitCombinerBlenderForSimpleTextureDraw(0);
+    RiceCombiner_InitSimpleTextureDraw(0);
 
     ZBufferEnable(false);
     SetZUpdate(false);

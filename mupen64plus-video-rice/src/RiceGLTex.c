@@ -198,6 +198,44 @@ void RiceGLTex_SetVFlag(TextureUVFlag flag, uint32_t tile)
     set_uv_flag(flag, tile, true);
 }
 
+void RiceGLTex_SetTileRepeat(uint32_t dwTile)
+{
+    TileAdditionalInfo *tile = &gRDP.tilesinfo[dwTile];
+    struct gDPTile *tileinfo = &gDP.tiles[dwTile];
+
+    if( tile->bForceClampS )
+        RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
+    else if( tile->bForceWrapS )
+        RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
+    else if( tileinfo->masks == 0 || tileinfo->clamps )
+    {
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
+            RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  /* can not clamp in COPY/FILL mode */
+        else
+            RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
+    }
+    else if (tileinfo->mirrors )
+        RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
+    else
+        RiceGLTex_SetUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
+
+    if( tile->bForceClampT )
+        RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
+    else if( tile->bForceWrapT )
+        RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
+    else if( tileinfo->maskt == 0 || tileinfo->clampt)
+    {
+        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
+            RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  /* can not clamp in COPY/FILL mode */
+        else
+            RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
+    }
+    else if (tileinfo->mirrort )
+        RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
+    else
+        RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
+}
+
 void RiceGLTex_ApplyFilter(TextureFilter min_filter, TextureFilter mag_filter)
 {
     static uint32_t minflag[32], magflag[32];

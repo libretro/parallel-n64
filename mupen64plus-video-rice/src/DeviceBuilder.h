@@ -21,10 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _DEVICE_BUILDER_H
 
 #include "Blender.h"
-#include "Combiner.h"
 #include "Config.h"
 #include "GraphicsContext.h"
 #include "TextureManager.h"
+
+class CRender;
 
 //========================================================================
 
@@ -34,12 +35,10 @@ public:
     void CreateGraphicsContext(void);
     virtual CRender * CreateRender(void)=0;
     virtual CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL)=0;
-    virtual CColorCombiner * CreateColorCombiner(CRender *pRender)=0;
     virtual CBlender * CreateAlphaBlender(CRender *pRender)=0;
 
     void DeleteGraphicsContext(void);
     void DeleteRender(void);
-    void DeleteColorCombiner(void);
     void DeleteAlphaBlender(void);
 
     static void DeleteBuilder(void);
@@ -56,7 +55,6 @@ protected:
 
     CRender* m_pRender;
     bool m_bGraphicsContext;
-    CColorCombiner* m_pColorCombiner;
     CBlender* m_pAlphaBlender;
 };
 
@@ -66,7 +64,6 @@ class OGLDeviceBuilder : public CDeviceBuilder
 public:
     CRender * CreateRender(void);
     CTexture * CreateTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage = AS_NORMAL);
-    CColorCombiner * CreateColorCombiner(CRender *pRender);
     CBlender * CreateAlphaBlender(CRender *pRender);
 
 protected:

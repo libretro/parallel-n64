@@ -26,7 +26,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Render.h"
 #include "GraphicsContext.h"
 #include "OGLTexture.h"
-#include "OGLES2FragmentShaders.h"
 
 //========================================================================
 CDeviceBuilder* CDeviceBuilder::m_pInstance=NULL;
@@ -67,7 +66,6 @@ void CDeviceBuilder::DeleteBuilder(void)
 CDeviceBuilder::CDeviceBuilder() :
     m_pRender(NULL),
     m_bGraphicsContext(false),
-    m_pColorCombiner(NULL),
     m_pAlphaBlender(NULL)
 {
 }
@@ -76,7 +74,6 @@ CDeviceBuilder::~CDeviceBuilder()
 {
     DeleteGraphicsContext();
     DeleteRender();
-    DeleteColorCombiner();
     DeleteAlphaBlender();
 }
 
@@ -100,15 +97,6 @@ void CDeviceBuilder::DeleteRender(void)
         delete m_pRender;
         CRender::g_pRender = m_pRender = NULL;
         CRender::gRenderReferenceCount = 0;
-    }
-}
-
-void CDeviceBuilder::DeleteColorCombiner(void)
-{
-    if( m_pColorCombiner != NULL )
-    {
-        delete m_pColorCombiner;
-        m_pColorCombiner = NULL;
     }
 }
 
@@ -144,19 +132,6 @@ CTexture * OGLDeviceBuilder::CreateTexture(uint32_t dwWidth, uint32_t dwHeight, 
     if( txtr == NULL )
         TRACE0("Cannot create new texture, out of video memory");
     return txtr;
-}
-
-CColorCombiner * OGLDeviceBuilder::CreateColorCombiner(CRender *pRender)
-{
-    if( m_pColorCombiner == NULL )
-    {
-       m_deviceType = (SupportedDeviceType)options.OpenglRenderSetting;
-
-       m_pColorCombiner = new COGL_FragmentProgramCombiner(pRender);
-       DebugMessage(M64MSG_VERBOSE, "OpenGL Combiner: Fragment Program");
-    }
-
-    return m_pColorCombiner;
 }
 
 CBlender * OGLDeviceBuilder::CreateAlphaBlender(CRender *pRender)

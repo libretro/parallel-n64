@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 
-#include "OGLES2FragmentShaders.h"
 #include "Render.h"
 #include "GraphicsContext.h"
 #include "OGLTexture.h"
@@ -154,21 +153,10 @@ void CRender::RenderReset()
     gRSP.fTexScaleY = 1/32.0f;
 }
 
-void CRender::SetAlphaTestEnable(bool bAlphaTestEnable)
-{
-        COGL_FragmentProgramCombiner* frag = (COGL_FragmentProgramCombiner*)m_pColorCombiner;
-        frag->SetAlphaTestState(bAlphaTestEnable);
-}
-
 void CRender::UpdateScissor()
 {
     if (!RiceGL_RE2Scissor())
         UpdateScissorWithClipRatio();
-}
-
-void CRender::TurnFogOnOff(bool flag)
-{
-    ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(flag);
 }
 
 void CRender::SetFogEnable(bool bEnable)
@@ -179,7 +167,7 @@ void CRender::SetFogEnable(bool bEnable)
     if(options.fogMethod == 2)
         gRSP.bFogEnabled = true;
 
-    ((COGL_FragmentProgramCombiner*)m_pColorCombiner)->SetFogState(gRSP.bFogEnabled);
+    rice_combiner.fog = gRSP.bFogEnabled;
 }
 
 void CRender::EndRendering(void)

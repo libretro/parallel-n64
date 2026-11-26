@@ -90,8 +90,8 @@ CRender::CRender() :
     //  g_dwVtxFlags[i] = 0;
     //}
     
-    m_pColorCombiner = CDeviceBuilder::GetBuilder()->CreateColorCombiner(this);
-    m_pColorCombiner->Initialize();
+    RiceCombiner_Create();
+    RiceCombiner_BuildKnownKeys();
 
     m_pAlphaBlender = CDeviceBuilder::GetBuilder()->CreateAlphaBlender(this);
 
@@ -99,11 +99,7 @@ CRender::CRender() :
 
 CRender::~CRender()
 {
-    if( m_pColorCombiner != NULL )
-    {
-        CDeviceBuilder::GetBuilder()->DeleteColorCombiner();
-        m_pColorCombiner = NULL;
-    }
+    RiceCombiner_Destroy();
     
     if( m_pAlphaBlender != NULL )
     {
@@ -243,7 +239,7 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
     {
         m_Mux = tempmux;
         m_bBlendModeValid = false;
-        m_pColorCombiner->UpdateCombiner(dwMux0, dwMux1);
+        RiceCombiner_Update(dwMux0, dwMux1);
     }
 }
 
@@ -300,7 +296,7 @@ void CRender::SetCombinerAndBlender()
     else
         Blender_InitBlenderMode(m_pAlphaBlender);
 
-    m_pColorCombiner->InitCombinerMode();
+    RiceCombiner_InitMode(m_dwAlpha);
 }
 
 bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
@@ -880,59 +876,8 @@ void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t d
     m_simpleRectVtx[1].y = ViewPortTranslatei_y(nY1);
 }
 
-void CRender::SetAllTexelRepeatFlag()
-{
-    if( IsTextureEnabled() )
-    {
-        if( IsTexel0Enable() || gRDP.otherMode.cycle_type  == G_CYC_COPY )
-            SetTexelRepeatFlags(gRSP.curTile);
-        if( IsTexel1Enable() )
-            SetTexelRepeatFlags((gRSP.curTile+1)&7);
-    }
-}
-
-
-void CRender::SetTexelRepeatFlags(uint32_t dwTile)
-{
-    TileAdditionalInfo *tile = &gRDP.tilesinfo[dwTile];
-    gDPTile        *tileinfo = &gDP.tiles[dwTile];
-
-    if( tile->bForceClampS )
-        SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    else if( tile->bForceWrapS )
-            SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-    else if( tileinfo->masks == 0 || tileinfo->clamps )
-    {
-        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
-            SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
-        else
-            SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    }
-    else if (tileinfo->mirrors )
-        SetTextureUFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
-    else                                
-        SetTextureUFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-    
-    if( tile->bForceClampT )
-        SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    else if( tile->bForceWrapT )
-        SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-    else if( tileinfo->maskt == 0 || tileinfo->clampt)
-    {
-        if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
-            SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);  // Can not clamp in COPY/FILL mode
-        else
-            SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, dwTile);
-    }
-    else if (tileinfo->mirrort )
-        SetTextureVFlag(TEXTURE_UV_FLAG_MIRROR, dwTile);
-    else                                
-        SetTextureVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
-}
-
 void CRender::CleanUp(void)
 {
-    m_pColorCombiner->CleanUp();
     ClearDeviceObjects();
 }
 
@@ -1072,7 +1017,7 @@ bool CRender::DrawTriangles()
         float halfscaleS = 1;
 
         // This will get rid of the thin black lines
-        if( t==0 && !(m_pColorCombiner->m_bTex0Enabled) )
+        if( t==0 && !rice_combiner.tex0Enabled )
         {
             continue;
         }
@@ -1094,7 +1039,7 @@ bool CRender::DrawTriangles()
             }
         }
 
-        if( t==1 && !(m_pColorCombiner->m_bTex1Enabled) )
+        if( t==1 && !rice_combiner.tex1Enabled )
             break;
 
         if( halfscaleS < 1 )

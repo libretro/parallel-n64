@@ -26,7 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RiceGLDraw.h"
 
 #include "Blender.h"
-#include "Combiner.h"
+#include "CombinerDefs.h"
+#include "RiceCombiner.h"
 #include "Config.h"
 #include "Debugger.h"
 #include "RenderBase.h"
@@ -68,15 +69,14 @@ public:
     uint64_t      m_Mux;
     bool    m_bBlendModeValid;
 
-    CColorCombiner *m_pColorCombiner;
     CBlender *m_pAlphaBlender;
     
     
     ~CRender();
     
-    inline bool IsTexel0Enable() {return m_pColorCombiner->m_bTex0Enabled;}
-    inline bool IsTexel1Enable() {return m_pColorCombiner->m_bTex1Enabled;}
-    inline bool IsTextureEnabled() { return (m_pColorCombiner->m_bTex0Enabled||m_pColorCombiner->m_bTex1Enabled); }
+    inline bool IsTexel0Enable() { return rice_combiner.tex0Enabled; }
+    inline bool IsTexel1Enable() { return rice_combiner.tex1Enabled; }
+    inline bool IsTextureEnabled() { return rice_combiner.tex0Enabled || rice_combiner.tex1Enabled; }
 
     inline RenderTexture& GetCurrentTexture() { return g_textures[gRSP.curTile]; }
     inline RenderTexture& GetTexture(uint32_t dwTile) { return g_textures[dwTile]; }
@@ -145,8 +145,8 @@ public:
     bool FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor);
     bool Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth);
 
-    void SetTexelRepeatFlags(uint32_t dwTile);
-    void SetAllTexelRepeatFlag();
+    void SetTexelRepeatFlags(uint32_t dwTile) { RiceGLTex_SetTileRepeat(dwTile); }
+    void SetAllTexelRepeatFlag() { RiceCombiner_SetTexelRepeat(); }
     
 
     void CleanUp(void);
@@ -218,7 +218,7 @@ public:
     void SetViewportRender() { RiceGL_ViewportN64(); }
     void RenderReset();
     void SetCullMode(bool bCullFront, bool bCullBack) { RiceGL_SetCullMode(bCullFront, bCullBack); }
-    void SetAlphaTestEnable(bool bAlphaTestEnable);
+    void SetAlphaTestEnable(bool bAlphaTestEnable) { rice_combiner.alphaTest = bAlphaTestEnable; }
     void UpdateScissor();
     void ApplyRDPScissor(bool force) { RiceGL_ApplyRDPScissor(force); }
     void ApplyScissorWithClipRatio(bool force) { RiceGL_ApplyScissorWithClipRatio(force); }
@@ -236,7 +236,7 @@ public:
     void DrawSpriteR_Render() { RiceGL_DrawSpriteR(gRDP.fvPrimitiveColor); }
 
     void SetFogEnable(bool bEnable);
-    void TurnFogOnOff(bool flag);
+    void TurnFogOnOff(bool flag) { rice_combiner.fog = flag; }
     void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) { RiceGL_SetFogColor(r, g, b, a); }
 
     void DisableMultiTexture() { RiceGLTex_DisableMultiTexture(); }
