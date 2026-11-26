@@ -43,12 +43,8 @@ enum TextureChannel
 
 class CRender
 {
-    friend class OGLDeviceBuilder;
-
-protected:
-    CRender();
-
 public:
+    CRender();
 
     float m_fScreenViewportMultX;
     float m_fScreenViewportMultY;

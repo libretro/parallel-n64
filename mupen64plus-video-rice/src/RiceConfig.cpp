@@ -31,7 +31,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Config.h"
 #include "Debugger.h"
-#include "DeviceBuilder.h"
 #include "RenderBase.h"
 #include "TextureManager.h"
 #include "Video.h"
@@ -440,8 +439,6 @@ static void ReadConfiguration(void)
    options.multiSampling = ConfigGetParamInt(l_ConfigVideoRice, "MultiSampling");
    options.colorQuality = ConfigGetParamInt(l_ConfigVideoRice, "ColorQuality");
    options.OpenglRenderSetting = ConfigGetParamInt(l_ConfigVideoRice, "OpenGLRenderSetting");
-
-   CDeviceBuilder::SelectDeviceType((SupportedDeviceType)options.OpenglRenderSetting);
 
    status.isMMXSupported = isMMXSupported();
    ProcessVertexData = ProcessVertexDataNoSSE;

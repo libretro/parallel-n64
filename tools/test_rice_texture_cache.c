@@ -165,11 +165,11 @@ static void count_release(CTexture *tex)
 }
 static const CTextureOps counting = { count_upload, count_release };
 
-CTexture *RiceDevice_CreateTexture(uint32_t width, uint32_t height)
+CTexture *COGLTexture_New(uint32_t width, uint32_t height, TextureUsage usage)
 {
    CTexture *tex = (CTexture *)malloc(sizeof(*tex));
    uint32_t w, h;
-   CTexture_Init(tex, &counting, width, height, AS_NORMAL);
+   CTexture_Init(tex, &counting, width, height, usage);
    for (w = 1; w < width && w < (uint32_t)made_cap; w <<= 1);
    for (h = 1; h < height && h < (uint32_t)made_cap; h <<= 1);
    tex->m_dwCreatedTextureWidth  = w;
@@ -1086,7 +1086,7 @@ static void which_conversion(void)
    if (!sixteen)
    {
       TxtrInfo yi;
-      CTexture *ref = RiceDevice_CreateTexture(4, 2);
+      CTexture *ref = COGLTexture_New(4, 2, AS_NORMAL);
       int same = 1, rgba = 1;
       for (i = 0; i < 64; i++)
          ram[0x1000 + i] = (uint8_t)(i * 37);

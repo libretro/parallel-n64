@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "ConvertImage.h"
 #include "CombinerDefs.h"
 #include "RenderBase.h"
+#include "OGLTexture.h"
 #include "TextureManager.h"
 
 #define S_FLAG  0
@@ -49,7 +50,7 @@ static TxtrCacheEntry *TxtrCacheEntry_New(void)
 
 static void TxtrCacheEntry_Delete(TxtrCacheEntry *pEntry)
 {
-   /* from RiceDevice_CreateTexture */
+   /* from COGLTexture_New */
    CTexture_Delete(pEntry->pTexture);
    free(pEntry);
 }
@@ -173,7 +174,7 @@ static TxtrCacheEntry *CreateNewCacheEntry(uint32_t dwAddr, uint32_t dwWidth, ui
       return NULL;
 
    /* its CRC, palette CRC and highest index are the caller's */
-   pEntry->pTexture        = RiceDevice_CreateTexture(dwWidth, dwHeight);
+   pEntry->pTexture        = COGLTexture_New(dwWidth, dwHeight, AS_NORMAL);
    pEntry->ti.Address      = dwAddr;
    pEntry->dwTimeLastUsed  = status.gRDPTime;
    pEntry->FrameLastUsed   = status.gDlistCount;
@@ -958,7 +959,7 @@ TxtrCacheEntry *TextureManager_GetBlackTexture(void)
 {
    if (m_blackTextureEntry.pTexture == NULL)
    {
-      m_blackTextureEntry.pTexture = RiceDevice_CreateTexture(4, 4);
+      m_blackTextureEntry.pTexture = COGLTexture_New(4, 4, AS_NORMAL);
       m_blackTextureEntry.ti.WidthToCreate  = 4;
       m_blackTextureEntry.ti.HeightToCreate = 4;
       updateColorTexture(m_blackTextureEntry.pTexture, 0x00000000);

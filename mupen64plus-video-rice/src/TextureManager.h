@@ -73,8 +73,7 @@ uint32_t CalculateRDRAMCRC(void *pPhysicalAddress, uint32_t left, uint32_t top, 
 unsigned char CalculateMaxCI(void *pPhysicalAddress, uint32_t left, uint32_t top, uint32_t width, uint32_t height,
       uint32_t size, uint32_t pitchInBytes);
 
-/* what the cache asks of the rest of Rice (FrameBuffer.cpp,
-   DeviceBuilder.cpp) */
+/* what the cache asks of the rest of Rice (FrameBuffer.cpp) */
 int  RiceFB_CheckAddrInRenderTextures(uint32_t addr);
 int  RiceFB_CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize);
 /* render texture @idx's entry, @ti its texture's, if it is of @ti's format
@@ -85,7 +84,6 @@ uint32_t RiceFB_RenderTextureUpdatedAt(int idx);
 void RiceFB_LoadTextureFromRenderTexture(TxtrCacheEntry *pEntry, int idx);
 /* the format of the colour image being drawn to */
 uint32_t RiceFB_CIFormat(void);
-CTexture *RiceDevice_CreateTexture(uint32_t width, uint32_t height);
 
 #ifdef __cplusplus
 }

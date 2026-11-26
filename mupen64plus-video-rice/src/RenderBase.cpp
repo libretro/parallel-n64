@@ -19,13 +19,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 #include <vector>
 
 #include <retro_miscellaneous.h>
 
 #include "osal_preproc.h"
 #include "float.h"
-#include "DeviceBuilder.h"
 #include "Render.h"
 #include "Timing.h"
 
@@ -1204,18 +1204,10 @@ float HackZ(float z)
 
 void HackZAll()
 {
-    if( CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE )
+    for( uint32_t i=0; i<gRSP.numVertices; i++)
     {
-        for( uint32_t i=0; i<gRSP.numVertices; i++)
-            g_vtxBuffer[i].z = HackZ(g_vtxBuffer[i].z);
-    }
-    else
-    {
-        for( uint32_t i=0; i<gRSP.numVertices; i++)
-        {
-            float w = g_vtxProjected5[i][3];
-            g_vtxProjected5[i][2] = HackZ(g_vtxProjected5[i][2]/w)*w;
-        }
+        float w = g_vtxProjected5[i][3];
+        g_vtxProjected5[i][2] = HackZ(g_vtxProjected5[i][2]/w)*w;
     }
 }
 

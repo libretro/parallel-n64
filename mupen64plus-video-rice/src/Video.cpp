@@ -31,7 +31,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "Config.h"
 #include "Debugger.h"
-#include "DeviceBuilder.h"
 #include "FrameBuffer.h"
 #include "GraphicsContext.h"
 #include "Render.h"
@@ -57,6 +56,22 @@ void (*renderCallback)(int) = NULL;
 // Forward function declarations
 
 extern "C" void riceRomClosed(void);
+
+static void create_render(void)
+{
+    if (CRender::g_pRender == NULL)
+        CRender::g_pRender = new CRender();
+}
+
+static void delete_render(void)
+{
+    if (CRender::g_pRender != NULL)
+    {
+        delete CRender::g_pRender;
+        CRender::g_pRender = NULL;
+        CRender::gRenderReferenceCount = 0;
+    }
+}
 
 static bool StartVideo(void)
 {
@@ -94,9 +109,9 @@ static bool StartVideo(void)
     else
         status.fRatio = 9/11.0f;;
     
-    CDeviceBuilder::GetBuilder()->CreateGraphicsContext();
+    g_pFrameBufferManager = new FrameBufferManager;
     RiceGC_Initialize();
-    CDeviceBuilder::GetBuilder()->CreateRender();
+    create_render();
     CRender::GetRender()->Initialize();
     DLParser_Init();
     status.bGameIsRunning = true;
@@ -278,8 +293,14 @@ void riceRomClosed(void)
     TextureManager_CleanUp();
     RDP_Cleanup();
 
-    CDeviceBuilder::GetBuilder()->DeleteRender();
-    CDeviceBuilder::GetBuilder()->DeleteGraphicsContext();
+    delete_render();
+    if (g_pFrameBufferManager)
+    {
+        g_pFrameBufferManager->CloseUp();
+        RiceGC_Release();
+        delete g_pFrameBufferManager;
+        g_pFrameBufferManager = NULL;
+    }
 
     windowSetting.dps = windowSetting.fps = -1;
     windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
@@ -314,7 +335,7 @@ void riceUpdateScreen(void)
        TextureManager_CleanUp();
        RDP_Cleanup();
        // delete our opengl renderer
-       CDeviceBuilder::GetBuilder()->DeleteRender();
+       delete_render();
 
        // call video extension function with updated width, height (this creates a new OpenGL context)
        windowSetting.uDisplayWidth = status.gNewResizeWidth;
@@ -325,7 +346,7 @@ void riceUpdateScreen(void)
        RiceGC_Initialize();
 
        // re-create the OpenGL renderer
-       CDeviceBuilder::GetBuilder()->CreateRender();
+       create_render();
        CRender::GetRender()->Initialize();
        DLParser_Init();
 

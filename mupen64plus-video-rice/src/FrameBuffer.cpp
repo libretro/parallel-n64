@@ -24,8 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <retro_miscellaneous.h>
 
 #include "ConvertImage.h"
-#include "DeviceBuilder.h"
 #include "FrameBuffer.h"
+#include "GraphicsContext.h"
 #include "UcodeDefs.h"
 #include "RSP_Parser.h"
 #include "Render.h"
@@ -1090,15 +1090,6 @@ void FrameBufferManager::ActiveTextureBuffer(void)
             //    CRender::GetRender()->LoadTxtrBufFromRDRAM();
             //}
         }
-        else
-        {
-            if (CDeviceBuilder::m_deviceGeneralType == DIRECTX_DEVICE)
-            {
-                TRACE1("Error to set Render Target: %d", idxToUse);
-                TRACE1("Address = %08X", gRenderTextureInfos[idxToUse].CI_Info.dwAddr);
-                TRACE2("Width = %d, Height=%d", gRenderTextureInfos[idxToUse].N64Width, gRenderTextureInfos[idxToUse].N64Height);
-            }
-        }   
     }
     else
     {

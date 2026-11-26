@@ -26,7 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m64p_plugin.h"
 
 #include "ConvertImage.h"
-#include "DeviceBuilder.h"
+#include "GraphicsContext.h"
+#include "OGLBlender.h"
 #include "FrameBuffer.h"
 #include "Render.h"
 
@@ -93,7 +94,7 @@ CRender::CRender() :
     RiceCombiner_Create();
     RiceCombiner_BuildKnownKeys();
 
-    m_pAlphaBlender = CDeviceBuilder::GetBuilder()->CreateAlphaBlender(this);
+    m_pAlphaBlender = OGLBlender_Get();
 
 }
 
@@ -101,11 +102,7 @@ CRender::~CRender()
 {
     RiceCombiner_Destroy();
     
-    if( m_pAlphaBlender != NULL )
-    {
-        CDeviceBuilder::GetBuilder()->DeleteAlphaBlender();
-        m_pAlphaBlender = NULL;
-    }
+    m_pAlphaBlender = NULL;
 }
 
 void CRender::ResetMatrices()
