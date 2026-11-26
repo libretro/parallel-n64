@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "osal_opengl.h"
 #include "RiceGLState.h"
 #include "RiceGLTex.h"
+#include "RiceGLDraw.h"
 
 #include "Blender.h"
 #include "Combiner.h"
@@ -214,7 +215,7 @@ public:
     void ApplyZBias(int bias) { RiceGL_ApplyZBias(bias); }
     void SetAlphaRef(uint32_t dwAlpha);
     void ForceAlphaRef(uint32_t dwAlpha);
-    void SetViewportRender();
+    void SetViewportRender() { RiceGL_ViewportN64(); }
     void RenderReset();
     void SetCullMode(bool bCullFront, bool bCullBack) { RiceGL_SetCullMode(bCullFront, bCullBack); }
     void SetAlphaTestEnable(bool bAlphaTestEnable);
@@ -232,7 +233,7 @@ public:
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
-    void DrawSpriteR_Render();
+    void DrawSpriteR_Render() { RiceGL_DrawSpriteR(gRDP.fvPrimitiveColor); }
 
     void SetFogEnable(bool bEnable);
     void TurnFogOnOff(bool flag);
@@ -242,15 +243,30 @@ public:
     void EnableMultiTexture() { RiceGLTex_EnableMultiTexture(); }
     void EndRendering(void);
 
-    void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag);
     void EnableTexUnit(int unitno, bool flag) { RiceGLTex_EnableUnit(unitno, flag); }
 
 protected:
 
     // Basic render drawing functions
-    bool RenderFlushTris();
-    bool RenderTexRect();
-    bool RenderFillRect(uint32_t dwColor, float depth);
+    bool RenderFlushTris()
+    {
+        /* fog off for the draw when the blender does not take it */
+        bool fogOff = !gRDP.bFogEnableInBlender && gRSP.bFogEnabled;
+        if (fogOff)
+            TurnFogOnOff(false);
+        ApplyZBias(m_dwZBias);
+        RiceGL_DrawTris();
+        if (fogOff)
+            TurnFogOnOff(true);
+        return true;
+    }
+    bool RenderTexRect() { RiceGL_DrawTexRect(); return true; }
+    bool RenderFillRect(uint32_t dwColor, float depth)
+    {
+        RiceGL_DrawFillRect(m_fillRectVtx[0].x, m_fillRectVtx[0].y,
+              m_fillRectVtx[1].x, m_fillRectVtx[1].y, dwColor, depth);
+        return true;
+    }
     bool RenderLine3D();
 
 };

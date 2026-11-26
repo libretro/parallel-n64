@@ -277,7 +277,6 @@ SOURCES_CXX += $(VIDEODIR_RICE)/Combiner.cpp \
             $(VIDEODIR_RICE)/FrameBuffer.cpp \
             $(VIDEODIR_RICE)/OGLES2FragmentShaders.cpp \
             $(VIDEODIR_RICE)/OGLRender.cpp \
-            $(VIDEODIR_RICE)/OGLRenderExt.cpp \
             $(VIDEODIR_RICE)/RenderBase.cpp \
             $(VIDEODIR_RICE)/Render.cpp \
             $(VIDEODIR_RICE)/RenderExt.cpp \
@@ -293,6 +292,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/OGLBlender.c \
             $(VIDEODIR_RICE)/RiceGLState.c \
             $(VIDEODIR_RICE)/RiceGLTex.c \
+            $(VIDEODIR_RICE)/RiceGLDraw.c \
             $(VIDEODIR_RICE)/gSP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \
             $(VIDEODIR_RICE)/RenderTexture.c \
