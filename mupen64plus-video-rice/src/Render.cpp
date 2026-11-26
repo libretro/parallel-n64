@@ -68,14 +68,7 @@ CRender::CRender() :
     m_bBlendModeValid(false)
 {
     /* (the GL renderer's own state, once OGLRender's constructor) */
-    m_bSupportClampToEdge = false;
-    for( int i=0; i<8; i++ )
-    {
-        m_curBoundTex[i]=0;
-        m_texUnitEnabled[i]= false;
-    }
-
-    m_bEnableMultiTexture = false;
+    RiceGLTex_Reset();
 
     InitRenderBase();
 
@@ -89,8 +82,6 @@ CRender::CRender() :
         g_textures[i].m_fTexWidth = 64.0f;      // Value doesn't really matter, as tex not set
         g_textures[i].m_fTexHeight = 64.0f;
         g_textures[i].pTextureEntry = NULL;
-
-        TileUFlags[i] = TileVFlags[i] = TEXTURE_UV_FLAG_CLAMP;
     }
 
 
@@ -720,7 +711,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
 
     bool res;
     TurnFogOnOff(false);
-    if( TileUFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && TileVFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && options.forceTextureFilter == FORCE_DEFAULT_FILTER )
+    if( rice_gl_tex.tileUFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && rice_gl_tex.tileVFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && options.forceTextureFilter == FORCE_DEFAULT_FILTER )
     {
         TextureFilter dwFilter = m_dwMagFilter;
         m_dwMagFilter = m_dwMinFilter = FILTER_LINEAR;

@@ -22,6 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "osal_opengl.h"
 #include "RiceGLState.h"
+#include "RiceGLTex.h"
 
 #include "Blender.h"
 #include "Combiner.h"
@@ -44,9 +45,6 @@ class CRender
 
 protected:
     CRender();
-
-    TextureUVFlag TileUFlags[8];
-    TextureUVFlag TileVFlags[8];
 
 public:
 
@@ -206,7 +204,7 @@ public:
     bool InitDeviceObjects();
     bool ClearDeviceObjects();
 
-    void ApplyTextureFilter();
+    void ApplyTextureFilter() { RiceGLTex_ApplyFilter(m_dwMinFilter, m_dwMagFilter); }
 
     void ZBufferEnable(bool bZBuffer) { RiceGL_ZBufferEnable(bZBuffer); }
     void ClearZBuffer(float depth) { RiceGL_ClearZBuffer(depth); }
@@ -226,12 +224,11 @@ public:
 
     bool SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry);
     bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry);
-    void SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag);
-    void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag);
-    void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile);
-    void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile);
-    void BindTexture(GLuint texture, int unitno);
-    void DisBindTexture(GLuint texture, int unitno);
+    void SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag) { RiceGLTex_SetUFlag(dwFlag, dwTile); }
+    void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag) { RiceGLTex_SetVFlag(dwFlag, dwTile); }
+    void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile) { RiceGLTex_SetUFlag(dwFlag, tile); }
+    void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile) { RiceGLTex_SetVFlag(dwFlag, tile); }
+    void BindTexture(GLuint texture, int unitno) { RiceGLTex_Bind(texture, unitno); }
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
     void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
@@ -241,14 +238,12 @@ public:
     void TurnFogOnOff(bool flag);
     void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) { RiceGL_SetFogColor(r, g, b, a); }
 
-    void DisableMultiTexture();
-    void EnableMultiTexture() {m_bEnableMultiTexture=true;}
+    void DisableMultiTexture() { RiceGLTex_DisableMultiTexture(); }
+    void EnableMultiTexture() { RiceGLTex_EnableMultiTexture(); }
     void EndRendering(void);
 
     void glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag);
-    void EnableTexUnit(int unitno, bool flag);
-    void SetTexWrapS(int unitno,GLuint flag);
-    void SetTexWrapT(int unitno,GLuint flag);
+    void EnableTexUnit(int unitno, bool flag) { RiceGLTex_EnableUnit(unitno, flag); }
 
 protected:
 
@@ -257,16 +252,6 @@ protected:
     bool RenderTexRect();
     bool RenderFillRect(uint32_t dwColor, float depth);
     bool RenderLine3D();
-
-    bool m_bSupportClampToEdge;
-
-    GLuint  m_curBoundTex[8];
-    bool    m_texUnitEnabled[8];
-
-    bool m_bEnableMultiTexture;
-
-    GLint m_maxTexUnits;
-    int m_textureUnitMap[8];
 
 };
 

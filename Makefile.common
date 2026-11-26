@@ -292,6 +292,7 @@ SOURCES_C += $(VIDEODIR_RICE)/Blender.c \
             $(VIDEODIR_RICE)/GraphicsContext.c \
             $(VIDEODIR_RICE)/OGLBlender.c \
             $(VIDEODIR_RICE)/RiceGLState.c \
+            $(VIDEODIR_RICE)/RiceGLTex.c \
             $(VIDEODIR_RICE)/gSP_rice.c \
             $(VIDEODIR_RICE)/OGLTexture.c \
             $(VIDEODIR_RICE)/RenderTexture.c \
