@@ -916,7 +916,7 @@ void DLParser_TexRect(Gfx *gfx)
    uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
 
    if( !status.bCIBufferIsRendered )
-      g_pFrameBufferManager->ActiveTextureBuffer();
+      RiceFB_ActiveTextureBuffer();
 
    status.primitiveType = PRIM_TEXTRECT;
 

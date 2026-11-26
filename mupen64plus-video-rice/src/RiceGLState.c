@@ -18,11 +18,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 /* Rice's GL render state (RiceGLState.h). C89. */
 #include <stdint.h>
 
+#include <retro_miscellaneous.h>
+
 #include "osal_opengl.h"
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
 #include "Config.h"
+#include "FrameBuffer.h"
 #include "RenderBase.h"
 #include "RiceGLState.h"
 #include "RSP_Parser.h"
@@ -151,6 +154,100 @@ void RiceGL_ApplyScissorWithClipRatio(bool force)
           windowSetting.clipping.width, windowSetting.clipping.height);
 
     status.curScissor = RSP_SCISSOR;
+}
+
+void RiceGL_UpdateScissorWithClipRatio(void)
+{
+    WindowSettingStruct *w = &windowSetting;
+    float halfx, halfy, centerx, centery;
+
+    gRSP.real_clip_scissor_left   = MAX(gRDP.scissor.left, gRSP.clip_ratio_left);
+    gRSP.real_clip_scissor_top    = MAX(gRDP.scissor.top, gRSP.clip_ratio_top);
+    gRSP.real_clip_scissor_right  = MIN(gRDP.scissor.right,gRSP.clip_ratio_right);
+    gRSP.real_clip_scissor_bottom = MIN(gRDP.scissor.bottom, gRSP.clip_ratio_bottom);
+
+    gRSP.real_clip_scissor_left   = MAX(gRSP.real_clip_scissor_left, 0);
+    gRSP.real_clip_scissor_top    = MAX(gRSP.real_clip_scissor_top, 0);
+    gRSP.real_clip_scissor_right  = MIN(gRSP.real_clip_scissor_right,windowSetting.uViWidth-1);
+    gRSP.real_clip_scissor_bottom = MIN(gRSP.real_clip_scissor_bottom, windowSetting.uViHeight-1);
+
+    w->clipping.left = (uint32_t)(gRSP.real_clip_scissor_left*windowSetting.fMultX);
+    w->clipping.top  = (uint32_t)(gRSP.real_clip_scissor_top*windowSetting.fMultY);
+    w->clipping.bottom = (uint32_t)(gRSP.real_clip_scissor_bottom*windowSetting.fMultY);
+    w->clipping.right = (uint32_t)(gRSP.real_clip_scissor_right*windowSetting.fMultX);
+
+    if( w->clipping.left > 0 || w->clipping.top > 0 || w->clipping.right < (uint32_t)windowSetting.uDisplayWidth-1 ||
+        w->clipping.bottom < (uint32_t)windowSetting.uDisplayHeight-1 )
+        w->clipping.needToClip = true;
+    else
+        w->clipping.needToClip = false;
+
+    w->clipping.width = (uint32_t)((gRSP.real_clip_scissor_right-gRSP.real_clip_scissor_left+1)*windowSetting.fMultX);
+    w->clipping.height = (uint32_t)((gRSP.real_clip_scissor_bottom-gRSP.real_clip_scissor_top+1)*windowSetting.fMultY);
+
+    halfx = gRSP.nVPWidthN/2.0f;
+    halfy = gRSP.nVPHeightN/2.0f;
+    centerx = gRSP.nVPLeftN+halfx;
+    centery = gRSP.nVPTopN+halfy;
+
+    gRSP.real_clip_ratio_negx = (gRSP.real_clip_scissor_left - centerx)/halfx;
+    gRSP.real_clip_ratio_negy = (gRSP.real_clip_scissor_top - centery)/halfy;
+    gRSP.real_clip_ratio_posx = (gRSP.real_clip_scissor_right - centerx)/halfx;
+    gRSP.real_clip_ratio_posy = (gRSP.real_clip_scissor_bottom - centery)/halfy;
+
+    RiceGL_ApplyScissorWithClipRatio(true);
+}
+
+void RiceGL_UpdateClipRectangle(void)
+{
+    int halfx, halfy, centerx, centery;
+
+    if( status.bHandleN64RenderTexture )
+    {
+        windowSetting.vpLeftW = 0;
+        windowSetting.vpTopW = 0;
+        windowSetting.vpRightW = newRenderTextureInfo.bufferWidth;
+        windowSetting.vpBottomW = newRenderTextureInfo.bufferHeight;
+        windowSetting.vpWidthW = newRenderTextureInfo.bufferWidth;
+        windowSetting.vpHeightW = newRenderTextureInfo.bufferHeight;
+
+        gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
+        gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
+        gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
+
+        halfx = newRenderTextureInfo.bufferWidth/2;
+        halfy = newRenderTextureInfo.bufferHeight/2;
+        centerx = halfx;
+        centery = halfy;
+    }
+    else
+    {
+        windowSetting.vpLeftW = (int)(gRSP.nVPLeftN * windowSetting.fMultX);
+        windowSetting.vpTopW = (int)(gRSP.nVPTopN  * windowSetting.fMultY);
+        windowSetting.vpRightW = (int)(gRSP.nVPRightN* windowSetting.fMultX);
+        windowSetting.vpBottomW = (int)(gRSP.nVPBottomN* windowSetting.fMultY);
+        windowSetting.vpWidthW = (int)((gRSP.nVPRightN - gRSP.nVPLeftN + 1) * windowSetting.fMultX);
+        windowSetting.vpHeightW = (int)((gRSP.nVPBottomN - gRSP.nVPTopN + 1) * windowSetting.fMultY);
+
+        gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
+        gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
+        gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
+        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
+
+        halfx = gRSP.nVPWidthN/2;
+        halfy = gRSP.nVPHeightN/2;
+        centerx = gRSP.nVPLeftN+halfx;
+        centery = gRSP.nVPTopN+halfy;
+    }
+
+    /* the clip rectangle, by the scissor */
+    gRSP.clip_ratio_left = centerx - halfx * gRSP.clip_ratio_negx;
+    gRSP.clip_ratio_top = centery - halfy * gRSP.clip_ratio_negy;
+    gRSP.clip_ratio_right = centerx + halfx * gRSP.clip_ratio_posx;
+    gRSP.clip_ratio_bottom = centery + halfy * gRSP.clip_ratio_posy;
+
+    RiceGL_UpdateScissorWithClipRatio();
 }
 
 void RiceGL_SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a)

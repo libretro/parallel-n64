@@ -461,7 +461,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\ConvertImage16.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DecodedMux.c" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBufferRDRAM.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\GraphicsContext.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLBlender.c" />

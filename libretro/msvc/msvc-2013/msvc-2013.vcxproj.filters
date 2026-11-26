@@ -261,7 +261,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\DecodedMux.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBuffer.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\FrameBufferRDRAM.c">

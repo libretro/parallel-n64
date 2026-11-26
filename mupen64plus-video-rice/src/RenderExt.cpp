@@ -223,7 +223,7 @@ void CRender::LoadSprite2D(Sprite2DInfo &info, uint32_t ucode)
 void CRender::DrawSprite2D(Sprite2DInfo &info, uint32_t ucode)
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -300,7 +300,7 @@ void CRender::DrawSprite2D(Sprite2DInfo &info, uint32_t ucode)
 void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height)   // With Rotation
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -412,7 +412,7 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
 void CRender::DrawObjBGCopy(uObjBg &info)
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {
@@ -515,7 +515,7 @@ void CRender::DrawObjBGCopy(uObjBg &info)
 void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( g_curRomInfo.bDisableObjBG )
         return;
@@ -611,7 +611,7 @@ void CRender::DrawObjBG1CYC(uObjScaleBg &bg, bool scaled)   // Without Rotation
 void CRender::DrawSprite(uObjTxSprite &sprite, bool rectR)  // Without Rotation
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( status.bHandleN64RenderTexture )
     {

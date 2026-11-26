@@ -20,19 +20,22 @@ OUT_OF_LINE_VIRTUAL = re.compile(r"\bvirtual\b[^;{}]*\)\s*(?:const\s*)?;")
 
 
 def defined_vtables():
-    found = set()
+    """The vtables the objects define, and how many objects there are (a
+    build can have objects and no vtable at all)."""
+    found, objects = set(), 0
     for root, _, files in os.walk("."):
         for f in files:
             if f.endswith(".o"):
+                objects += 1
                 out = subprocess.run(["nm", "--defined-only", os.path.join(root, f)],
                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
                 found.update(m.group(1) for m in re.finditer(r"\b_ZTV(\d+\w+)", out))
-    return found
+    return found, objects
 
 
 def main():
-    vtables = defined_vtables()
-    if not vtables:
+    vtables, objects = defined_vtables()
+    if not objects:
         print("check_vtables: no objects; build first")
         return 1
     missing = []

@@ -373,7 +373,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     m_line3DVtx[0].z = (g_vecProjected[dwV0].z + 1.0f) * 0.5f;
     m_line3DVtx[1].z = (g_vecProjected[dwV1].z + 1.0f) * 0.5f;
@@ -934,7 +934,7 @@ extern bool bHalfTxtScale;
 bool CRender::DrawTriangles()
 {
     if( !status.bCIBufferIsRendered )
-        g_pFrameBufferManager->ActiveTextureBuffer();
+        RiceFB_ActiveTextureBuffer();
 
     if( status.bVIOriginIsUpdated == true && currentRomOptions.screenUpdateSetting==SCREEN_UPDATE_AT_1ST_PRIMITIVE )
     {
@@ -1261,106 +1261,6 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
    if( modified )
       UpdateClipRectangle();
 }
-
-void CRender::UpdateClipRectangle()
-{
-    if( status.bHandleN64RenderTexture )
-    {
-        //windowSetting.fMultX = windowSetting.fMultY = 1;
-        windowSetting.vpLeftW = 0;
-        windowSetting.vpTopW = 0;
-        windowSetting.vpRightW = newRenderTextureInfo.bufferWidth;
-        windowSetting.vpBottomW = newRenderTextureInfo.bufferHeight;
-        windowSetting.vpWidthW = newRenderTextureInfo.bufferWidth;
-        windowSetting.vpHeightW = newRenderTextureInfo.bufferHeight;
-
-        gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
-        gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
-        gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
-
-        // Update clip rectangle by setting scissor
-
-        int halfx = newRenderTextureInfo.bufferWidth/2;
-        int halfy = newRenderTextureInfo.bufferHeight/2;
-        int centerx = halfx;
-        int centery = halfy;
-
-        gRSP.clip_ratio_left = centerx - halfx * gRSP.clip_ratio_negx;
-        gRSP.clip_ratio_top = centery - halfy * gRSP.clip_ratio_negy;
-        gRSP.clip_ratio_right = centerx + halfx * gRSP.clip_ratio_posx;
-        gRSP.clip_ratio_bottom = centery + halfy * gRSP.clip_ratio_posy;
-    }
-    else
-    {
-        windowSetting.vpLeftW = int(gRSP.nVPLeftN * windowSetting.fMultX);
-        windowSetting.vpTopW = int(gRSP.nVPTopN  * windowSetting.fMultY);
-        windowSetting.vpRightW = int(gRSP.nVPRightN* windowSetting.fMultX);
-        windowSetting.vpBottomW = int(gRSP.nVPBottomN* windowSetting.fMultY);
-        windowSetting.vpWidthW = int((gRSP.nVPRightN - gRSP.nVPLeftN + 1) * windowSetting.fMultX);
-        windowSetting.vpHeightW = int((gRSP.nVPBottomN - gRSP.nVPTopN + 1) * windowSetting.fMultY);
-
-        gRSP.vtxXMul = windowSetting.vpWidthW/2.0f;
-        gRSP.vtxXAdd = gRSP.vtxXMul + windowSetting.vpLeftW;
-        gRSP.vtxYMul = -windowSetting.vpHeightW/2.0f;
-        gRSP.vtxYAdd = windowSetting.vpHeightW/2.0f + windowSetting.vpTopW;
-
-        // Update clip rectangle by setting scissor
-
-        int halfx = gRSP.nVPWidthN/2;
-        int halfy = gRSP.nVPHeightN/2;
-        int centerx = gRSP.nVPLeftN+halfx;
-        int centery = gRSP.nVPTopN+halfy;
-
-        gRSP.clip_ratio_left = centerx - halfx * gRSP.clip_ratio_negx;
-        gRSP.clip_ratio_top = centery - halfy * gRSP.clip_ratio_negy;
-        gRSP.clip_ratio_right = centerx + halfx * gRSP.clip_ratio_posx;
-        gRSP.clip_ratio_bottom = centery + halfy * gRSP.clip_ratio_posy;
-    }
-
-    UpdateScissorWithClipRatio();
-}
-
-void CRender::UpdateScissorWithClipRatio()
-{
-    gRSP.real_clip_scissor_left   = MAX(gRDP.scissor.left, gRSP.clip_ratio_left);
-    gRSP.real_clip_scissor_top    = MAX(gRDP.scissor.top, gRSP.clip_ratio_top);
-    gRSP.real_clip_scissor_right  = MIN(gRDP.scissor.right,gRSP.clip_ratio_right);
-    gRSP.real_clip_scissor_bottom = MIN(gRDP.scissor.bottom, gRSP.clip_ratio_bottom);
-
-    gRSP.real_clip_scissor_left   = MAX(gRSP.real_clip_scissor_left, 0);
-    gRSP.real_clip_scissor_top    = MAX(gRSP.real_clip_scissor_top, 0);
-    gRSP.real_clip_scissor_right  = MIN(gRSP.real_clip_scissor_right,windowSetting.uViWidth-1);
-    gRSP.real_clip_scissor_bottom = MIN(gRSP.real_clip_scissor_bottom, windowSetting.uViHeight-1);
-
-    WindowSettingStruct &w = windowSetting;
-    w.clipping.left = (uint32_t)(gRSP.real_clip_scissor_left*windowSetting.fMultX);
-    w.clipping.top  = (uint32_t)(gRSP.real_clip_scissor_top*windowSetting.fMultY);
-    w.clipping.bottom = (uint32_t)(gRSP.real_clip_scissor_bottom*windowSetting.fMultY);
-    w.clipping.right = (uint32_t)(gRSP.real_clip_scissor_right*windowSetting.fMultX);
-
-    if( w.clipping.left > 0 || w.clipping.top > 0 || w.clipping.right < (uint32_t)windowSetting.uDisplayWidth-1 ||
-        w.clipping.bottom < (uint32_t)windowSetting.uDisplayHeight-1 )
-        w.clipping.needToClip = true;
-    else
-        w.clipping.needToClip = false;
-
-    w.clipping.width = (uint32_t)((gRSP.real_clip_scissor_right-gRSP.real_clip_scissor_left+1)*windowSetting.fMultX);
-    w.clipping.height = (uint32_t)((gRSP.real_clip_scissor_bottom-gRSP.real_clip_scissor_top+1)*windowSetting.fMultY);
-
-    float halfx = gRSP.nVPWidthN/2.0f;
-    float halfy = gRSP.nVPHeightN/2.0f;
-    float centerx = gRSP.nVPLeftN+halfx;
-    float centery = gRSP.nVPTopN+halfy;
-
-    gRSP.real_clip_ratio_negx = (gRSP.real_clip_scissor_left - centerx)/halfx;
-    gRSP.real_clip_ratio_negy = (gRSP.real_clip_scissor_top - centery)/halfy;
-    gRSP.real_clip_ratio_posx = (gRSP.real_clip_scissor_right - centerx)/halfx;
-    gRSP.real_clip_ratio_posy = (gRSP.real_clip_scissor_bottom - centery)/halfy;
-
-    ApplyScissorWithClipRatio(true);
-}
-
 
 // Set other modes not covered by color combiner or alpha blender
 void CRender::InitOtherModes(void)

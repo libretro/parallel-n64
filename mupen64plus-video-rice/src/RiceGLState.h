@@ -50,6 +50,11 @@ bool RiceGL_RE2Scissor(void);
 void RiceGL_ApplyRDPScissor(bool force);
 /* the RSP's clip-ratio scissor, likewise */
 void RiceGL_ApplyScissorWithClipRatio(bool force);
+/* the viewport and the clip-ratio scissor from the RSP's viewport, or the
+   render texture's, then applied */
+void RiceGL_UpdateClipRectangle(void);
+/* the clip-ratio scissor from the RDP's scissor, then applied */
+void RiceGL_UpdateScissorWithClipRatio(void);
 
 /* gRDP's fog colour, packed and as floats */
 void RiceGL_SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a);

@@ -24,8 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RenderTexture.h"
 #include "TextureManager.h"
 
-typedef int SURFFORMAT;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,87 +37,35 @@ uint16_t ConvertRGBATo555(uint32_t color32);
 
 extern RenderTextureInfo gRenderTextureInfos[];
 extern RenderTextureInfo *g_pRenderTextureInfo;
+extern RenderTextureInfo newRenderTextureInfo;
+extern int numOfTxtBufInfos;
 
-/* FrameBuffer.cpp's: the render texture drawn into made active */
-void RiceFB_ActiveTextureBuffer(void);
-/* FrameBuffer.cpp's: the frame-buffer manager set up for a new context */
+extern RecentCIInfo g_RecentCIInfo[];
+extern RecentViOriginInfo g_RecentVIOriginInfo[];
+extern RecentCIInfo *g_uRecentCIInfoPtrs[5];
+
+/* FrameBuffer.c's: the N64 colour images seen and the textures they are
+   drawn into. Set up for a new context, and their textures deleted */
 void RiceFB_Initialize(void);
+void RiceFB_CloseUp(void);
+/* the colour image set; the render texture drawn into made active, on
+   its first draw */
+void RiceFB_SetCIAddr(const SetImgInfo *newCI);
+void RiceFB_ActiveTextureBuffer(void);
+/* the VI showing addr */
+void RiceFB_SetAddrBeDisplayed(uint32_t addr);
+/* the CPU reading a colour image at addr */
+void RiceFB_FrameBufferReadByCPU(uint32_t addr);
+/* the render textures RDRAM no longer holds dropped */
+void RiceFB_CheckRenderTextureCRCInRDRAM(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 #ifdef __cplusplus
-class FrameBufferManager
-{
-    friend class CDXGraphicsContext;
-public:
-    FrameBufferManager();
-    virtual ~FrameBufferManager();
-
-    void Initialize();
-    void CloseUp();
-    void Set_CI_addr(SetImgInfo &newCI);
-    void UpdateRecentCIAddr(SetImgInfo &ciinfo);
-    void SetAddrBeDisplayed(uint32_t addr);
-    bool HasAddrBeenDisplayed(uint32_t addr, uint32_t width);
-    int FindRecentCIInfoIndex(uint32_t addr);
-    bool IsDIaRenderTexture();
-
-    int         CheckAddrInRenderTextures(uint32_t addr, bool checkcrc);
-    uint32_t      ComputeRenderTextureCRCInRDRAM(int infoIdx);
-    void        CheckRenderTextureCRCInRDRAM(void);
-    int         CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32_t height, bool byNewTxtrBuf);
-    virtual void ClearN64FrameBufferToBlack(uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-    virtual int SetBackBufferAsRenderTexture(SetImgInfo &CIinfo, int ciInfoIdx);
-    void        LoadTextureFromRenderTexture(TxtrCacheEntry* pEntry, int infoIdx);
-    virtual void RestoreNormalBackBuffer();                 // restore the normal back buffer
-    virtual void CopyBackToFrameBufferIfReadByCPU(uint32_t addr);
-    virtual void SetRenderTexture(void);
-    virtual void CloseRenderTexture(bool toSave);
-    virtual void ActiveTextureBuffer(void);
-
-    int IsAddrInRecentFrameBuffers(uint32_t addr);
-    int CheckAddrInBackBuffers(uint32_t addr, uint32_t memsize, bool copyToRDRAM);
-
-    uint32_t ComputeCImgHeight(SetImgInfo &info, uint32_t &height);
-
-    int FindASlot(void);
-
-    void FrameBufferWriteByCPU(uint32_t addr, uint32_t size);
-    void FrameBufferReadByCPU( uint32_t addr );
-    void StoreRenderTextureToRDRAM(int infoIdx);
-
-    virtual bool IsRenderingToTexture() {return m_isRenderingToTexture;}
-
-    // Device dependent functions
-    virtual void SaveBackBuffer(int ciInfoIdx, M64P_RECT* pRect, bool forceToSaveToRDRAM);         // Copy the current back buffer to temp buffer
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect) {} // Copy the current back buffer to temp buffer
-    virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
-        uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
-        uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt) {}
-
-protected:
-    bool    m_isRenderingToTexture;
-    int     m_curRenderTextureIndex;
-    int     m_lastTextureBufferIndex;
-};
-
-extern RenderTextureInfo newRenderTextureInfo;
-
-#define NEW_TEXTURE_BUFFER
-
 extern RenderTextureInfo g_ZI_saves[2];
-
-
-extern FrameBufferManager* g_pFrameBufferManager;
-
-extern RecentCIInfo g_RecentCIInfo[];
-extern RecentViOriginInfo g_RecentVIOriginInfo[];
-extern int numOfTxtBufInfos;
-extern RecentCIInfo *g_uRecentCIInfoPtrs[5];
-
-#endif /* __cplusplus */
+#endif
 
 #endif
 

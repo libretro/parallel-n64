@@ -42,6 +42,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //=======================================================
 // local variables
 
+/* StartVideo ran: the frame buffers and the context are set up */
+static bool video_started = false;
 
 //=======================================================
 // global variables
@@ -109,7 +111,7 @@ static bool StartVideo(void)
     else
         status.fRatio = 9/11.0f;;
     
-    g_pFrameBufferManager = new FrameBufferManager;
+    video_started = true;
     RiceGC_Initialize();
     create_render();
     CRender::GetRender()->Initialize();
@@ -294,12 +296,11 @@ void riceRomClosed(void)
     RDP_Cleanup();
 
     delete_render();
-    if (g_pFrameBufferManager)
+    if (video_started)
     {
-        g_pFrameBufferManager->CloseUp();
+        RiceFB_CloseUp();
         RiceGC_Release();
-        delete g_pFrameBufferManager;
-        g_pFrameBufferManager = NULL;
+        video_started = false;
     }
 
     windowSetting.dps = windowSetting.fps = -1;
@@ -355,9 +356,9 @@ void riceUpdateScreen(void)
     }
 
     if( status.bHandleN64RenderTexture )
-        g_pFrameBufferManager->CloseRenderTexture(true);
+        RiceFB_CloseRenderTexture(true);
     
-    g_pFrameBufferManager->SetAddrBeDisplayed(*gfx_info.VI_ORIGIN_REG);
+    RiceFB_SetAddrBeDisplayed(*gfx_info.VI_ORIGIN_REG);
 
     if( status.gDlistCount == 0 )
     {
@@ -489,7 +490,7 @@ void riceProcessDList(void)
 
 void riceFBRead(uint32_t addr)
 {
-    g_pFrameBufferManager->FrameBufferReadByCPU(addr);
+    RiceFB_FrameBufferReadByCPU(addr);
 }
 
 
@@ -509,7 +510,9 @@ void riceFBRead(uint32_t addr)
 
 void riceFBWrite(uint32_t addr, uint32_t size)
 {
-    g_pFrameBufferManager->FrameBufferWriteByCPU(addr, size);
+    /* nothing reads CPU frame-buffer writes back */
+    (void)addr;
+    (void)size;
 }
 
 /************************************************************************

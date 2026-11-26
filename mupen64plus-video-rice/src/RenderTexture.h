@@ -84,7 +84,7 @@ void CRenderTexture_Delete(CRenderTexture *rt);
 #define CRenderTexture_LoadTexture(rt, entry)         ((rt)->ops->load_texture((rt), (entry)))
 #define CRenderTexture_StoreToRDRAM(rt, idx)          ((rt)->ops->store_to_rdram((rt), (idx)))
 
-/* FrameBuffer.cpp's: the texture being drawn into closed */
+/* FrameBuffer.c's: the texture being drawn into closed */
 void RiceFB_CloseRenderTexture(bool toSave);
 
 #ifdef __cplusplus

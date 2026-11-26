@@ -260,7 +260,7 @@ static void gl(void)
    CTexture_Delete(tex);
 }
 
-/* FrameBuffer.cpp's, counted */
+/* FrameBuffer.c's, counted */
 static int closed, closed_to_save = -1;
 void RiceFB_CloseRenderTexture(bool toSave) { closed++; closed_to_save = toSave; }
 

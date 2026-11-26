@@ -78,8 +78,8 @@ public:
     inline RenderTexture& GetTexture(uint32_t dwTile) { return g_textures[dwTile]; }
     void SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ);
     void SetClipRatio(uint32_t type, uint32_t value);
-    void UpdateClipRectangle();
-    void UpdateScissorWithClipRatio();
+    void UpdateClipRectangle() { RiceGL_UpdateClipRectangle(); }
+    void UpdateScissorWithClipRatio() { RiceGL_UpdateScissorWithClipRatio(); }
 
     void SetTextureEnableAndScale(int dwTile, bool enable, float fScaleX, float fScaleY);
     

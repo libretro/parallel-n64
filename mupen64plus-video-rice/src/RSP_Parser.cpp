@@ -405,7 +405,7 @@ void DLParser_Init()
 void RDP_Cleanup()
 {
     if( status.bHandleN64RenderTexture )
-        g_pFrameBufferManager->CloseRenderTexture(false);
+        RiceFB_CloseRenderTexture(false);
 }
 
 void RDP_SetUcodeMap(int ucode)
@@ -773,7 +773,7 @@ void DLParser_Process(OSTask * pTask)
     status.bScreenIsDrawn = true;
 
     if( currentRomOptions.N64RenderToTextureEmuType != TXT_BUF_NONE && defaultRomOptions.bSaveVRAM )
-        g_pFrameBufferManager->CheckRenderTextureCRCInRDRAM();
+        RiceFB_CheckRenderTextureCRCInRDRAM();
 
     g_pOSTask = pTask;
     
@@ -1207,7 +1207,7 @@ void DLParser_SetCImg(Gfx *gfx)
     newCI.dwSize   = dwSiz;
     newCI.dwWidth  = dwWidth;
 
-    g_pFrameBufferManager->Set_CI_addr(newCI);
+    RiceFB_SetCIAddr(&newCI);
 }
 
 void DLParser_SetZImg(Gfx *gfx)
