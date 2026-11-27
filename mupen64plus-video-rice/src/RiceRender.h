@@ -36,6 +36,7 @@ typedef struct RiceRenderState
 {
     uint32_t zBias;    /* the depth bias the triangles are drawn with */
     uint32_t alpha;    /* the alpha reference, from the RDP's blend colour */
+    uint64_t mux;      /* the combiner mux drawn with, for the hacks */
 } RiceRenderState;
 
 extern RiceRenderState rice_render;

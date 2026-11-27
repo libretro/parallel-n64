@@ -36,8 +36,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern FiddledVtx * g_pVtxBase;
 CRender * CRender::g_pRender=NULL;
 
-XMATRIX reverseXY(-1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1);
-XMATRIX reverseY(1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1);
 extern char* right (const char * src, int nchars);
 
 #if defined(WIN32)
@@ -52,8 +50,7 @@ CRender * CRender::GetRender(void)
 
 CRender::CRender() :
     m_dwMinFilter(FILTER_POINT),
-    m_dwMagFilter(FILTER_POINT),
-    m_Mux(0)
+    m_dwMagFilter(FILTER_POINT)
 {
     RiceRender_Reset();
     RiceGLTex_Reset();
@@ -159,7 +156,6 @@ void CRender::SetWorldView(const Matrix & mat, bool bPush, bool bReplace)
         gRSPmodelViewTop = gRSPmodelViewTop * reverseXY;
     if( options.enableHackForGames == HACK_REVERSE_Y_COOR )
         gRSPmodelViewTop = gRSPmodelViewTop * reverseY;
-    MatrixTranspose(&gRSPmodelViewTopTranspose, &gRSPmodelViewTop);
 
     gRSP.bMatrixIsUpdated = true;
     gRSP.bWorldMatrixIsUpdated = true;
@@ -176,7 +172,6 @@ void CRender::PopWorldView()
             gRSPmodelViewTop = gRSPmodelViewTop * reverseXY;
         if( options.enableHackForGames == HACK_REVERSE_Y_COOR )
             gRSPmodelViewTop = gRSPmodelViewTop * reverseY;
-        MatrixTranspose(&gRSPmodelViewTopTranspose, &gRSPmodelViewTop);
         gRSP.bMatrixIsUpdated = true;
         gRSP.bWorldMatrixIsUpdated = true;
     }
@@ -198,9 +193,9 @@ void CRender::SetWorldProjectMatrix(Matrix &mtx)
 void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
 {
     uint64_t tempmux = (((uint64_t)dwMux0) << 32) | (uint64_t)dwMux1;
-    if( m_Mux != tempmux )
+    if( rice_render.mux != tempmux )
     {
-        m_Mux = tempmux;
+        rice_render.mux = tempmux;
         RiceCombiner_Update(dwMux0, dwMux1);
     }
 }
@@ -832,8 +827,6 @@ void CRender::SetViewport(int nLeft, int nTop, int nRight, int nBottom, int maxZ
     SetViewportRender();
 }
 
-extern bool bHalfTxtScale;
-
 bool CRender::DrawTriangles()
 {
     if( !status.bCIBufferIsRendered )
@@ -1013,7 +1006,6 @@ bool CRender::DrawTriangles()
 
     if( g_curRomInfo.bZHack )
     {
-        extern void HackZAll();
         HackZAll();
     }
 
@@ -1039,91 +1031,6 @@ inline int ReverseCITableLookup(uint32_t *pTable, int size, uint32_t val)
 
     TRACE0("Cannot find value in CI table");
     return 0;
-}
-
-void SetVertexTextureUVCoord(TexCord &dst, const TexCord &src, int tile, TxtrCacheEntry *pEntry)
-{
-    RenderTexture &txtr = g_textures[tile];
-    RenderTextureInfo &info = gRenderTextureInfos[pEntry->txtrBufIdx-1];
-    float s = src.u;
-    float t = src.v;
-
-    uint32_t addrOffset = g_TI.dwAddr-info.CI_Info.dwAddr;
-    uint32_t extraTop = (addrOffset>>(info.CI_Info.dwSize-1)) /info.CI_Info.dwWidth;
-    uint32_t extraLeft = (addrOffset>>(info.CI_Info.dwSize-1))%info.CI_Info.dwWidth;
-
-    if( pEntry->txtrBufIdx > 0  )
-    {
-        // Loading from render_texture or back buffer
-        s += (extraLeft+pEntry->ti.LeftToLoad)/txtr.m_fTexWidth;
-        t += (extraTop+pEntry->ti.TopToLoad)/txtr.m_fTexHeight;
-
-        s *= info.scaleX;
-        t *= info.scaleY;
-    }
-
-    dst.u = s;
-    dst.v = t;
-}
-
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0)
-{
-    RenderTexture &txtr = g_textures[0];
-    if( txtr.pTextureEntry && txtr.pTextureEntry->txtrBufIdx > 0 )
-    {
-        ::SetVertexTextureUVCoord(v.tcord[0], fTex0, 0, txtr.pTextureEntry);
-    }
-    else
-    {
-        v.tcord[0] = fTex0;
-    }
-}
-
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T)
-{
-    TexCord t = { fTex0S, fTex0T };
-    SetVertexTextureUVCoord(v, t);
-}
-
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0_, const TexCord &fTex1_)
-{
-    TexCord fTex0 = fTex0_;
-    TexCord fTex1 = fTex1_;
-
-    if( (options.enableHackForGames == HACK_FOR_ZELDA||options.enableHackForGames == HACK_FOR_ZELDA_MM) && m_Mux == 0x00262a60150c937fLL && gRSP.curTile == 0 )
-    {
-        // Hack for Zelda Sun
-        gDPTile *t0 = &gDP.tiles[0];
-        gDPTile *t1 = &gDP.tiles[1];
-        if( t0->format == G_IM_FMT_I && t0->size == G_IM_SIZ_8b && t0->width == 64 &&
-            t1->format == G_IM_FMT_I && t1->size == G_IM_SIZ_8b && t1->width == 64 &&
-            t0->height == t1->height )
-        {
-            fTex0.u /= 2;
-            fTex0.v /= 2;
-            fTex1.u /= 2;
-            fTex1.v /= 2;
-        }
-    }
-
-    RenderTexture &txtr0 = g_textures[0];
-    if( txtr0.pTextureEntry && txtr0.pTextureEntry->txtrBufIdx > 0 )
-        ::SetVertexTextureUVCoord(v.tcord[0], fTex0, 0, txtr0.pTextureEntry);
-    else
-        v.tcord[0] = fTex0;
-
-    RenderTexture &txtr1 = g_textures[1];
-    if( txtr1.pTextureEntry && txtr1.pTextureEntry->txtrBufIdx > 0 )
-        ::SetVertexTextureUVCoord(v.tcord[1], fTex1, 1, txtr1.pTextureEntry);
-    else
-        v.tcord[1] = fTex1;
-}
-
-void CRender::SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
-{
-    TexCord t0 = { fTex0S, fTex0T };
-    TexCord t1 = { fTex1S, fTex1T };
-    SetVertexTextureUVCoord(v, t0, t1);
 }
 
 void CRender::SetClipRatio(uint32_t type, uint32_t w1)
@@ -1205,7 +1112,7 @@ void CRender::InitOtherModes(void)
         }
     }
 
-    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && m_Mux == 0x00121824ff33ffffLL &&
+    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && rice_render.mux == 0x00121824ff33ffffLL &&
         gRSP.bCullFront && gRDP.otherMode.aa_en && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )
     {
         SetZCompare(false);
@@ -1224,7 +1131,7 @@ void CRender::InitOtherModes(void)
     }
 
     /*
-    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && m_Mux == 0x00121824ff33ffff &&
+    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && rice_render.mux == 0x00121824ff33ffff &&
         gRSP.bCullFront && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )//&& gRDP.otherMode.aa_en )
     {
         SetZCompare(false);

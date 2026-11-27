@@ -50,8 +50,6 @@ public:
     TextureFilter   m_dwMinFilter;
     TextureFilter   m_dwMagFilter;
 
-    uint64_t      m_Mux;
-
     CBlender *m_pAlphaBlender;
     
     
@@ -112,10 +110,10 @@ public:
 
     void InitOtherModes(void);
 
-    void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T);
-    void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T);
-    void SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0, const TexCord &fTex1);
-    void SetVertexTextureUVCoord(TLITVERTEX &v, const TexCord &fTex0);
+    void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
+    { RiceRender_SetVertexUV2f(&v, fTex0S, fTex0T, fTex1S, fTex1T); }
+    void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T)
+    { RiceRender_SetVertexUVf(&v, fTex0S, fTex0T); }
     
     bool DrawTriangles();
 

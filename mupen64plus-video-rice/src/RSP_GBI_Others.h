@@ -34,7 +34,6 @@ uint32_t dwConkerVtxZAddr=0;
 
 static void RDP_GFX_DumpVtxInfoDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
 
-extern Matrix ALIGN(16, dkrMatrixTransposed);
 void RSP_Mtx_DKR(Gfx *gfx)
 {   
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
@@ -561,7 +560,6 @@ void DLParser_MoveMem_Conker(Gfx *gfx)
     }
 }
 
-extern void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
 void RSP_Vtx_Conker(Gfx *gfx)
 {
     uint32_t dwAddr = RSPSegmentAddr((gfx->words.w1));
@@ -626,7 +624,6 @@ uint32_t Rogue_Squadron_Vtx_Color_Cmd;
 uint32_t Rogue_Squadron_Vtx_Color_Addr;
 uint32_t GSBlkAddrSaves[100][2];
 
-void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, uint32_t dwXYZCmd, uint32_t dwColorCmd);
 
 void DLParser_RS_Color_Buffer(Gfx *gfx)
 {

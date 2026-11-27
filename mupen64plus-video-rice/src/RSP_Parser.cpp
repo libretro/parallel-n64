@@ -302,7 +302,7 @@ static RDPCVG_COLD void coverage_texrect(uint32_t _w0, uint32_t _w1, uint32_t _w
    const TMEMLoadMapInfo *load = &g_tmemLoadAddrMap[tile->tmem];
    const double dsdx = (int16_t)(_w3 >> 16) / 1024.0;
    const double dtdy = (int16_t)(_w3 & 0xFFFF) / 1024.0;
-   const uint64_t mux = CRender::g_pRender->m_Mux;
+   const uint64_t mux = rice_render.mux;
    int32_t ulx = (int32_t)((_w1 >> 14) & 0x3FF), uly = (int32_t)((_w1 >> 2) & 0x3FF);
    int32_t lrx = (int32_t)((_w0 >> 14) & 0x3FF), lry = (int32_t)((_w0 >> 2) & 0x3FF);
    const int32_t ulx0 = ulx, uly0 = uly;
@@ -754,7 +754,6 @@ uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSiz
 }
 
 extern int dlistMtxCount;
-extern bool bHalfTxtScale;
 
 void DLParser_Process(OSTask * pTask)
 {

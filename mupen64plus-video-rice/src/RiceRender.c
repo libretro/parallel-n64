@@ -42,6 +42,7 @@ void RiceRender_Reset(void)
 {
     rice_render.zBias = 0;
     rice_render.alpha = 0xFF;
+    rice_render.mux = 0;
 }
 
 void RiceRender_Initialize(void)

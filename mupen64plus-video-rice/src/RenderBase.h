@@ -126,25 +126,14 @@ extern float            g_fFogCoord[MAX_VERTS];
 
 extern TLITVERTEX       g_texRectTVtx[4];
 
-extern EXTERNAL_VERTEX  g_vtxForExternal[MAX_VERTS];
-
-
-//#define INIT_VERTEX_METHOD_2
-
-/*
- *  Global variables
- */
-
 /************************************************************************/
 /*      Don't move                                                      */
 /************************************************************************/
 
 extern Light              gRSPlights[16];
-extern ALIGN(16, Matrix   gRSPworldProjectTransported);
 extern ALIGN(16, Matrix   gRSPworldProject);
 extern N64Light           gRSPn64lights[16];
 extern ALIGN(16, Matrix   gRSPmodelViewTop);
-extern ALIGN(16, Matrix   gRSPmodelViewTopTranspose);
 extern float              gRSPfFogMin;
 extern float              gRSPfFogMax;
 extern float              gRSPfFogDivider;
@@ -241,11 +230,38 @@ typedef struct
 
 extern ALIGN(16, RSP_Options gRSP);
 
-/* RenderBase.cpp's vertices, to C and C++ alike */
+/* RenderBase.c's vertices, to C and C++ alike */
 extern ALIGN(16, XVECTOR4 g_normal);
 extern ALIGN(16, XVECTOR4 g_vtxNonTransformed[MAX_VERTS]);
 extern FiddledVtx *g_pVtxBase;
 extern uint32_t dwPDCIAddr;
+/* the ucodes': the tile SetTile set last, Conker's texgen normals */
+extern uint32_t lastSetTile;
+extern uint32_t dwConkerVtxZAddr;
+/* the texture scale hack seen this display list */
+extern bool bHalfTxtScale;
+/* the hacks' mirrors, x and y or y alone */
+extern XMATRIX reverseXY;
+extern XMATRIX reverseY;
+void InitRenderBase(void);
+void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
+bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
+/* the ucodes' vertices, from RDRAM: the usual ones, Diddy Kong Racing's,
+   Conker's and Rogue Squadron's */
+void ProcessVertexData(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void ProcessVertexDataConker(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
+void ProcessVertexData_Rogue_Squadron(uint32_t dwXYZAddr, uint32_t dwColorAddr, uint32_t dwXYZCmd, uint32_t dwColorCmd);
+void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
+void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
+void ForceMainTextureIndex(int dwTile);
+void HackZAll(void);
+/* a vertex's texture coordinates, texture 0's or both textures', moved
+   onto the render texture they were loaded from */
+void RiceRender_SetVertexUV(TLITVERTEX *v, const TexCord *t0);
+void RiceRender_SetVertexUV2(TLITVERTEX *v, const TexCord *t0, const TexCord *t1);
+void RiceRender_SetVertexUVf(TLITVERTEX *v, float s0, float t0);
+void RiceRender_SetVertexUV2f(TLITVERTEX *v, float s0, float t0, float s1, float t1);
 void UpdateCombinedMatrix(void);
 void RSP_Vtx_Clipping(int i);
 uint32_t LightVert(XVECTOR4 *norm, int vidx);
@@ -280,27 +296,6 @@ static INLINE void SetScreenMult(float fMultX, float fMultY)
 /* the rest C++'s, until Rice's drawing is C */
 #ifdef __cplusplus
 
-
-
-/*
-*   Global functions
-*/
-void InitRenderBase();
-void SetFogMinMax(float fMin, float fMax, float fMul, float fOffset);
-void InitVertex(uint32_t dwV, uint32_t vtxIndex, bool bTexture);
-bool IsTriangleVisible(uint32_t dwV0, uint32_t dwV1, uint32_t dwV2);
-extern void (*ProcessVertexData)(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void ProcessVertexDataNoSSE(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void ProcessVertexDataNEON(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void ProcessVertexDataExternal(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void SetPrimitiveColor(uint32_t dwCol, uint32_t LODMin, uint32_t LODFrac);
-void SetPrimitiveDepth(uint32_t z, uint32_t dwDZ);
-void ProcessVertexDataDKR(uint32_t dwAddr, uint32_t dwV0, uint32_t dwNum);
-void ForceMainTextureIndex(int dwTile); 
-
-void ClipVertexes();
-void ClipVertexesOpenGL();
-void ClipVertexesForRect();
 
 
 inline float ViewPortTranslatef_x(float x) { return ( (x+1) * windowSetting.vpWidthW/2) + windowSetting.vpLeftW; }
