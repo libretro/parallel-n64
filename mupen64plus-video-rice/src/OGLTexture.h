@@ -40,7 +40,7 @@ CTexture *COGLTexture_New(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usag
 
 #define COGLTexture_Name(tex) (((COGLTexture *)(tex))->m_dwTextureName)
 
-/* from RiceConfig.cpp: the options a texture is made and put on the GPU
+/* from RiceConfig.c: the options a texture is made and put on the GPU
  * by */
 uint32_t RiceConfig_TextureQuality(void);
 uint32_t RiceConfig_ColorQuality(void);

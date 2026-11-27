@@ -94,7 +94,6 @@ static bool StartVideo(void)
     }
 
     ROM_GetRomNameFromHeader(g_curRomInfo.szGameName, &g_curRomInfo.romheader);
-    Ini_GetRomOptions(&g_curRomInfo);
     char *p = (char *) g_curRomInfo.szGameName + (strlen((char *) g_curRomInfo.szGameName) -1);     // -1 to skip null
     while (p >= (char *) g_curRomInfo.szGameName)
     {
@@ -285,7 +284,6 @@ extern "C" {
 void riceRomClosed(void)
 {
     TRACE0("To stop video");
-    Ini_StoreRomOptions(&g_curRomInfo);
 
     status.bGameIsRunning = false;
 

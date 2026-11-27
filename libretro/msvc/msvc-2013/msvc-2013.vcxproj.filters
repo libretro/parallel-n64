@@ -342,7 +342,7 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\reset.c">
       <Filter>Source Files\mupen64plus-core\src\r4300</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceConfig.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceConfig.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\r4300\cached_interp.c">

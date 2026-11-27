@@ -35,7 +35,7 @@
 static int failures;
 #define CHECK(c) do { if (!(c)) { printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #c); failures++; } } while (0)
 
-/* the options, as RiceConfig.cpp gives them */
+/* the options, as RiceConfig.c gives them */
 static uint32_t quality, colour, mipmap;
 uint32_t RiceConfig_TextureQuality(void) { return quality; }
 uint32_t RiceConfig_ColorQuality(void)   { return colour; }

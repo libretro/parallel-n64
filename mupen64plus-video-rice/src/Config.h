@@ -65,13 +65,6 @@ typedef enum DirectXCombinerType
     DX_SEMI_PIXEL_SHADER
 } DirectXCombinerType;
 
-
-typedef struct
-{
-    const char* name;
-    SupportedDeviceType type;
-} RenderEngineSetting;
-
 enum {
     FRM_BUF_NONE,
     FRM_BUF_IGNORE,
@@ -278,48 +271,6 @@ typedef struct {
     bool    bSaveVRAM;
 } RomOptions;
 
-typedef struct IniSection
-{
-    bool    bOutput;
-    char    crccheck[50];
-    char    name[50];
-
-    // Options with changeable default values
-    uint32_t  dwNormalCombiner;
-    uint32_t  dwNormalBlender;
-    uint32_t  dwFastTextureCRC;
-    uint32_t  dwAccurateTextureMapping;
-    uint32_t  dwFrameBufferOption;
-    uint32_t  dwRenderToTextureOption;
-    uint32_t  dwScreenUpdateSetting;
-
-    // Options with FALSE as default values
-    bool    bDisableBlender;
-    bool    bForceScreenClear;
-    bool    bEmulateClear;
-    bool    bForceDepthBuffer;
-
-    // Less useful options
-    bool    bDisableObjBG;
-    bool    bDisableTextureCRC;
-    bool    bIncTexRectEdge;
-    bool    bZHack;
-    bool    bTextureScaleHack;
-    bool    bFastLoadTile;
-    bool    bUseSmallerTexture;
-    bool    bPrimaryDepthHack;
-    bool    bTexture1Hack;
-    bool    bDisableCulling;
-
-    int     VIWidth;
-    int     VIHeight;
-    uint32_t  UseCIWidthAndRatio;
-
-    uint32_t  dwFullTMEM;
-    bool    bTxtSizeMethod2;
-    bool    bEnableTxtLOD;
-} section;
-
 typedef struct ROMHeader
 {
     uint8_t  x1, x2, x3, x4;
@@ -383,13 +334,6 @@ typedef struct
     bool    bEnableTxtLOD;
 } GameSetting, *LPGAMESETTING;
 
-typedef struct
-{
-    int8_t  nCountryID;
-    char* szName;
-    uint32_t nTvType;
-} CountryIDInfo;
-
 #define TV_SYSTEM_NTSC      1
 #define TV_SYSTEM_PAL       0
 
@@ -401,23 +345,15 @@ extern FrameBufferOptions  frameBufferOptions;
 extern RomOptions          defaultRomOptions;
 extern RomOptions          currentRomOptions;
 extern GameSetting         g_curRomInfo;
-#ifdef __cplusplus
-}
-#endif
-extern const CountryIDInfo g_CountryCodeInfo[];
-extern bool                bIniIsChanged;
-extern char                szIniFileName[300];
 
 extern bool InitConfiguration(void);
 extern bool LoadConfiguration(void);
-extern void WriteIniFile();
-extern bool ReadIniFile();
-extern void OutputSectionDetails(uint32_t i, FILE * fh);
-extern void GenerateCurrentRomOptions();
-extern void Ini_GetRomOptions(LPGAMESETTING pGameSetting);
-extern void Ini_StoreRomOptions(LPGAMESETTING pGameSetting);
+extern void GenerateCurrentRomOptions(void);
 extern uint32_t CountryCodeToTVSystem(uint32_t countryCode);
 extern void ROM_GetRomNameFromHeader(unsigned char * szName, ROMHeader * pHdr);
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

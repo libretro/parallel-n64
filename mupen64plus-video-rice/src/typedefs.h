@@ -371,16 +371,6 @@ typedef struct
     uint32_t                  realFilter;
 } TextureFilterMap;
 
-typedef struct {
-    const char* description;
-    int number;
-    uint32_t  setting;
-} BufferSettingInfo;
-
-typedef struct {
-    const char* description;
-    uint32_t setting;
-} SettingInfo;
 
 typedef union {
     uint8_t   g_Tmem8bit[0x1000];

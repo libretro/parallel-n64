@@ -115,8 +115,6 @@ typedef struct {
     bool    bCIBufferIsRendered;
     int     leftRendered,topRendered,rightRendered,bottomRendered;
 
-    bool    isMMXSupported;
-
     bool    isMMXEnabled;
 
     bool    toShowCFB;
