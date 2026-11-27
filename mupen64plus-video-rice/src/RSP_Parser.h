@@ -381,14 +381,16 @@ extern uint16_t g_wRDPTlut[0x200];
 bool IsUsedAsDI(uint32_t addr);
 /* a fill rectangle's memory coverage, in RDRAM */
 void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
+
+void DLParser_Init(void);
+void RDP_Cleanup(void);
+void DLParser_Process(OSTask * pTask);
+void RDP_DLParser_Process(void);
+void TriggerDPInterrupt(void);
+void TriggerSPInterrupt(void);
 #ifdef __cplusplus
 }
 #endif
-
-void DLParser_Init();
-void RDP_Cleanup();
-void DLParser_Process(OSTask * pTask);
-void RDP_DLParser_Process(void);
 
 void RDP_InitRenderState();
 void DisplayVertexInfo(uint32_t dwAddr, uint32_t dwV0, uint32_t dwN);
@@ -407,8 +409,6 @@ void LoadMatrix(uint32_t addr);
 
 unsigned int ComputeCRC32(unsigned int crc, const uint8_t *buf, unsigned int len);
 
-void TriggerDPInterrupt();
-void TriggerSPInterrupt();
 uint32_t DLParser_CheckUcode(uint32_t ucStart, uint32_t ucDStart, uint32_t ucSize, uint32_t ucDSize);
 
 

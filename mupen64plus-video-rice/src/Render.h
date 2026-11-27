@@ -136,7 +136,6 @@ public:
     void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     void DrawSprite(uObjTxSprite &sprite, bool rectR);
     void DrawObjBGCopy(uObjBg &info);
-    void DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
     void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled);
 
     static CRender * g_pRender;

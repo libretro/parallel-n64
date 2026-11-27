@@ -48,6 +48,19 @@ CRender * CRender::GetRender(void)
    return CRender::g_pRender;
 }
 
+extern "C" void RiceRender_Start(void)
+{
+    if (CRender::g_pRender == NULL)
+        CRender::g_pRender = new CRender();
+    RiceRender_Initialize();
+}
+
+extern "C" void RiceRender_Stop(void)
+{
+    delete CRender::g_pRender;
+    CRender::g_pRender = NULL;
+}
+
 CRender::CRender() :
     m_dwMinFilter(FILTER_POINT),
     m_dwMagFilter(FILTER_POINT)

@@ -370,37 +370,26 @@ void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile
     DrawSpriteR_Render();
 }
 
-void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
+extern "C" void RiceRender_DrawFrameBufferVI(void)
 {
-    LoadFrameBuffer(useVIreg, left, top, width, height);
+    CRender *render = CRender::g_pRender;
+    CTexture *pTexture;
+
+    render->LoadFrameBuffer(true, 0, 0, 0, 0);
 
     RiceCombiner_InitSimpleTextureDraw(0);
 
-    ZBufferEnable(false);
-    SetZUpdate(false);
-    if( left == 0 )
-        SetAlphaTestEnable(false);
-    else
-        SetAlphaTestEnable(true);   // use Alpha Test for partial frame buffer draw, for Dr. Mario 64
+    render->ZBufferEnable(false);
+    render->SetZUpdate(false);
+    render->SetAlphaTestEnable(false);
 
-    m_pAlphaBlender->ops->Disable(m_pAlphaBlender);
+    render->m_pAlphaBlender->ops->Disable(render->m_pAlphaBlender);
 
-    CTexture *pTexture = g_textures[0].m_pCTexture;
+    /* the whole frame buffer */
+    pTexture = g_textures[0].m_pCTexture;
     if( pTexture )
-    {
-        if( useVIreg )
-        {
-            // Draw the whole frame buffer
-            DrawSimple2DTexture(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 
-                0, 0, 1/pTexture->m_fXScale, 1/pTexture->m_fYScale, 0xFFFFFFFF, 0xFFFFFFFF, 0, 1);
-        }
-        else
-        {
-            // Draw a small texture in frame buffer
-            DrawSimple2DTexture((float)left, (float)top, (float)(left+width), (float)(top+height), 
-                0, 0, 1/pTexture->m_fXScale, 1/pTexture->m_fYScale, 0xFFFFFFFF, 0xFFFFFFFF, 0, 1);
-        }
-    }
+        render->DrawSimple2DTexture(0, 0, windowSetting.uViWidth, windowSetting.uViHeight,
+            0, 0, 1/pTexture->m_fXScale, 1/pTexture->m_fYScale, 0xFFFFFFFF, 0xFFFFFFFF, 0, 1);
 
     TXTRBUF_OR_CI_DUMP(TRACE0("Draw Frame Buffer Img"));
 }

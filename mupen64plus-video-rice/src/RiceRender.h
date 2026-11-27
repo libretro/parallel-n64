@@ -65,6 +65,13 @@ void RiceRender_RenderReset(void);
 /* the RE2 scissor, or else the scissor with the clip ratio */
 void RiceRender_UpdateScissor(void);
 
+/* the renderer made and readied for drawing (Render.cpp) */
+void RiceRender_Start(void);
+/* the renderer gone; nothing happens when there is none */
+void RiceRender_Stop(void);
+/* the frame the CPU wrote, at the VI origin, put on screen (RenderExt.cpp) */
+void RiceRender_DrawFrameBufferVI(void);
+
 /* a rectangle in N64 pixels drawn with texture 0, its corners' texture
    coordinates (u0, v0) and (u1, v1) */
 void RiceRender_DrawSimple2DTexture(float x0, float y0, float x1, float y1,

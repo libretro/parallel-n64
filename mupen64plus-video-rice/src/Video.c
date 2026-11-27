@@ -18,12 +18,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-#include <vector>
-
-#include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "osal_opengl.h"
+#include <boolean.h>
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
@@ -33,20 +31,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Debugger.h"
 #include "FrameBuffer.h"
 #include "GraphicsContext.h"
-#include "Render.h"
+#include "RenderBase.h"
+#include "RiceGLState.h"
+#include "RiceRender.h"
 #include "RSP_Parser.h"
 #include "TextureManager.h"
 #include "Video.h"
 #include "version.h"
 
-//=======================================================
-// local variables
+/*=======================================================*/
+/* local variables */
 
 /* StartVideo ran: the frame buffers and the context are set up */
 static bool video_started = false;
 
-//=======================================================
-// global variables
+/*=======================================================*/
+/* global variables */
 
 PluginStatus  status;
 
@@ -55,34 +55,17 @@ unsigned int   g_dwRamSize = 0x400000;
 
 void (*renderCallback)(int) = NULL;
 
-// Forward function declarations
-
-extern "C" void riceRomClosed(void);
-
-static void create_render(void)
-{
-    if (CRender::g_pRender == NULL)
-        CRender::g_pRender = new CRender();
-}
-
-static void delete_render(void)
-{
-    if (CRender::g_pRender != NULL)
-    {
-        delete CRender::g_pRender;
-        CRender::g_pRender = NULL;
-    }
-}
-
 static bool StartVideo(void)
 {
+    unsigned char *puc = (unsigned char *) &g_curRomInfo.romheader;
+    unsigned int i;
+    unsigned char temp;
+    char *p;
+
     windowSetting.dps = windowSetting.fps = -1;
     windowSetting.lastSecDlistCount = windowSetting.lastSecFrameCount = 0xFFFFFFFF;
 
     memcpy(&g_curRomInfo.romheader, gfx_info.HEADER, sizeof(ROMHeader));
-    unsigned char *puc = (unsigned char *) &g_curRomInfo.romheader;
-    unsigned int i;
-    unsigned char temp;
     for (i = 0; i < sizeof(ROMHeader); i += 4) /* byte-swap the ROM header */
     {
         temp     = puc[i];
@@ -94,7 +77,7 @@ static bool StartVideo(void)
     }
 
     ROM_GetRomNameFromHeader(g_curRomInfo.szGameName, &g_curRomInfo.romheader);
-    char *p = (char *) g_curRomInfo.szGameName + (strlen((char *) g_curRomInfo.szGameName) -1);     // -1 to skip null
+    p = (char *) g_curRomInfo.szGameName + (strlen((char *) g_curRomInfo.szGameName) -1);     /* -1 to skip null */
     while (p >= (char *) g_curRomInfo.szGameName)
     {
         if( *p == ':' || *p == '\\' || *p == '/' )
@@ -107,22 +90,21 @@ static bool StartVideo(void)
     if( status.dwTvSystem == TV_SYSTEM_NTSC )
         status.fRatio = 0.75f;
     else
-        status.fRatio = 9/11.0f;;
+        status.fRatio = 9/11.0f;
     
     video_started = true;
     RiceGC_Initialize();
-    create_render();
-    CRender::GetRender()->Initialize();
+    RiceRender_Start();
     DLParser_Init();
     status.bGameIsRunning = true;
    
     return true;
 }
 
-//---------------------------------------------------------------------------------------
-// Global functions, for use by other source files in this plugin
+/*---------------------------------------------------------------------------------------*/
+/* Global functions, for use by other source files in this plugin */
 
-void SetVIScales()
+void SetVIScales(void)
 {
     if( g_curRomInfo.VIHeight>0 && g_curRomInfo.VIWidth>0 )
     {
@@ -139,10 +121,11 @@ void SetVIScales()
     {
         float xscale, yscale;
         uint32_t val = *gfx_info.VI_X_SCALE_REG & 0xFFF;
-        xscale = (float)val / (1<<10);
         uint32_t start = *gfx_info.VI_H_START_REG >> 16;
         uint32_t end = *gfx_info.VI_H_START_REG&0xFFFF;
         uint32_t width = *gfx_info.VI_WIDTH_REG;
+        uint16_t optimizeHeight, optimizeHeight2;
+        xscale = (float)val / (1<<10);
         windowSetting.fViWidth = (end-start)*xscale;
         if( abs((int)(windowSetting.fViWidth - width) ) < 8 ) 
         {
@@ -153,7 +136,7 @@ void SetVIScales()
             DebuggerAppendMsg("fViWidth = %f, Width Reg=%d", windowSetting.fViWidth, width);
         }
 
-        val = (*gfx_info.VI_Y_SCALE_REG & 0xFFF);// - ((*gfx_info.VI_Y_SCALE_REG>>16) & 0xFFF);
+        val = (*gfx_info.VI_Y_SCALE_REG & 0xFFF);
         if( val == 0x3FF )  val = 0x400;
         yscale = (float)val / (1<<10);
         start = *gfx_info.VI_V_START_REG >> 16;
@@ -171,26 +154,15 @@ void SetVIScales()
 
             if( windowSetting.fViWidth*status.fRatio > windowSetting.fViHeight && (*gfx_info.VI_X_SCALE_REG & 0xFF) != 0 )
             {
-                if( abs(int(windowSetting.fViWidth*status.fRatio - windowSetting.fViHeight)) < 8 )
+                if( abs((int)(windowSetting.fViWidth*status.fRatio - windowSetting.fViHeight)) < 8 )
                 {
                     windowSetting.fViHeight = windowSetting.fViWidth*status.fRatio;
                 }
-                /*
-                else
-                {
-                    if( abs(windowSetting.fViWidth*status.fRatio-windowSetting.fViHeight) > windowSetting.fViWidth*0.1f )
-                    {
-                        if( status.fRatio > 0.8 )
-                            windowSetting.fViHeight = windowSetting.fViWidth*3/4;
-                        //windowSetting.fViHeight = (*gfx_info.VI_V_SYNC_REG - 0x2C)/2;
-                    }
-                }
-                */
             }
             
             if( windowSetting.fViHeight<100 || windowSetting.fViWidth<100 )
             {
-                //At sometime, value in VI_H_START_REG or VI_V_START_REG are 0
+                /*At sometime, value in VI_H_START_REG or VI_V_START_REG are 0 */
                 windowSetting.fViWidth = (float)*gfx_info.VI_WIDTH_REG;
                 windowSetting.fViHeight = windowSetting.fViWidth*status.fRatio;
             }
@@ -201,10 +173,10 @@ void SetVIScales()
 
         windowSetting.uViHeight = (unsigned short)(windowSetting.fViHeight/4);
         windowSetting.fViHeight = windowSetting.uViHeight *= 4;
-        uint16_t optimizeHeight = (uint16_t)(windowSetting.uViWidth*status.fRatio);
+        optimizeHeight = (uint16_t)(windowSetting.uViWidth*status.fRatio);
         optimizeHeight &= ~3;
 
-        uint16_t optimizeHeight2 = (uint16_t)(windowSetting.uViWidth*3/4);
+        optimizeHeight2 = (uint16_t)(windowSetting.uViWidth*3/4);
         optimizeHeight2 &= ~3;
 
         if( windowSetting.uViHeight != optimizeHeight && windowSetting.uViHeight != optimizeHeight2 )
@@ -220,8 +192,8 @@ void SetVIScales()
         {
             if( (*gfx_info.VI_X_SCALE_REG & 0xFF) != 0x0 && gRDP.scissor.right == windowSetting.uViWidth )
             {
-                // Mario Tennis
-                if( abs(int( windowSetting.fViHeight - gRDP.scissor.bottom )) < 8 )
+                /* Mario Tennis */
+                if( abs((int)( windowSetting.fViHeight - gRDP.scissor.bottom )) < 8 )
                 {
                     windowSetting.fViHeight = windowSetting.uViHeight = gRDP.scissor.bottom;
                 }
@@ -270,15 +242,11 @@ void TriggerSPInterrupt(void)
 
 void _VIDEO_DisplayTemporaryMessage(const char *Message)
 {
+    (void)Message;
 }
 
-//---------------------------------------------------------------------------------------
-// Global functions, exported for use by the core library
-
-// since these functions are exported, they need to have C-style names
-#ifdef __cplusplus
-extern "C" {
-#endif
+/*---------------------------------------------------------------------------------------*/
+/* Global functions, exported for use by the core library */
 
 /* Mupen64Plus plugin functions */
 void riceRomClosed(void)
@@ -287,12 +255,12 @@ void riceRomClosed(void)
 
     status.bGameIsRunning = false;
 
-    // Kill all textures?
+    /* Kill all textures? */
     TextureManager_RecycleAllTextures();
     TextureManager_CleanUp();
     RDP_Cleanup();
 
-    delete_render();
+    RiceRender_Stop();
     if (video_started)
     {
         RiceFB_CloseUp();
@@ -329,23 +297,21 @@ void riceUpdateScreen(void)
 
     if (status.ToResize && status.gDlistCount > 0)
     {
-       // Delete all OpenGL textures
+       /* Delete all OpenGL textures */
        TextureManager_CleanUp();
        RDP_Cleanup();
-       // delete our opengl renderer
-       delete_render();
+       /* delete our opengl renderer */
+       RiceRender_Stop();
 
-       // call video extension function with updated width, height (this creates a new OpenGL context)
+       /* call video extension function with updated width, height (this creates a new OpenGL context) */
        windowSetting.uDisplayWidth = status.gNewResizeWidth;
        windowSetting.uDisplayHeight = status.gNewResizeHeight;
-       //CoreVideo_ResizeWindow(windowSetting.uDisplayWidth, windowSetting.uDisplayHeight);
 
-       // re-initialize our OpenGL graphics context state
+       /* re-initialize our OpenGL graphics context state */
        RiceGC_Initialize();
 
-       // re-create the OpenGL renderer
-       create_render();
-       CRender::GetRender()->Initialize();
+       /* re-create the OpenGL renderer */
+       RiceRender_Start();
        DLParser_Init();
 
        status.ToResize = false;
@@ -359,12 +325,12 @@ void riceUpdateScreen(void)
 
     if( status.gDlistCount == 0 )
     {
-        // CPU frame buffer update
+        /* CPU frame buffer update */
         uint32_t width = *gfx_info.VI_WIDTH_REG;
         if( (*gfx_info.VI_ORIGIN_REG & (g_dwRamSize-1) ) > width*2 && *gfx_info.VI_H_START_REG != 0 && width != 0 )
         {
             SetVIScales();
-            CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
+            RiceRender_DrawFrameBufferVI();
             RiceGC_UpdateFrame();
         }
         return;
@@ -397,7 +363,6 @@ void riceUpdateScreen(void)
             {
                 status.curDisplayBuffer = *gfx_info.VI_ORIGIN_REG;
                 status.curVIOriginReg = status.curDisplayBuffer;
-                //status.curRenderBuffer = NULL;
 
                 RiceGC_UpdateFrame();
             }
@@ -421,17 +386,18 @@ void riceUpdateScreen(void)
 void riceViStatusChanged(void)
 {
     SetVIScales();
-    CRender::g_pRender->UpdateClipRectangle();
+    RiceGL_UpdateClipRectangle();
 }
 
 void riceViWidthChanged(void)
 {
     SetVIScales();
-    CRender::g_pRender->UpdateClipRectangle();
+    RiceGL_UpdateClipRectangle();
 }
 
 int riceInitiateGFX(GFX_INFO Gfx_Info)
 {
+    (void)Gfx_Info;
     memset(&status, 0, sizeof(status));
 
     windowSetting.fViWidth = 320;
@@ -457,14 +423,14 @@ void riceProcessDList(void)
 {
     if( status.toShowCFB )
     {
-        CRender::GetRender()->DrawFrameBuffer(true, 0, 0, 0, 0);
+        RiceRender_DrawFrameBufferVI();
         status.toShowCFB = false;
     }
 
     DLParser_Process((OSTask *)(gfx_info.DMEM + 0x0FC0));
 }   
 
-//---------------------------------------------------------------------------------------
+/*---------------------------------------------------------------------------------------*/
 
 /******************************************************************
   Function: FrameBufferRead
@@ -537,21 +503,14 @@ output:   Values are return in the FrameBufferInfo structure
 void riceFBGetFrameBufferInfo(void *p)
 {
     FrameBufferInfo * pinfo = (FrameBufferInfo *)p;
+    int i;
     memset(pinfo,0,sizeof(FrameBufferInfo)*6);
 
-    //if( g_ZI.dwAddr == 0 )
-    //{
-    //  memset(pinfo,0,sizeof(FrameBufferInfo)*6);
-    //}
-    //else
     {
-        for (int i=0; i<5; i++ )
+        for (i=0; i<5; i++ )
         {
-            if( status.gDlistCount-g_RecentCIInfo[i].lastUsedFrame > 30 || g_RecentCIInfo[i].lastUsedFrame == 0 )
-            {
-                //memset(&pinfo[i],0,sizeof(FrameBufferInfo));
-            }
-            else
+            /* a buffer drawn to in the last 30 display lists */
+            if( status.gDlistCount-g_RecentCIInfo[i].lastUsedFrame <= 30 && g_RecentCIInfo[i].lastUsedFrame != 0 )
             {
                 pinfo[i].addr = g_RecentCIInfo[i].dwAddr;
                 pinfo[i].size = 2;
@@ -564,13 +523,12 @@ void riceFBGetFrameBufferInfo(void *p)
         }
 
         pinfo[5].addr = g_ZI.dwAddr;
-        //pinfo->size = g_RecentCIInfo[5].dwSize;
         pinfo[5].size = 2;
         TXTRBUF_DETAIL_DUMP(TRACE3("Protect 0x%08X (%d,%d)", pinfo[5].addr, pinfo[5].width, pinfo[5].height));
     }
 }
 
-// Plugin spec 1.3 functions
+/* Plugin spec 1.3 functions */
 void riceShowCFB(void)
 {
     status.toShowCFB = true;
@@ -582,8 +540,3 @@ void riceSetRenderingCallback(void (*callback)(int))
 {
     renderCallback = callback;
 }
-
-#ifdef __cplusplus
-}
-#endif
-

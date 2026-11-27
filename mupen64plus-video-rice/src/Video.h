@@ -157,34 +157,23 @@ extern GFX_INFO gfx_info;
 }
 #endif
 
-extern WindowSettingStruct windowSetting;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-extern uint32_t   g_dwRamSize;
-#ifdef __cplusplus
-}
-#endif
-
 #define renderCallback ricerenderCallback
 
-/* global functions provided by Video.cpp */
-extern char generalText[];
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern WindowSettingStruct windowSetting;
+extern uint32_t   g_dwRamSize;
 extern void (*renderCallback)(int);
+
+/* the N64 picture's size, from the VI registers or the ROM's settings */
+void SetVIScales(void);
+extern void _VIDEO_DisplayTemporaryMessage(const char *msg);
 #ifdef __cplusplus
 }
 #endif
 /* the frontend gave no debug callback: nothing is said */
 #define DebugMessage(...) do { } while (0)
-
-void SetVIScales();
-extern void _VIDEO_DisplayTemporaryMessage2(const char *msg, ...);
-extern void _VIDEO_DisplayTemporaryMessage(const char *msg);
-extern void XBOX_Debugger_Log(const char *Message, ...);
 
 #endif
 
