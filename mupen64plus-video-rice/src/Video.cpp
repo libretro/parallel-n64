@@ -71,7 +71,6 @@ static void delete_render(void)
     {
         delete CRender::g_pRender;
         CRender::g_pRender = NULL;
-        CRender::gRenderReferenceCount = 0;
     }
 }
 

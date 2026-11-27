@@ -815,7 +815,6 @@ void DLParser_Process(OSTask * pTask)
 
     SetVIScales();
     CRender::g_pRender->RenderReset();
-    CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
 
     {
@@ -833,8 +832,6 @@ void DLParser_Process(OSTask * pTask)
         }
 
     }
-
-    CRender::g_pRender->EndRendering();
 
     if( gRSP.ucode >= 17)
         TriggerDPInterrupt();
@@ -1326,7 +1323,6 @@ void RDP_DLParser_Process(void)
     SetVIScales();
 
     CRender::g_pRender->RenderReset();
-    CRender::g_pRender->BeginRendering();
     CRender::g_pRender->SetViewport(0, 0, windowSetting.uViWidth, windowSetting.uViHeight, 0x3FF);
 
     while( __RSP.PC[__RSP.PCi] < end )
@@ -1335,8 +1331,6 @@ void RDP_DLParser_Process(void)
         __RSP.PC[__RSP.PCi] += 8;
         currentUcodeMap[pgfx->words.w0 >>24](pgfx);
     }
-
-    CRender::g_pRender->EndRendering();
 }
 
 void RDP_TriFill(Gfx *gfx)

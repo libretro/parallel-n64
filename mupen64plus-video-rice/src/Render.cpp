@@ -35,7 +35,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 extern FiddledVtx * g_pVtxBase;
 CRender * CRender::g_pRender=NULL;
-int CRender::gRenderReferenceCount=0;
 
 XMATRIX reverseXY(-1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1);
 XMATRIX reverseY(1,0,0,0,0,-1,0,0,0,0,1,0,0,0,0,1);
@@ -52,23 +51,11 @@ CRender * CRender::GetRender(void)
 }
 
 CRender::CRender() :
-    m_fScreenViewportMultX(2.0f),
-    m_fScreenViewportMultY(2.0f),
-
-    m_dwTexturePerspective(false),
-    m_bAlphaTestEnable(false),
-
-    m_bZUpdate(false),
-    m_bZCompare(false),
-    m_dwZBias(0),
-    
     m_dwMinFilter(FILTER_POINT),
     m_dwMagFilter(FILTER_POINT),
-    m_dwAlpha(0xFF),
-    m_Mux(0),
-    m_bBlendModeValid(false)
+    m_Mux(0)
 {
-    /* (the GL renderer's own state, once OGLRender's constructor) */
+    RiceRender_Reset();
     RiceGLTex_Reset();
 
     InitRenderBase();
@@ -103,27 +90,6 @@ CRender::~CRender()
     RiceCombiner_Destroy();
     
     m_pAlphaBlender = NULL;
-}
-
-void CRender::ResetMatrices()
-{
-    Matrix mat;
-
-    mat.m[0][1] = mat.m[0][2] = mat.m[0][3] =
-    mat.m[1][0] = mat.m[1][2] = mat.m[1][3] =
-    mat.m[2][0] = mat.m[2][1] = mat.m[2][3] =
-    mat.m[3][0] = mat.m[3][1] = mat.m[3][2] = 0.0f;
-
-    mat.m[0][0] = mat.m[1][1] = mat.m[2][2] = mat.m[3][3] = 1.0f;
-
-    gRSP.projectionMtxTop = 0;
-    gRSP.modelViewMtxTop = 0;
-    gRSP.projectionMtxs[0] = mat;
-    gRSP.modelviewMtxs[0] = mat;
-
-    gRSP.bMatrixIsUpdated = true;
-    gRSP.bWorldMatrixIsUpdated = true;
-    UpdateCombinedMatrix();
 }
 
 void CRender::SetProjection(const Matrix & mat, bool bPush, bool bReplace) 
@@ -235,7 +201,6 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
     if( m_Mux != tempmux )
     {
         m_Mux = tempmux;
-        m_bBlendModeValid = false;
         RiceCombiner_Update(dwMux0, dwMux1);
     }
 }
@@ -293,7 +258,7 @@ void CRender::SetCombinerAndBlender()
     else
         Blender_InitBlenderMode(m_pAlphaBlender);
 
-    RiceCombiner_InitMode(m_dwAlpha);
+    RiceCombiner_InitMode(rice_render.alpha);
 }
 
 bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
@@ -427,7 +392,7 @@ bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
 
     SetCombinerAndBlender();
 
-    return RenderLine3D();
+    return true;
 }
 
 bool CRender::RemapTextureCoordinate
@@ -815,68 +780,6 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
     return res;
 }
 
-
-void CRender::StartDrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
-{
-    g_texRectTVtx[0].x = ViewPortTranslatei_x(x0);  // << Error here, shouldn't divid by 4
-    g_texRectTVtx[0].y = ViewPortTranslatei_y(y0);
-    g_texRectTVtx[0].dcDiffuse = dif;
-    g_texRectTVtx[0].dcSpecular = spe;
-    g_texRectTVtx[0].tcord[0].u = u0;
-    g_texRectTVtx[0].tcord[0].v = v0;
-
-
-    g_texRectTVtx[1].x = ViewPortTranslatei_x(x1);
-    g_texRectTVtx[1].y = ViewPortTranslatei_y(y0);
-    g_texRectTVtx[1].dcDiffuse = dif;
-    g_texRectTVtx[1].dcSpecular = spe;
-    g_texRectTVtx[1].tcord[0].u = u1;
-    g_texRectTVtx[1].tcord[0].v = v0;
-
-    g_texRectTVtx[2].x = ViewPortTranslatei_x(x1);
-    g_texRectTVtx[2].y = ViewPortTranslatei_y(y1);
-    g_texRectTVtx[2].dcDiffuse = dif;
-    g_texRectTVtx[2].dcSpecular = spe;
-    g_texRectTVtx[2].tcord[0].u = u1;
-    g_texRectTVtx[2].tcord[0].v = v1;
-
-    g_texRectTVtx[3].x = ViewPortTranslatei_x(x0);
-    g_texRectTVtx[3].y = ViewPortTranslatei_y(y1);
-    g_texRectTVtx[3].dcDiffuse = dif;
-    g_texRectTVtx[3].dcSpecular = spe;
-    g_texRectTVtx[3].tcord[0].u = u0;
-    g_texRectTVtx[3].tcord[0].v = v1;
-
-    RenderTexture &txtr = g_textures[0];
-    if( txtr.pTextureEntry && txtr.pTextureEntry->txtrBufIdx > 0 )
-    {
-        RenderTextureInfo &info = gRenderTextureInfos[txtr.pTextureEntry->txtrBufIdx-1];
-        g_texRectTVtx[0].tcord[0].u *= info.scaleX;
-        g_texRectTVtx[0].tcord[0].v *= info.scaleY;
-        g_texRectTVtx[1].tcord[0].u *= info.scaleX;
-        g_texRectTVtx[1].tcord[0].v *= info.scaleY;
-        g_texRectTVtx[2].tcord[0].u *= info.scaleX;
-        g_texRectTVtx[2].tcord[0].v *= info.scaleY;
-        g_texRectTVtx[3].tcord[0].u *= info.scaleX;
-        g_texRectTVtx[3].tcord[0].v *= info.scaleY;
-    }
-
-    g_texRectTVtx[0].z = g_texRectTVtx[1].z = g_texRectTVtx[2].z = g_texRectTVtx[3].z = z;
-    g_texRectTVtx[0].rhw = g_texRectTVtx[1].rhw = g_texRectTVtx[2].rhw = g_texRectTVtx[3].rhw = rhw;
-}
-
-void CRender::StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw)
-{
-    m_simpleRectVtx[0].x = ViewPortTranslatei_x(nX0);
-    m_simpleRectVtx[1].x = ViewPortTranslatei_x(nX1);
-    m_simpleRectVtx[0].y = ViewPortTranslatei_y(nY0);
-    m_simpleRectVtx[1].y = ViewPortTranslatei_y(nY1);
-}
-
-void CRender::CleanUp(void)
-{
-    ClearDeviceObjects();
-}
 
 void CRender::SetTextureEnableAndScale(int dwTile, bool bEnable, float fScaleX, float fScaleY)
 {
@@ -1276,8 +1179,8 @@ void CRender::InitOtherModes(void)
     {
         if ( gRDP.otherMode.cvg_x_alpha && (gRDP.otherMode.alpha_cvg_sel || gRDP.otherMode.aa_en ) )
         {
-            ForceAlphaRef(128); // Strange, I have to use value=2 for pixel shader combiner for Nvidia FX5200
-                                // for other video cards, value=1 is good enough.
+            SetAlphaRef(128); // Strange, I have to use value=2 for pixel shader combiner for Nvidia FX5200
+                              // for other video cards, value=1 is good enough.
             SetAlphaTestEnable(true);
         }
         else
@@ -1296,10 +1199,8 @@ void CRender::InitOtherModes(void)
         else
         {
             // RDP_ALPHA_COMPARE_THRESHOLD || RDP_ALPHA_COMPARE_DITHER
-            if( m_dwAlpha==0 )
-                ForceAlphaRef(1);
-            else
-                ForceAlphaRef(m_dwAlpha);
+            if( rice_render.alpha==0 )
+                SetAlphaRef(1);
             SetAlphaTestEnable(true);
         }
     }

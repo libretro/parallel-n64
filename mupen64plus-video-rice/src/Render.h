@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "RiceGLState.h"
 #include "RiceGLTex.h"
 #include "RiceGLDraw.h"
+#include "RiceRender.h"
 
 #include "Blender.h"
 #include "CombinerDefs.h"
@@ -46,24 +47,10 @@ class CRender
 public:
     CRender();
 
-    float m_fScreenViewportMultX;
-    float m_fScreenViewportMultY;
-
-
-    uint32_t  m_dwTexturePerspective;
-    bool    m_bAlphaTestEnable;
-
-    bool    m_bZUpdate;
-    bool    m_bZCompare;
-    uint32_t  m_dwZBias;
-
     TextureFilter   m_dwMinFilter;
     TextureFilter   m_dwMagFilter;
 
-    uint32_t  m_dwAlpha;
-
     uint64_t      m_Mux;
-    bool    m_bBlendModeValid;
 
     CBlender *m_pAlphaBlender;
     
@@ -101,8 +88,6 @@ public:
 
     void PopWorldView();
     void SetWorldProjectMatrix(Matrix &mtx);
-    
-    void ResetMatrices();
 
     inline RenderShadeMode GetShadeMode() { return gRSP.shadeMode; }
 
@@ -114,8 +99,6 @@ public:
 
     void SetCombinerAndBlender();
     void SetMux(uint32_t dwMux0, uint32_t dwMux1);
-
-    void BeginRendering(void) {CRender::gRenderReferenceCount++;}       // For DirectX only
 
     void ClearBuffer(bool cbuffer, bool zbuffer) { RiceGL_ClearBuffer(cbuffer, zbuffer); }
     void ClearBuffer(bool cbuffer, bool zbuffer, COORDRECT &rect) 
@@ -145,9 +128,6 @@ public:
     void SetAllTexelRepeatFlag() { RiceCombiner_SetTexelRepeat(); }
     
 
-    void CleanUp(void);
-    
-
     void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode);
     void LoadObjBGCopy(uObjBg &info);
     void LoadObjBG1CYC(uObjScaleBg &info);
@@ -162,14 +142,11 @@ public:
     void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled);
 
     static CRender * g_pRender;
-    static int gRenderReferenceCount;
     static CRender * GetRender(void);
 
 
 protected:
     bool            m_savedZBufferFlag;
-    uint32_t          m_savedMinFilter;
-    uint32_t          m_savedMagFilter;
 
     // FillRect
     VECTOR2         m_fillRectVtx[2];
@@ -184,22 +161,12 @@ protected:
     TexCord         m_texRectTex1UV[2];
     TexCord         m_texRectTex2UV[2];
 
-    // DrawSimple2DTexture
-    void    StartDrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
-
-    // DrawSimpleRect
-    void    StartDrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor, float depth, float rhw);
-    VECTOR2         m_simpleRectVtx[2];
-
     bool            RemapTextureCoordinate(float s0, float s1, uint32_t tileWidth, uint32_t mask, float textureWidth,
                                             float &u0, float &u1);
 
-    /* the GL renderer (once OGLRender) */
+    /* the GL renderer (RiceRender.c and the RiceGL_ modules) */
 public:
-    void Initialize(void);
-
-    bool InitDeviceObjects();
-    bool ClearDeviceObjects();
+    void Initialize(void) { RiceRender_Initialize(); }
 
     void ApplyTextureFilter() { RiceGLTex_ApplyFilter(m_dwMinFilter, m_dwMagFilter); }
 
@@ -207,37 +174,36 @@ public:
     void ClearZBuffer(float depth) { RiceGL_ClearZBuffer(depth); }
     void SetZCompare(bool bZCompare) { RiceGL_SetZCompare(bZCompare); }
     void SetZUpdate(bool bZUpdate) { RiceGL_SetZUpdate(bZUpdate); }
-    void SetZBias(int bias);
+    void SetZBias(int bias) { RiceRender_SetZBias(bias); }
     void ApplyZBias(int bias) { RiceGL_ApplyZBias(bias); }
-    void SetAlphaRef(uint32_t dwAlpha);
-    void ForceAlphaRef(uint32_t dwAlpha);
+    void SetAlphaRef(uint32_t dwAlpha) { RiceRender_SetAlphaRef(dwAlpha); }
     void SetViewportRender() { RiceGL_ViewportN64(); }
-    void RenderReset();
+    void RenderReset() { RiceRender_RenderReset(); }
     void SetCullMode(bool bCullFront, bool bCullBack) { RiceGL_SetCullMode(bCullFront, bCullBack); }
     void SetAlphaTestEnable(bool bAlphaTestEnable) { rice_combiner.alphaTest = bAlphaTestEnable; }
-    void UpdateScissor();
+    void UpdateScissor() { RiceRender_UpdateScissor(); }
     void ApplyRDPScissor(bool force) { RiceGL_ApplyRDPScissor(force); }
     void ApplyScissorWithClipRatio(bool force) { RiceGL_ApplyScissorWithClipRatio(force); }
 
-    bool SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry);
-    bool SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry);
+    void SetCurrentTexture(int tile, CTexture *handler,uint32_t dwTileWidth, uint32_t dwTileHeight, TxtrCacheEntry *pTextureEntry)
+    { RiceRender_SetCurrentTexture(tile, handler, dwTileWidth, dwTileHeight, pTextureEntry); }
+    void SetCurrentTexture(int tile, TxtrCacheEntry *pTextureEntry) { RiceRender_SetCurrentTextureEntry(tile, pTextureEntry); }
     void SetAddressUAllStages(uint32_t dwTile, TextureUVFlag dwFlag) { RiceGLTex_SetUFlag(dwFlag, dwTile); }
     void SetAddressVAllStages(uint32_t dwTile, TextureUVFlag dwFlag) { RiceGLTex_SetVFlag(dwFlag, dwTile); }
     void SetTextureUFlag(TextureUVFlag dwFlag, uint32_t tile) { RiceGLTex_SetUFlag(dwFlag, tile); }
     void SetTextureVFlag(TextureUVFlag dwFlag, uint32_t tile) { RiceGLTex_SetVFlag(dwFlag, tile); }
     void BindTexture(GLuint texture, int unitno) { RiceGLTex_Bind(texture, unitno); }
 
-    void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw);
-    void InitCombinerBlenderForSimpleRectDraw(uint32_t tile);
+    void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
+    { RiceRender_DrawSimple2DTexture(x0, y0, x1, y1, u0, v0, u1, v1, dif, spe, z, rhw); }
     void DrawSpriteR_Render() { RiceGL_DrawSpriteR(gRDP.fvPrimitiveColor); }
 
-    void SetFogEnable(bool bEnable);
+    void SetFogEnable(bool bEnable) { RiceRender_SetFogEnable(bEnable); }
     void TurnFogOnOff(bool flag) { rice_combiner.fog = flag; }
     void SetFogColor(uint32_t r, uint32_t g, uint32_t b, uint32_t a) { RiceGL_SetFogColor(r, g, b, a); }
 
     void DisableMultiTexture() { RiceGLTex_DisableMultiTexture(); }
     void EnableMultiTexture() { RiceGLTex_EnableMultiTexture(); }
-    void EndRendering(void);
 
     void EnableTexUnit(int unitno, bool flag) { RiceGLTex_EnableUnit(unitno, flag); }
 
@@ -250,7 +216,7 @@ protected:
         bool fogOff = !gRDP.bFogEnableInBlender && gRSP.bFogEnabled;
         if (fogOff)
             TurnFogOnOff(false);
-        ApplyZBias(m_dwZBias);
+        ApplyZBias(rice_render.zBias);
         RiceGL_DrawTris();
         if (fogOff)
             TurnFogOnOff(true);
@@ -263,8 +229,6 @@ protected:
               m_fillRectVtx[1].x, m_fillRectVtx[1].y, dwColor, depth);
         return true;
     }
-    bool RenderLine3D();
-
 };
 
 #define ffloor(a) (((int(a))<=(a))?(float)(int(a)):((float)(int(a))-1))

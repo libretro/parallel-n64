@@ -372,8 +372,6 @@ void CRender::DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile
 
 void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height)
 {
-    BeginRendering();
-
     LoadFrameBuffer(useVIreg, left, top, width, height);
 
     RiceCombiner_InitSimpleTextureDraw(0);
@@ -405,8 +403,6 @@ void CRender::DrawFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32
     }
 
     TXTRBUF_OR_CI_DUMP(TRACE0("Draw Frame Buffer Img"));
-
-    EndRendering();
 }
 
 void CRender::DrawObjBGCopy(uObjBg &info)

@@ -288,7 +288,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombinerText.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceRender.c">
       <Filter>Source Files\mupen64plus-video-rice\src</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLTexture.c">

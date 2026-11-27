@@ -470,7 +470,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceGLDraw.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombiner.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceCombinerText.c" />
-    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLRender.cpp" />
+    <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RiceRender.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\OGLTexture.c" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\Render.cpp" />
     <ClCompile Include="..\..\..\mupen64plus-video-rice\src\RenderBase.cpp" />
