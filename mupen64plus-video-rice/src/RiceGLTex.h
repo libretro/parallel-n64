@@ -70,10 +70,9 @@ void RiceGLTex_SetVFlag(TextureUVFlag flag, uint32_t tile);
  * ROM's forced clamps and wraps) */
 void RiceGLTex_SetTileRepeat(uint32_t tile);
 
-/* each enabled unit's min and mag filters for @min_filter and
- * @mag_filter (and the mipmapping option), set when they or the bound
- * texture changed */
-void RiceGLTex_ApplyFilter(TextureFilter min_filter, TextureFilter mag_filter);
+/* each enabled unit's min and mag filters for @filter (and the
+ * mipmapping option), set when it or the bound texture changed */
+void RiceGLTex_ApplyFilter(TextureFilter filter);
 
 #ifdef __cplusplus
 }

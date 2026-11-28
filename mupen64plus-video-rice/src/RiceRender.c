@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "Config.h"
 #include "FrameBuffer.h"
 #include "GraphicsContext.h"
+#include "OGLBlender.h"
 #include "RenderBase.h"
 #include "RiceCombiner.h"
 #include "RiceGLDraw.h"
@@ -43,6 +44,8 @@ void RiceRender_Reset(void)
     rice_render.zBias = 0;
     rice_render.alpha = 0xFF;
     rice_render.mux = 0;
+    rice_render.blender = OGLBlender_Get();
+    rice_render.filter = FILTER_POINT;
 }
 
 void RiceRender_Initialize(void)
@@ -61,6 +64,109 @@ void RiceRender_SetZBias(int bias)
 void RiceRender_SetAlphaRef(uint32_t alpha)
 {
     rice_render.alpha = alpha;
+}
+
+void RiceRender_SetAlphaTestEnable(int enable)
+{
+    rice_combiner.alphaTest = enable != 0;
+}
+
+void RiceRender_InitOtherModes(void)
+{
+    /* I can't think why the hand in Mario's menu screen is rendered with an
+     * opaque rendermode, and no alpha threshold. We set the alpha reference
+     * to 1 to ensure that the transparent pixels don't get rendered. */
+    if ( gRDP.otherMode.alpha_compare == 0 )
+    {
+        if ( gRDP.otherMode.cvg_x_alpha && (gRDP.otherMode.alpha_cvg_sel || gRDP.otherMode.aa_en ) )
+        {
+            rice_render.alpha = 128;
+            rice_combiner.alphaTest = true;
+        }
+        else
+            rice_combiner.alphaTest = false;
+    }
+    else if ( gRDP.otherMode.alpha_compare == 3 )
+    {
+        /* RDP_ALPHA_COMPARE_DITHER */
+        rice_combiner.alphaTest = false;
+    }
+    else
+    {
+        /* Use CVG for pixel alpha */
+        if( (gRDP.otherMode.alpha_cvg_sel ) && !gRDP.otherMode.cvg_x_alpha )
+            rice_combiner.alphaTest = false;
+        else
+        {
+            /* RDP_ALPHA_COMPARE_THRESHOLD || RDP_ALPHA_COMPARE_DITHER */
+            if( rice_render.alpha==0 )
+                rice_render.alpha = 1;
+            rice_combiner.alphaTest = true;
+        }
+    }
+
+    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && rice_render.mux == UINT64_C(0x00121824ff33ffff) &&
+        gRSP.bCullFront && gRDP.otherMode.aa_en && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )
+    {
+        RiceGL_SetZCompare(false);
+    }
+
+    if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
+    {
+        /* Disable zbuffer for COPY and FILL mode */
+        RiceGL_SetZCompare(false);
+    }
+    else
+    {
+        RiceGL_SetZCompare(gRDP.otherMode.z_cmp);
+        RiceGL_SetZUpdate(gRDP.otherMode.z_upd);
+    }
+}
+
+void RiceRender_SetCombinerAndBlender(void)
+{
+    RiceGLTex_ApplyFilter(rice_render.filter);
+    RiceRender_InitOtherModes();
+
+    if( g_curRomInfo.bDisableBlender )
+        Blender_DisableAlphaBlender(rice_render.blender);
+    else if( currentRomOptions.bNormalBlender )
+        Blender_NormalAlphaBlender(rice_render.blender);
+    else
+        Blender_InitBlenderMode(rice_render.blender);
+
+    RiceCombiner_InitMode(rice_render.alpha);
+}
+
+void RiceRender_SetTextureFilter(uint32_t dwFilter)
+{
+    if( options.forceTextureFilter == FORCE_DEFAULT_FILTER )
+    {
+        switch(dwFilter)
+        {
+            case RDP_TFILTER_AVERAGE:
+            case RDP_TFILTER_BILERP:
+                rice_render.filter = FILTER_LINEAR;
+                break;
+            default:
+                rice_render.filter = FILTER_POINT;
+                break;
+        }
+    }
+    else
+    {
+        switch( options.forceTextureFilter )
+        {
+        case FORCE_POINT_FILTER:
+            rice_render.filter = FILTER_POINT;
+            break;
+        case FORCE_LINEAR_FILTER:
+            rice_render.filter = FILTER_LINEAR;
+            break;
+        }
+    }
+
+    RiceGLTex_ApplyFilter(rice_render.filter);
 }
 
 void RiceRender_SetFogEnable(bool enable)

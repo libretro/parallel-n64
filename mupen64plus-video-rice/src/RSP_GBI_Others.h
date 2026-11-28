@@ -321,11 +321,11 @@ void DLParser_Bomberman2TextRect(Gfx *gfx)
 
     PrepareTextures();
     
-    //CRender::g_pRender->SetCombinerAndBlender();
+    //RiceRender_SetCombinerAndBlender();
 
     uObjTxSprite drawinfo;
     memcpy( &(drawinfo.sprite), info, sizeof(uObjSprite));
-    CRender::g_pRender->DrawSpriteR(drawinfo, false, dwTile, 0, 0, drawinfo.sprite.imageW/32, drawinfo.sprite.imageH/32);
+    RiceRender_DrawSpriteR(&drawinfo, false, dwTile, 0, 0, drawinfo.sprite.imageW/32, drawinfo.sprite.imageH/32);
 }
 
 void RSP_MoveWord_DKR(Gfx *gfx)
@@ -429,7 +429,7 @@ void RSP_Tri4_PD(Gfx *gfx)
                 }
 
                 if( !bTrisAdded )
-                    CRender::g_pRender->SetCombinerAndBlender();
+                    RiceRender_SetCombinerAndBlender();
 
                 bTrisAdded = true;
                 PrepareTriangle(v0, v2, v1);
@@ -499,7 +499,7 @@ void DLParser_Tri4_Conker(Gfx *gfx)
                 }
 
                 if( !bTrisAdded )
-                    CRender::g_pRender->SetCombinerAndBlender();
+                    RiceRender_SetCombinerAndBlender();
 
                 bTrisAdded = true;
                 PrepareTriangle(v0, v1, v2);
@@ -1004,7 +1004,7 @@ void DLParser_RDPHalf_1_0xb4_GoldenEye(Gfx *gfx)
    {
       uint8_t *rdram_u8 = (uint8_t*)gfx_info.RDRAM;
       PrepareTextures();
-      CRender::g_pRender->SetCombinerAndBlender();
+      RiceRender_SetCombinerAndBlender();
 
       uint32_t dwPC  = __RSP.PC[__RSP.PCi];       // This points to the next instruction
 

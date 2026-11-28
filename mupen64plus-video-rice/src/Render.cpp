@@ -27,7 +27,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "ConvertImage.h"
 #include "GraphicsContext.h"
-#include "OGLBlender.h"
 #include "FrameBuffer.h"
 #include "Render.h"
 
@@ -61,9 +60,7 @@ extern "C" void RiceRender_Stop(void)
     CRender::g_pRender = NULL;
 }
 
-CRender::CRender() :
-    m_dwMinFilter(FILTER_POINT),
-    m_dwMagFilter(FILTER_POINT)
+CRender::CRender()
 {
     RiceRender_Reset();
     RiceGLTex_Reset();
@@ -90,16 +87,11 @@ CRender::CRender() :
     
     RiceCombiner_Create();
     RiceCombiner_BuildKnownKeys();
-
-    m_pAlphaBlender = OGLBlender_Get();
-
 }
 
 CRender::~CRender()
 {
     RiceCombiner_Destroy();
-    
-    m_pAlphaBlender = NULL;
 }
 
 void CRender::SetProjection(const Matrix & mat, bool bPush, bool bReplace) 
@@ -213,13 +205,7 @@ void CRender::SetMux(uint32_t dwMux0, uint32_t dwMux1)
     }
 }
 
-
 /* gSP_rice.c's: the renderer's to C */
-extern "C" void RiceRender_SetCombinerAndBlender(void)
-{
-    CRender::g_pRender->SetCombinerAndBlender();
-}
-
 extern "C" bool RiceRender_DrawTriangles(void)
 {
     return CRender::g_pRender->DrawTriangles();
@@ -247,26 +233,6 @@ extern "C" void RiceRender_ClearDepth(COORDRECT *rect)
 extern "C" bool RiceRender_FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
 {
     return CRender::g_pRender->FillRect(nX0, nY0, nX1, nY1, dwColor);
-}
-
-/* Blender.c's: the renderer's alpha test */
-extern "C" void RiceRender_SetAlphaTestEnable(int enable)
-{
-    CRender::g_pRender->SetAlphaTestEnable(enable != 0);
-}
-
-void CRender::SetCombinerAndBlender()
-{
-    InitOtherModes();
-
-    if( g_curRomInfo.bDisableBlender )
-        Blender_DisableAlphaBlender(m_pAlphaBlender);
-    else if( currentRomOptions.bNormalBlender )
-        Blender_NormalAlphaBlender(m_pAlphaBlender);
-    else
-        Blender_InitBlenderMode(m_pAlphaBlender);
-
-    RiceCombiner_InitMode(rice_render.alpha);
 }
 
 bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
@@ -315,7 +281,7 @@ bool CRender::FillRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwColor)
         m_fillRectVtx[1].x = ViewPortTranslatei_x(nX1);
         m_fillRectVtx[1].y = ViewPortTranslatei_y(nY1);
 
-        SetCombinerAndBlender();
+        RiceRender_SetCombinerAndBlender();
 
         if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
         {
@@ -398,7 +364,7 @@ bool CRender::Line3D(uint32_t dwV0, uint32_t dwV1, uint32_t dwWidth)
         m_line3DVector[1].x = m_line3DVector[3].x = m_line3DVtx[0].x+width/2*windowSetting.fMultX;
     }
 
-    SetCombinerAndBlender();
+    RiceRender_SetCombinerAndBlender();
 
     return true;
 }
@@ -529,7 +495,7 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     // Scale to Actual texture coords
     // The two cases are to handle the oversized textures hack on voodoos
 
-    SetCombinerAndBlender();
+    RiceRender_SetCombinerAndBlender();
     
 
     if( gRDP.otherMode.cycle_type  >= G_CYC_COPY || !gRDP.otherMode.z_cmp )
@@ -679,22 +645,22 @@ bool CRender::TexRect(int nX0, int nY0, int nX1, int nY1, float fS0, float fT0, 
     TurnFogOnOff(false);
     if( rice_gl_tex.tileUFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && rice_gl_tex.tileVFlags[gRSP.curTile]==TEXTURE_UV_FLAG_CLAMP && options.forceTextureFilter == FORCE_DEFAULT_FILTER )
     {
-        TextureFilter dwFilter = m_dwMagFilter;
-        m_dwMagFilter = m_dwMinFilter = FILTER_LINEAR;
+        TextureFilter dwFilter = rice_render.filter;
+        rice_render.filter = FILTER_LINEAR;
         ApplyTextureFilter();
         ApplyRDPScissor(false);
         res = RenderTexRect();
-        m_dwMagFilter = m_dwMinFilter = dwFilter;
+        rice_render.filter = dwFilter;
         ApplyTextureFilter();
     }
     else if( fScaleS >= 1 && fScaleT >= 1 && options.forceTextureFilter == FORCE_DEFAULT_FILTER )
     {
-        TextureFilter dwFilter = m_dwMagFilter;
-        m_dwMagFilter = m_dwMinFilter = FILTER_POINT;
+        TextureFilter dwFilter = rice_render.filter;
+        rice_render.filter = FILTER_POINT;
         ApplyTextureFilter();
         ApplyRDPScissor(false);
         res = RenderTexRect();
-        m_dwMagFilter = m_dwMinFilter = dwFilter;
+        rice_render.filter = dwFilter;
         ApplyTextureFilter();
     }
     else
@@ -742,7 +708,7 @@ bool CRender::TexRectFlip(int nX0, int nY0, int nX1, int nY1, float fS0, float f
     if( t0u0 >= 0 && t0u1 <= 1 && t0u1 >= t0u0 ) SetTextureUFlag(TEXTURE_UV_FLAG_CLAMP, gRSP.curTile);
     if( t0v0 >= 0 && t0v1 <= 1 && t0v1 >= t0v0 ) SetTextureVFlag(TEXTURE_UV_FLAG_CLAMP, gRSP.curTile);
 
-    SetCombinerAndBlender();
+    RiceRender_SetCombinerAndBlender();
 
     COLOR speColor = 0;
     COLOR difColor = gRDP.primitiveColor;
@@ -1083,104 +1049,4 @@ void CRender::SetClipRatio(uint32_t type, uint32_t w1)
 
    if( modified )
       UpdateClipRectangle();
-}
-
-// Set other modes not covered by color combiner or alpha blender
-void CRender::InitOtherModes(void)
-{
-    ApplyTextureFilter();
-
-    //
-    // I can't think why the hand in Mario's menu screen is rendered with an opaque rendermode,
-    // and no alpha threshold. We set the alpha reference to 1 to ensure that the transparent pixels
-    // don't get rendered. I hope this doesn't fuck anything else up.
-    //
-    if ( gRDP.otherMode.alpha_compare == 0 )
-    {
-        if ( gRDP.otherMode.cvg_x_alpha && (gRDP.otherMode.alpha_cvg_sel || gRDP.otherMode.aa_en ) )
-        {
-            SetAlphaRef(128); // Strange, I have to use value=2 for pixel shader combiner for Nvidia FX5200
-                              // for other video cards, value=1 is good enough.
-            SetAlphaTestEnable(true);
-        }
-        else
-            SetAlphaTestEnable(false);
-    }
-    else if ( gRDP.otherMode.alpha_compare == 3 )
-    {
-        //RDP_ALPHA_COMPARE_DITHER
-        SetAlphaTestEnable(false);
-    }
-    else
-    {
-       // Use CVG for pixel alpha
-        if( (gRDP.otherMode.alpha_cvg_sel ) && !gRDP.otherMode.cvg_x_alpha )
-            SetAlphaTestEnable(false);
-        else
-        {
-            // RDP_ALPHA_COMPARE_THRESHOLD || RDP_ALPHA_COMPARE_DITHER
-            if( rice_render.alpha==0 )
-                SetAlphaRef(1);
-            SetAlphaTestEnable(true);
-        }
-    }
-
-    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && rice_render.mux == 0x00121824ff33ffffLL &&
-        gRSP.bCullFront && gRDP.otherMode.aa_en && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )
-    {
-        SetZCompare(false);
-    }
-
-
-    if( gRDP.otherMode.cycle_type  >= G_CYC_COPY )
-    {
-        // Disable zbuffer for COPY and FILL mode
-        SetZCompare(false);
-    }
-    else
-    {
-        SetZCompare(gRDP.otherMode.z_cmp);
-        SetZUpdate(gRDP.otherMode.z_upd);
-    }
-
-    /*
-    if( options.enableHackForGames == HACK_FOR_SOUTH_PARK_RALLY && rice_render.mux == 0x00121824ff33ffff &&
-        gRSP.bCullFront && gRDP.otherMode.z_cmp && gRDP.otherMode.z_upd )//&& gRDP.otherMode.aa_en )
-    {
-        SetZCompare(false);
-        SetZUpdate(false);
-    }
-    */
-}
-
-
-void CRender::SetTextureFilter(uint32_t dwFilter)
-{
-    if( options.forceTextureFilter == FORCE_DEFAULT_FILTER )
-    {
-        switch(dwFilter)
-        {
-            case RDP_TFILTER_AVERAGE:   //?
-            case RDP_TFILTER_BILERP:
-                m_dwMinFilter = m_dwMagFilter = FILTER_LINEAR;
-                break;
-            default:
-                m_dwMinFilter = m_dwMagFilter = FILTER_POINT;
-                break;
-        }
-    }
-    else
-    {
-        switch( options.forceTextureFilter )
-        {
-        case FORCE_POINT_FILTER:
-            m_dwMinFilter = m_dwMagFilter = FILTER_POINT;
-            break;
-        case FORCE_LINEAR_FILTER:
-            m_dwMinFilter = m_dwMagFilter = FILTER_LINEAR;
-            break;
-        }
-    }
-
-    ApplyTextureFilter();
 }

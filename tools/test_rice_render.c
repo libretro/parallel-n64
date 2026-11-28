@@ -18,6 +18,7 @@
 #include "Config.h"
 #include "FrameBuffer.h"
 #include "GraphicsContext.h"
+#include "OGLBlender.h"
 #include "RenderBase.h"
 #include "RiceCombiner.h"
 #include "RiceGLDraw.h"
@@ -56,13 +57,20 @@ bool RiceGL_RE2Scissor(void) { return re2 != 0; }
 void RiceGC_UpdateFrame(void) { n_frame++; }
 void RiceGL_DrawSimple2DTexture(void) { n_draw++; }
 
+static CBlender the_blender;
+CBlender *OGLBlender_Get(void) { return &the_blender; }
+
 static void test_state(void)
 {
    rice_render.zBias = 7;
    rice_render.alpha = 3;
+   rice_render.blender = NULL;
+   rice_render.filter = FILTER_LINEAR;
    RiceRender_Reset();
    CHECK(rice_render.zBias == 0);
    CHECK(rice_render.alpha == 0xFF);
+   CHECK(rice_render.blender == &the_blender);
+   CHECK(rice_render.filter == FILTER_POINT);
 
    RiceRender_SetZBias(2);
    CHECK(rice_render.zBias == 2);

@@ -47,12 +47,6 @@ class CRender
 public:
     CRender();
 
-    TextureFilter   m_dwMinFilter;
-    TextureFilter   m_dwMagFilter;
-
-    CBlender *m_pAlphaBlender;
-    
-    
     ~CRender();
     
     inline bool IsTexel0Enable() { return rice_combiner.tex0Enabled; }
@@ -95,7 +89,6 @@ public:
         g_fVtxTxtCoords[dwV].y = tv;
     }
 
-    void SetCombinerAndBlender();
     void SetMux(uint32_t dwMux0, uint32_t dwMux1);
 
     void ClearBuffer(bool cbuffer, bool zbuffer) { RiceGL_ClearBuffer(cbuffer, zbuffer); }
@@ -104,11 +97,6 @@ public:
         ClearBuffer(cbuffer, zbuffer);
     }
 
-    void SetTextureFilter(uint32_t dwFilter);
-    
-
-
-    void InitOtherModes(void);
 
     void SetVertexTextureUVCoord(TLITVERTEX &v, float fTex0S, float fTex0T, float fTex1S, float fTex1T)
     { RiceRender_SetVertexUV2f(&v, fTex0S, fTex0T, fTex1S, fTex1T); }
@@ -125,18 +113,6 @@ public:
     void SetTexelRepeatFlags(uint32_t dwTile) { RiceGLTex_SetTileRepeat(dwTile); }
     void SetAllTexelRepeatFlag() { RiceCombiner_SetTexelRepeat(); }
     
-
-    void LoadSprite2D(Sprite2DInfo &info, uint32_t ucode);
-    void LoadObjBGCopy(uObjBg &info);
-    void LoadObjBG1CYC(uObjScaleBg &info);
-    void LoadObjSprite(uObjTxSprite &info, bool useTIAddr);
-
-    void LoadFrameBuffer(bool useVIreg, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-    void DrawSprite2D(Sprite2DInfo &info, uint32_t ucode);
-    void DrawSpriteR(uObjTxSprite &sprite, bool initCombiner, uint32_t tile, uint32_t left, uint32_t top, uint32_t width, uint32_t height);
-    void DrawSprite(uObjTxSprite &sprite, bool rectR);
-    void DrawObjBGCopy(uObjBg &info);
-    void DrawObjBG1CYC(uObjScaleBg &bg, bool scaled);
 
     static CRender * g_pRender;
     static CRender * GetRender(void);
@@ -165,7 +141,7 @@ protected:
 public:
     void Initialize(void) { RiceRender_Initialize(); }
 
-    void ApplyTextureFilter() { RiceGLTex_ApplyFilter(m_dwMinFilter, m_dwMagFilter); }
+    void ApplyTextureFilter() { RiceGLTex_ApplyFilter(rice_render.filter); }
 
     void ZBufferEnable(bool bZBuffer) { RiceGL_ZBufferEnable(bZBuffer); }
     void ClearZBuffer(float depth) { RiceGL_ClearZBuffer(depth); }
@@ -193,7 +169,6 @@ public:
 
     void DrawSimple2DTexture(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, COLOR dif, COLOR spe, float z, float rhw)
     { RiceRender_DrawSimple2DTexture(x0, y0, x1, y1, u0, v0, u1, v1, dif, spe, z, rhw); }
-    void DrawSpriteR_Render() { RiceGL_DrawSpriteR(gRDP.fvPrimitiveColor); }
 
     void SetFogEnable(bool bEnable) { RiceRender_SetFogEnable(bEnable); }
     void TurnFogOnOff(bool flag) { rice_combiner.fog = flag; }

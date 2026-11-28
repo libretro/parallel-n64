@@ -109,7 +109,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
                     InitVertexTextureConstants();
                 }
 
-                CRender::g_pRender->SetCombinerAndBlender();
+                RiceRender_SetCombinerAndBlender();
                 bTrisAdded = true;
             }
             PrepareTriangle(dwV0, dwV1, dwV2);
@@ -127,7 +127,7 @@ void RSP_GBI1_Tri2(Gfx *gfx)
                     InitVertexTextureConstants();
                 }
 
-                CRender::g_pRender->SetCombinerAndBlender();
+                RiceRender_SetCombinerAndBlender();
                 bTrisAdded = true;
             }
             PrepareTriangle(dwV3, dwV4, dwV5);

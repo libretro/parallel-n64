@@ -184,7 +184,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
         uint32_t dwWidth  = gfx->ln3dtri2.v2;
         //uint32_t dwFlag = gfx->ln3dtri2.v3/gRSP.vertexMult; 
         
-        CRender::g_pRender->SetCombinerAndBlender();
+        RiceRender_SetCombinerAndBlender();
 
         status.dwNumTrisRendered++;
 
@@ -212,7 +212,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
 
                 if( !bTrisAdded )
                 {
-                    CRender::g_pRender->SetCombinerAndBlender();
+                    RiceRender_SetCombinerAndBlender();
                 }
 
                 bTrisAdded = true;
@@ -231,7 +231,7 @@ void RSP_GBI1_Line3D(Gfx *gfx)
 
                 if( !bTrisAdded )
                 {
-                    CRender::g_pRender->SetCombinerAndBlender();
+                    RiceRender_SetCombinerAndBlender();
                 }
 
                 bTrisAdded = true;
@@ -530,7 +530,7 @@ void RSP_GBI1_Tri1(Gfx *gfx)
                     PrepareTextures();
                     InitVertexTextureConstants();
                 }
-                CRender::g_pRender->SetCombinerAndBlender();
+                RiceRender_SetCombinerAndBlender();
                 bTrisAdded = true;
             }
             PrepareTriangle(dwV0, dwV1, dwV2);
@@ -582,7 +582,7 @@ void RSP_GBI0_Tri4(Gfx *gfx)
              }
 
              if( !bTrisAdded )
-                CRender::g_pRender->SetCombinerAndBlender();
+                RiceRender_SetCombinerAndBlender();
 
              bTrisAdded = true;
              PrepareTriangle(v0, v2, v1);

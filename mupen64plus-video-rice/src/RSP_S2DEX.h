@@ -430,7 +430,7 @@ void RSP_GBI1_Tri2(Gfx *gfx);
 void RSP_GBI0_Mtx(Gfx *gfx);
 void DLParser_TexRect(Gfx *gfx);
 
-/* Render's (RenderExt.cpp): the S2DEX backgrounds and sprites drawn */
+/* RenderExt.c's: the S2DEX backgrounds and sprites drawn */
 void RiceRender_ObjBGCopy(uObjBg *bg);
 void RiceRender_ObjBG1CYC(uObjScaleBg *bg);
 void RiceRender_LoadObjSprite(uObjTxSprite *sprite, bool useTIAddr);

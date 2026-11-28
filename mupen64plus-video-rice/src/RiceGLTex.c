@@ -236,9 +236,9 @@ void RiceGLTex_SetTileRepeat(uint32_t dwTile)
         RiceGLTex_SetVFlag(TEXTURE_UV_FLAG_WRAP, dwTile);
 }
 
-void RiceGLTex_ApplyFilter(TextureFilter min_filter, TextureFilter mag_filter)
+void RiceGLTex_ApplyFilter(TextureFilter filter)
 {
-    static uint32_t minflag[32], magflag[32];
+    static uint32_t flag[32];
     static uint32_t mtex[32];
     int i;
 
@@ -246,7 +246,7 @@ void RiceGLTex_ApplyFilter(TextureFilter min_filter, TextureFilter mag_filter)
     {
         GLint iMinFilter, iMagFilter;
 
-        if (min_filter == FILTER_LINEAR)   /* the texture is filtered */
+        if (filter == FILTER_LINEAR)   /* the texture is filtered */
         {
             iMagFilter = GL_LINEAR;
             switch (options.mipmapping)
@@ -275,29 +275,13 @@ void RiceGLTex_ApplyFilter(TextureFilter min_filter, TextureFilter mag_filter)
         if (!rice_gl_tex.texUnitEnabled[i])
             continue;
 
-        if (mtex[i] != rice_gl_tex.curBoundTex[i])
+        if (mtex[i] != rice_gl_tex.curBoundTex[i] || flag[i] != (uint32_t)filter)
         {
             mtex[i] = rice_gl_tex.curBoundTex[i];
+            flag[i] = filter;
             glActiveTexture(GL_TEXTURE0 + i);
-            minflag[i] = min_filter;
-            magflag[i] = mag_filter;
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
-        }
-        else
-        {
-            if (minflag[i] != (unsigned int)min_filter)
-            {
-                minflag[i] = min_filter;
-                glActiveTexture(GL_TEXTURE0 + i);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, iMinFilter);
-            }
-            if (magflag[i] != (unsigned int)mag_filter)
-            {
-                magflag[i] = mag_filter;
-                glActiveTexture(GL_TEXTURE0 + i);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, iMagFilter);
-            }
         }
     }
 }

@@ -388,6 +388,9 @@ void DLParser_Process(OSTask * pTask);
 void RDP_DLParser_Process(void);
 void TriggerDPInterrupt(void);
 void TriggerSPInterrupt(void);
+
+/* RenderExt.c's: a Sprite2D drawn */
+void RiceRender_DrawSprite2D(Sprite2DInfo *info);
 #ifdef __cplusplus
 }
 #endif

@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <boolean.h>
 
 #include "typedefs.h"
+#include "Blender.h"
 #include "Texture.h"
 #include "TextureManager.h"
 
@@ -37,6 +38,8 @@ typedef struct RiceRenderState
     uint32_t zBias;    /* the depth bias the triangles are drawn with */
     uint32_t alpha;    /* the alpha reference, from the RDP's blend colour */
     uint64_t mux;      /* the combiner mux drawn with, for the hacks */
+    CBlender *blender; /* the GL blender */
+    TextureFilter filter; /* the textures' filter, min and mag alike */
 } RiceRenderState;
 
 extern RiceRenderState rice_render;
@@ -50,6 +53,14 @@ void RiceRender_Initialize(void);
 void RiceRender_SetZBias(int bias);
 void RiceRender_SetAlphaRef(uint32_t alpha);
 void RiceRender_SetFogEnable(bool enable);
+
+/* the other modes not covered by the combiner, the blender or the
+   texture filter */
+void RiceRender_InitOtherModes(void);
+/* the combiner and blender, with the other modes, for what is drawn next */
+void RiceRender_SetCombinerAndBlender(void);
+/* the RDP's texture filter (RDP_TFILTER_), or the one forced */
+void RiceRender_SetTextureFilter(uint32_t dwFilter);
 
 /* tile drawn with handler, a tile of width by height texels; nothing
    changes when the tile has that texture already */
@@ -69,7 +80,7 @@ void RiceRender_UpdateScissor(void);
 void RiceRender_Start(void);
 /* the renderer gone; nothing happens when there is none */
 void RiceRender_Stop(void);
-/* the frame the CPU wrote, at the VI origin, put on screen (RenderExt.cpp) */
+/* the frame the CPU wrote, at the VI origin, put on screen (RenderExt.c) */
 void RiceRender_DrawFrameBufferVI(void);
 
 /* a rectangle in N64 pixels drawn with texture 0, its corners' texture

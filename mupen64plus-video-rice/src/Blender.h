@@ -69,7 +69,7 @@ void Blender_NormalAlphaBlender(CBlender *b);
 /* the source as it is */
 void Blender_DisableAlphaBlender(CBlender *b);
 
-/* Render.cpp's: the renderer's alpha test on or off */
+/* RiceRender.c's: the renderer's alpha test on or off */
 void RiceRender_SetAlphaTestEnable(int enable);
 
 #ifdef __cplusplus

@@ -87,7 +87,7 @@ void RSP_GBI_Sprite2D_PuzzleMaster64(Gfx *gfx)
     tempInfo.SourceImageOffsetT = info.SourceImageOffsetT;
     g_Sprite2DInfo.spritePtr = &tempInfo;
 
-    CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 1);
+    RiceRender_DrawSprite2D(&g_Sprite2DInfo);
 }
 
 
@@ -98,7 +98,7 @@ void RSP_GBI1_Sprite2DDraw(Gfx *gfx)
     g_Sprite2DInfo.py = (short)((gfx->words.w1)&0xFFFF)/4;
 
     //RSP_RDP_NOIMPL("gSPSprite2DDraw is not implemented", (gfx->words.w0), (gfx->words.w1));
-    CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 1);
+    RiceRender_DrawSprite2D(&g_Sprite2DInfo);
 
     LoadedUcodeMap[RSP_SPRITE2D_SCALEFLIP] = &RSP_GBI1_CullDL;
     LoadedUcodeMap[RSP_SPRITE2D_DRAW] = &RSP_GBI1_PopMtx;
@@ -113,7 +113,7 @@ void RSP_GBI0_Sprite2DDraw(Gfx *gfx)
     g_Sprite2DInfo.py = (short)((gfx->words.w1)&0xFFFF)/4;
 
     //RSP_RDP_NOIMPL("gSPSprite2DDraw is not implemented", (gfx->words.w0), (gfx->words.w1));
-    CRender::g_pRender->DrawSprite2D(g_Sprite2DInfo, 0);
+    RiceRender_DrawSprite2D(&g_Sprite2DInfo);
 }
 
 
